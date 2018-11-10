@@ -35,6 +35,25 @@ class Visualizer:
         point_cloud.colors = open3d.Vector3dVector(colors)
         open3d.draw_geometries([point_cloud])
 
+    @staticmethod
+    def visualize_pts_with_color(pts, color=np.array([[0, 0, 0]])):
+        assert (color.shape[0] == 1 or color.shape[0] == pts.shape[0])
+        # print('pts shape: ', pts.shape)
+        # print('color shape: ', color.shape)
+        if color.shape[0] == 1:
+            color = np.tile(color, [pts.shape[0], 1])
+        # print('color shape: ', color.shape)
+        point_cloud = open3d.PointCloud()
+        point_cloud.points = open3d.Vector3dVector(pts)
+        point_cloud.colors = open3d.Vector3dVector(color)
+        open3d.draw_geometries([point_cloud])
+
+    @staticmethod
+    def visualize_pts(pts):
+        point_cloud = open3d.PointCloud()
+        point_cloud.points = open3d.Vector3dVector(pts)
+        open3d.draw_geometries([point_cloud])
+
 
 if __name__ == '__main__':
     dataset_path = '../data/shapenet'
