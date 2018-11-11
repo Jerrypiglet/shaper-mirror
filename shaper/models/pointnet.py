@@ -1,5 +1,18 @@
+"""
+PointNet
+
+References:
+    @article{qi2016pointnet,
+      title={PointNet: Deep Learning on Point Sets for 3D Classification and Segmentation},
+      author={Qi, Charles R and Su, Hao and Mo, Kaichun and Guibas, Leonidas J},
+      journal={arXiv preprint arXiv:1612.00593},
+      year={2016}
+    }
+"""
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from ._utils import Conv1dBlock, LinearBlock
 
@@ -72,7 +85,7 @@ class TNet(nn.Module):
         x = self.mlp_global(x)
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
-        I = torch.eye(self.out_channels, self.in_channels, device=x.device)
+        I = torch.eye(self.out_channels, self.in_channels, dtype=x.dtype, device=x.device)
         x.add_(I)  # broadcast first dimension
         return x
 
@@ -145,10 +158,55 @@ class PointNetCls(nn.Module):
         x = self.mlp_global(x)
         x = self.linear(x)
 
-        return x, end_points
+        preds = {
+            'cls_logits': x
+        }
+        preds.update(end_points)
+
+        return preds
 
     def init_weights(self):
         nn.init.kaiming_uniform_(self.linear.weight, nonlinearity='linear')
+
+
+class PointNetClsLoss(nn.Module):
+    def __init__(self, reg_weight):
+        super(PointNetClsLoss, self).__init__()
+        self.reg_weight = reg_weight
+
+    def forward(self, preds, labels):
+        cls_logits = preds["cls_logits"]
+        cls_labels = labels["cls_labels"]
+        cls_loss = F.cross_entropy(cls_logits, cls_labels)
+        loss_dict = {
+            'cls_loss': cls_loss,
+        }
+
+        # regularization over transform matrix
+        if self.reg_weight > 0.0:
+            trans_stem = preds["trans_stem"]
+            trans_norm = torch.bmm(trans_stem, trans_stem.transpose(2, 1))  # [out, out]
+            I = torch.eye(trans_norm.size()[1], dtype=trans_norm.dtype, device=trans_norm.device)
+            reg_loss = F.mse_loss(trans_norm, I)
+            loss_dict["reg_loss"] = reg_loss
+
+        return loss_dict
+
+
+def build_pointnet(cfg):
+    if cfg.TASK == "classification":
+        net = PointNetCls(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            out_channels=cfg.DATASET.NUM_CLASSES,
+            stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
+            local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
+            global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
+        )
+        loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
+    else:
+        raise NotImplementedError()
+
+    return net, loss_fn
 
 
 if __name__ == '__main__':

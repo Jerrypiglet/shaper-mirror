@@ -1,6 +1,5 @@
 import os
 import os.path as osp
-import sys
 import json
 
 import numpy as np
@@ -11,6 +10,7 @@ from torch.utils.data import Dataset
 
 
 class ShapeNet(Dataset):
+    ROOT_DIR = "data/shapenet"
     cat_file = "synsetoffset2category.txt"
     split_dir = "train_test_split"
     dataset_map = {
@@ -69,7 +69,7 @@ class ShapeNet(Dataset):
         class_ind = self.classes_to_ind_map[class_name]
         pts_path = meta_data["pts"]
         point_set = np.loadtxt(pts_path).astype(np.float32)
-        print(index, class_name, class_ind, pts_path)
+        # print(index, class_name, class_ind, pts_path)
 
         # # visualization
         # v = Visualizer(self.root_dir)
@@ -79,12 +79,14 @@ class ShapeNet(Dataset):
 
         if self.num_points > 0:
             if self.shuffle_points:
-                choice = np.random.choice(len(point_set), self.num_points, replace=False)
+                choice = np.random.choice(len(point_set), self.num_points, replace=True)
             else:
                 choice = np.arange(self.num_points)
             point_set = point_set[choice]
 
-        # TODO: check whether it is safe
+        point_set = point_set.transpose()
+
+        # # TODO: check whether it is safe
         point_set = torch.as_tensor(point_set)
         class_ind = torch.as_tensor(class_ind)
 
@@ -95,6 +97,6 @@ class ShapeNet(Dataset):
 
 
 if __name__ == "__main__":
-    root_dir = "../../data/shapenet"
+    root_dir = "../../../data/shapenet"
     shapenet = ShapeNet(root_dir, ['train', 'val', 'test'])
     print(shapenet[0])

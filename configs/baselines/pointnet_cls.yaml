@@ -1,0 +1,14 @@
+TASK:
+  "classification"
+MODEL:
+  TYPE: "PointNet"
+DATASET:
+  TYPE: "ShapeNet"
+  NUM_CLASSES: 16
+  TRAIN: ("train",)
+  TEST: ("test",)
+TRAIN:
+  BATCH_SIZE: 32
+TEST:
+  BATCH_SIZE: 32
+OUTPUT_DIR: "@"

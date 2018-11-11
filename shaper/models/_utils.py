@@ -34,12 +34,10 @@ class Conv1dBlock(nn.Module):
 
 class Conv2dBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
-                 stride=1, padding=0, dilation=1, groups=1,
                  relu=True, bn=True, bn_momentum=0.1, **kwargs):
         super(Conv2dBlock, self).__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
-                              stride, padding, dilation, groups,
                               bias=(not bn), **kwargs)
 
         if bn:
