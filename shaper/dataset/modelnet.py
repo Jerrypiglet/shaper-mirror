@@ -60,10 +60,10 @@ class ModelNet(Dataset):
                 choice = np.random.choice(point_set.shape[0], self.num_points, replace=False)
             else:
                 choice = np.arange(self.num_points)
-            point_set = point_set[choice]
+            point_set = point_set[choice].dtype('float32')
 
-        point_set = torch.as_tensor(point_set).type(torch.float32)
-        class_ind = torch.as_tensor(class_ind)
+        # point_set = torch.as_tensor(point_set).type(torch.float32)
+        # class_ind = torch.as_tensor(class_ind)
 
         return point_set, class_ind
 
