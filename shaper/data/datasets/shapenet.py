@@ -3,7 +3,6 @@ import json
 
 import numpy as np
 
-import torch
 from torch.utils.data import Dataset
 
 
@@ -18,11 +17,11 @@ class ShapeNet(Dataset):
     }
 
     def __init__(self, root_dir, dataset_names, transform=None,
-                 num_points=-1, sample_points=True):
+                 num_points=-1, shuffle_points=False):
         self.root_dir = root_dir
         self.datasets_names = dataset_names
         self.num_points = num_points
-        self.sample_points = sample_points
+        self.shuffle_points = shuffle_points
         self.transform = transform
 
         # classes
@@ -39,8 +38,6 @@ class ShapeNet(Dataset):
             self.meta_data.extend(meta_data)
         print("{} classes with {} models".format(len(self.classes), len(self.meta_data)))
 
-        # TODO: support preload
-
     def _load_cat_file(self):
         class_to_offset_map = {}
         with open(osp.join(self.root_dir, self.cat_file), 'r') as fid:
@@ -48,6 +45,9 @@ class ShapeNet(Dataset):
                 class_name, class_dir = line.strip().split()
                 class_to_offset_map[class_name] = class_dir
         return class_to_offset_map
+
+    def _load_pts(self, fname):
+        return np.loadtxt(fname).astype(np.float32)
 
     def _load_dataset(self, dataset_name):
         split_fname = osp.join(self.root_dir, self.split_dir, self.dataset_map[dataset_name])
@@ -58,24 +58,31 @@ class ShapeNet(Dataset):
             _, offset, token = fname.split("/")
             pts_path = osp.join(self.root_dir, offset, "points", token + '.pts')
             class_name = self.offset_to_class_map[offset]
-            meta_data.append({'token': token,
-                              'class': class_name,
-                              'pts': pts_path,
-                              })
+            data = {
+                'token': token,
+                'class': class_name,
+                'pts_path': pts_path,
+            }
+            meta_data.append(data)
         return meta_data
 
     def __getitem__(self, index):
         meta_data = self.meta_data[index]
         class_name = meta_data["class"]
         class_ind = self.classes_to_ind_map[class_name]
-        pts_path = meta_data["pts"]
-        points = np.loadtxt(pts_path).astype(np.float32)
-        # print(index, class_name, class_ind, pts_path)
+        points = self._load_pts(meta_data["pts_path"])
 
-        if self.num_points > 0:
-            choice = np.random.choice(len(points), self.num_points, replace=not self.sample_points)
+        if self.shuffle_points:
+            choice = np.random.permutation(len(points))
         else:
             choice = np.arange(len(points))
+        if self.num_points > 0:
+            if len(points) >= self.num_points:
+                choice = choice[:self.num_points]
+            else:
+                num_pad = self.num_points - len(points)
+                pad = np.random.permutation(choice)[:num_pad]
+                choice = np.concatenate([choice, pad])
         points = points[choice]
 
         # points = points.transpose()  # [in_channels, num_points]

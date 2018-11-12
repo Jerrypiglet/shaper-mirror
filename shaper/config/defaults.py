@@ -6,6 +6,7 @@ from yacs.config import CfgNode as CN
 _C = CN()
 
 _C.TASK = "classification"
+
 # Automatically resume weights from last checkpoints
 _C.AUTO_RESUME = True
 
@@ -65,13 +66,17 @@ _C.MODEL.S2CNN.BAND_WIDTH_LIST = (16, 10)
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
 _C.DATASET.TYPE = ""
+# Preload data into memory
+_C.DATASET.PRELOAD = True
 _C.DATASET.NUM_CLASSES = 0
 
 # Root directory of dataset
 _C.DATASET.ROOT_DIR = ""
 # List of the data names for training
 _C.DATASET.TRAIN = ()
-# List of the data names for testing (or validation)
+# List of the data names for validation
+_C.DATASET.VAL = ()
+# List of the data names for testing
 _C.DATASET.TEST = ()
 
 # -----------------------------------------------------------------------------
@@ -79,7 +84,7 @@ _C.DATASET.TEST = ()
 # -----------------------------------------------------------------------------
 _C.DATALOADER = CN()
 # Number of data loading threads
-_C.DATALOADER.NUM_WORKERS = 4
+_C.DATALOADER.NUM_WORKERS = 8
 
 
 # ---------------------------------------------------------------------------- #
@@ -115,6 +120,9 @@ _C.TRAIN.BATCH_SIZE = 1
 _C.TRAIN.CHECKPOINT_PERIOD = 1
 _C.TRAIN.LOG_PERIOD = 1
 
+# Validation
+_C.TRAIN.VAL_PERIOD = 1
+
 # Data augmentation
 _C.TRAIN.AUGMENTATION = ()
 
@@ -129,11 +137,11 @@ _C.TEST.BATCH_SIZE = 1
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
-_C.OUTPUT_DIR = ""  # if set to @, the filename of config will be used
+_C.OUTPUT_DIR = ""  # if set to @, the filename of config will be used by default
 
 # For reproducibility...but not really because modern fast GPU libraries use
 # non-deterministic op implementations
 _C.RNG_SEED = 0
 
-# GPU devices to use
+# GPU devices to use; all available devices by default
 _C.DEVICE_IDS = ()

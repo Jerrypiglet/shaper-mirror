@@ -9,9 +9,11 @@ DATASET:
   TYPE: "ShapeNet"
   NUM_CLASSES: 16
   TRAIN: ("train",)
+  VAL: ("val",)
   TEST: ("test",)
 TRAIN:
   BATCH_SIZE: 32
+  VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
 OUTPUT_DIR: "@"

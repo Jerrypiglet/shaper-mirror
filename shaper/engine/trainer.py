@@ -1,6 +1,5 @@
 import logging
 import time
-import datetime
 
 import torch
 from torch import nn
@@ -19,8 +18,9 @@ def train_model(model,
                 data_loader,
                 optimizer,
                 log_period=1):
-    logger = logging.getLogger("shaper.trainer")
+    logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
+    max_iter = len(data_loader)
     model.train()
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
@@ -42,7 +42,7 @@ def train_model(model,
         end = time.time()
         meters.update(time=batch_time, data=data_time)
 
-        if iteration % log_period == 0:
+        if iteration % log_period == 0 or iteration == (max_iter - 1):
             logger.info(
                 meters.delimiter.join(
                     [
@@ -58,6 +58,46 @@ def train_model(model,
                     memory=torch.cuda.max_memory_cached() / 1024.0 / 1024.0,
                 )
             )
+
+
+def validate_model(model,
+                   loss_fn,
+                   metric_fn,
+                   data_loader,
+                   log_period=1):
+    logger = logging.getLogger("shaper.validate")
+    meters = MetricLogger(delimiter="  ")
+    max_iter = len(data_loader)
+    model.eval()
+    end = time.time()
+    with torch.no_grad():
+        for iteration, data_batch in enumerate(data_loader):
+            data_time = time.time() - end
+
+            data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items()}
+
+            preds = model(data_batch)
+
+            loss_dict = loss_fn(preds, data_batch)
+            metric_dict = metric_fn(preds, data_batch)
+            losses = sum(loss_dict.values())
+            meters.update(loss=losses, **loss_dict, **metric_dict)
+            batch_time = time.time() - end
+            end = time.time()
+            meters.update(time=batch_time, data=data_time)
+
+            if iteration % log_period == 0 or iteration == (max_iter - 1):
+                logger.info(
+                    meters.delimiter.join(
+                        [
+                            "iter: {iter}",
+                            "{meters}",
+                        ]
+                    ).format(
+                        iter=iteration,
+                        meters=str(meters),
+                    )
+                )
 
 
 def train(cfg, output_dir=""):
@@ -83,15 +123,18 @@ def train(cfg, output_dir=""):
                                 scheduler=scheduler,
                                 save_dir=output_dir)
 
-    checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT,
-                                        resume=cfg.AUTO_RESUME)
+    checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME)
+    ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD
 
     # build data loader
-    train_data_loader = build_dataloader(cfg, is_train=True)
+    train_data_loader = build_dataloader(cfg, mode="train")
+    val_period = cfg.TRAIN.VAL_PERIOD
+    val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
     # train
     logger.info("Start training")
-    for epoch in range(checkpoint_data.get("epoch", 0), cfg.SOLVER.MAX_EPOCH):
+    max_epoch = cfg.SOLVER.MAX_EPOCH
+    for epoch in range(checkpoint_data.get("epoch", 0), max_epoch):
         scheduler.step()
         logger.info("Epoch {} starts".format(epoch))
         start_time = time.time()
@@ -103,14 +146,23 @@ def train(cfg, output_dir=""):
                     log_period=cfg.TRAIN.LOG_PERIOD,
                     )
         epoch_time = time.time() - start_time
-        eta_seconds = epoch_time * (cfg.SOLVER.MAX_EPOCH - 1 - epoch)
-        eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-        logger.info("Epoch {epoch} ends within {time}s. Eta: {eta}".format(
-            epoch=epoch, time=epoch_time, eta=eta_string))
-        if epoch % cfg.TRAIN.CHECKPOINT_PERIOD == 0 and epoch > 0:
+        logger.info("Epoch {} ends within {}s.".format(epoch, epoch_time))
+
+        # checkpoint
+        if (epoch % ckpt_period == 0 and epoch > 0) or epoch == (max_epoch - 1):
             checkpoint_data["epoch"] = epoch
-            checkpointer.save("model_{:07d}".format(epoch),
-                              **checkpoint_data)
-        # TODO: add validation
+            checkpointer.save("model_{:07d}".format(epoch), **checkpoint_data)
+
+        # validate
+        if val_period < 1:
+            continue
+        if (epoch % val_period == 0 and epoch > 0) or epoch == (max_epoch - 1):
+            validate_model(
+                model,
+                loss_fn,
+                metric_fn,
+                val_data_loader,
+                log_period=cfg.TRAIN.LOG_PERIOD,
+            )
 
     return model
