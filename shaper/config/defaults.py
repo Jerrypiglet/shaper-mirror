@@ -6,17 +6,21 @@ from yacs.config import CfgNode as CN
 _C = CN()
 
 _C.TASK = "classification"
+# Automatically resume weights from last checkpoints
+_C.AUTO_RESUME = True
 
 _C.MODEL = CN()
 _C.MODEL.TYPE = ""
+_C.MODEL.WEIGHT = ""
 
 
 # -----------------------------------------------------------------------------
-# INPUT
+# INPUT (Only support point cloud now)
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
-_C.INPUT.TYPE = "PointCloud"
+
 _C.INPUT.IN_CHANNELS = 3
+_C.INPUT.NUM_POINTS = -1
 
 
 # -----------------------------------------------------------------------------
@@ -63,6 +67,8 @@ _C.DATASET = CN()
 _C.DATASET.TYPE = ""
 _C.DATASET.NUM_CLASSES = 0
 
+# Root directory of dataset
+_C.DATASET.ROOT_DIR = ""
 # List of the data names for training
 _C.DATASET.TRAIN = ()
 # List of the data names for testing (or validation)
@@ -103,12 +109,20 @@ _C.SOLVER.Adam.betas = (0.9, 0.999)
 # Specific train options
 # ---------------------------------------------------------------------------- #
 _C.TRAIN = CN()
+
 _C.TRAIN.BATCH_SIZE = 1
+
+_C.TRAIN.CHECKPOINT_PERIOD = 1
+_C.TRAIN.LOG_PERIOD = 1
+
+# Data augmentation
+_C.TRAIN.AUGMENTATION = ()
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
 # ---------------------------------------------------------------------------- #
 _C.TEST = CN()
+
 _C.TEST.BATCH_SIZE = 1
 
 

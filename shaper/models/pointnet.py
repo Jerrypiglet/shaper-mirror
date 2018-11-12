@@ -149,7 +149,8 @@ class PointNetCls(nn.Module):
 
         self.init_weights()
 
-    def forward(self, x):
+    def forward(self, data_batch):
+        x = data_batch["points"]
         x, end_points = self.stem(x)
 
         x = self.mlp_local(x)
@@ -193,6 +194,19 @@ class PointNetClsLoss(nn.Module):
         return loss_dict
 
 
+class PointNetMetric(nn.Module):
+    def forward(self, preds, labels):
+        cls_logits = preds["cls_logits"]
+        cls_labels = labels["cls_labels"]
+        pred_labels = cls_logits.argmax(1)
+        acc = pred_labels.eq(cls_labels).float().mean()
+
+        metric_dict = {
+            'acc': acc
+        }
+        return metric_dict
+
+
 def build_pointnet(cfg):
     if cfg.TASK == "classification":
         net = PointNetCls(
@@ -203,10 +217,11 @@ def build_pointnet(cfg):
             global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
         )
         loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
+        metric_fn = PointNetMetric()
     else:
         raise NotImplementedError()
 
-    return net, loss_fn
+    return net, loss_fn, metric_fn
 
 
 if __name__ == '__main__':
@@ -218,8 +233,8 @@ if __name__ == '__main__':
     data = torch.rand(batch_size, in_channels, num_points)
     transform = TNet()
     out = transform(data)
-    print('TNet', out.size())
+    print('TNet', out.shape)
 
     pointnet = PointNetCls(in_channels, num_classes)
     out, _ = pointnet(data)
-    print('pointnet', out.size())
+    print('pointnet', out.shape)

@@ -1,6 +1,19 @@
 import torch
 
 from .datasets import *
+from . import transform as T
+
+
+def build_transform(cfg, is_train=True):
+    if is_train:
+        transform_list = []
+        for aug in cfg.TRAIN.AUGMENTATION:
+            transform_list.append(getattr(T, aug[0])(*aug[1:]))
+        transform_list.append(T.PointCloudToTensor())
+        transform = T.Compose(transform_list)
+    else:
+        transform = T.PointCloudToTensor()
+    return transform
 
 
 def build_dataset(cfg, is_train=True):
@@ -9,12 +22,16 @@ def build_dataset(cfg, is_train=True):
     else:
         dataset_names = cfg.DATASET.TEST
 
+    transform = build_transform(cfg, is_train)
+
     if cfg.DATASET.TYPE == "ShapeNet":
-        dataset = ShapeNet(root_dir=ShapeNet.ROOT_DIR,
+        dataset = ShapeNet(root_dir=cfg.DATASET.ROOT_DIR,
                            dataset_names=dataset_names,
-                           shuffle_points=True, num_points=1024)
+                           sample_points=False,
+                           num_points=cfg.INPUT.NUM_POINTS,
+                           transform=transform)
     elif cfg.DATASET.TYPE == "ModelNet":
-        dataset = ModelNet(root_dir=ModelNet.ROOT_DIR,
+        dataset = ModelNet(root_dir=cfg.DATASET.ROOT_DIR,
                            dataset_names=dataset_names,
                            shuffle_points=True, num_points=1024)
     else:

@@ -1,4 +1,5 @@
 import argparse
+import os.path as osp
 
 import torch
 
@@ -47,6 +48,7 @@ def main():
     if output_dir:
         if output_dir == "@":
             output_dir = args.config_file.replace("configs", "outputs")
+            output_dir = osp.splitext(output_dir)[0]
         mkdir(output_dir)
 
     logger = setup_logger("shaper", output_dir, prefix="train")
@@ -62,7 +64,7 @@ def main():
         logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
-    model = train(cfg)
+    model = train(cfg, output_dir)
 
     # TODO: add test
     if not args.skip_test:

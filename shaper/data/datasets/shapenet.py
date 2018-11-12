@@ -1,4 +1,3 @@
-import os
 import os.path as osp
 import json
 
@@ -6,7 +5,6 @@ import numpy as np
 
 import torch
 from torch.utils.data import Dataset
-# from utils.open3d_visualize import Visualizer
 
 
 class ShapeNet(Dataset):
@@ -19,12 +17,13 @@ class ShapeNet(Dataset):
         "test": "shuffled_test_file_list.json",
     }
 
-    def __init__(self, root_dir, dataset_names,
-                 shuffle_points=False, num_points=-1):
+    def __init__(self, root_dir, dataset_names, transform=None,
+                 num_points=-1, sample_points=True):
         self.root_dir = root_dir
         self.datasets_names = dataset_names
         self.num_points = num_points
-        self.shuffle_points = shuffle_points
+        self.sample_points = sample_points
+        self.transform = transform
 
         # classes
         self.class_to_offset_map = self._load_cat_file()
@@ -39,6 +38,8 @@ class ShapeNet(Dataset):
             meta_data = self._load_dataset(dataset_name)
             self.meta_data.extend(meta_data)
         print("{} classes with {} models".format(len(self.classes), len(self.meta_data)))
+
+        # TODO: support preload
 
     def _load_cat_file(self):
         class_to_offset_map = {}
@@ -68,35 +69,24 @@ class ShapeNet(Dataset):
         class_name = meta_data["class"]
         class_ind = self.classes_to_ind_map[class_name]
         pts_path = meta_data["pts"]
-        point_set = np.loadtxt(pts_path).astype(np.float32)
+        points = np.loadtxt(pts_path).astype(np.float32)
         # print(index, class_name, class_ind, pts_path)
 
-        # # visualization
-        # v = Visualizer(self.root_dir)
-        # offset = self.class_to_offset_map[class_name]
-        # token = meta_data["token"]
-        # v.visualize(offset, token)
-
         if self.num_points > 0:
-            if self.shuffle_points:
-                choice = np.random.choice(len(point_set), self.num_points, replace=True)
-            else:
-                choice = np.arange(self.num_points)
-            point_set = point_set[choice]
+            choice = np.random.choice(len(points), self.num_points, replace=not self.sample_points)
+        else:
+            choice = np.arange(len(points))
+        points = points[choice]
 
-        point_set = point_set.transpose()
+        # points = points.transpose()  # [in_channels, num_points]
 
-        # # TODO: check whether it is safe
-        point_set = torch.as_tensor(point_set)
-        class_ind = torch.as_tensor(class_ind)
+        if self.transform is not None:
+            points = self.transform(points)
 
-        return point_set, class_ind
+        return {
+            "points": points,
+            "cls_labels": class_ind,
+        }
 
     def __len__(self):
         return len(self.meta_data)
-
-
-if __name__ == "__main__":
-    root_dir = "../../../data/shapenet"
-    shapenet = ShapeNet(root_dir, ['train', 'val', 'test'])
-    print(shapenet[0])

@@ -1,8 +1,11 @@
 TASK:
   "classification"
+INPUT:
+  NUM_POINTS: 1024
 MODEL:
   TYPE: "PointNet"
 DATASET:
+  ROOT_DIR: "data/shapenet"
   TYPE: "ShapeNet"
   NUM_CLASSES: 16
   TRAIN: ("train",)
