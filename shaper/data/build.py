@@ -13,6 +13,10 @@ def build_dataset(cfg, is_train=True):
         dataset = ShapeNet(root_dir=ShapeNet.ROOT_DIR,
                            dataset_names=dataset_names,
                            shuffle_points=True, num_points=1024)
+    elif cfg.DATASET.TYPE == "ModelNet":
+        dataset = ModelNet(root_dir=ModelNet.ROOT_DIR,
+                           dataset_names=dataset_names,
+                           shuffle_points=True, num_points=1024)
     else:
         raise NotImplementedError()
 

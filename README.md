@@ -24,3 +24,7 @@ Sample segmentation result:
 
 - [Project Page](http://stanford.edu/~rqi/pointnet/)
 - [Tensorflow implementation](https://github.com/charlesq34/pointnet)
+
+# Dependcies
+* __lie_learn__: https://github.com/AMLab-Amsterdam/lie_learn
+* __pynvrtc__: https://github.com/NVIDIA/pynvrtc

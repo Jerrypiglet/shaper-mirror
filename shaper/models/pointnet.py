@@ -80,8 +80,8 @@ class TNet(nn.Module):
         self.init_weights()
 
     def forward(self, x):
-        x = self.mlp_local(x)
-        x, _ = torch.max(x, 2)  # [N, C, W]
+        x = self.mlp_local(x)  # [N, C, W]
+        x, _ = torch.max(x, 2)  # [N, C]
         x = self.mlp_global(x)
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)

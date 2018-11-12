@@ -1,0 +1,16 @@
+TASK:
+  "classification"
+MODEL:
+  TYPE: "S2CNN"
+DATASET:
+  TYPE: "ModelNet"
+  NUM_CLASSES: 40
+  TRAIN: ("train",)
+  TEST: ("test",)
+DATALOADER:
+  NUM_WORKERS: 1
+TRAIN:
+  BATCH_SIZE: 4
+TEST:
+  BATCH_SIZE: 4
+OUTPUT_DIR: "@"

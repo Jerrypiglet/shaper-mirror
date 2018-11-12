@@ -32,6 +32,30 @@ _C.MODEL.POINTNET.GLOBAL_CHANNELS = (512, 256)
 
 _C.MODEL.POINTNET.REG_WEIGHT = 0.0
 
+
+# -----------------------------------------------------------------------------
+# DGCNN options
+# -----------------------------------------------------------------------------
+_C.MODEL.DGCNN = CN()
+
+_C.MODEL.DGCNN.K = 20
+_C.MODEL.DGCNN.GRAPH_LAYER_CHANNELS = (64, 128, 256)
+_C.MODEL.DGCNN.INTER_LAYER_CHANNELS = 256
+_C.MODEL.DGCNN.GLOBAL_CHANNELS = (256, 128)
+
+_C.MODEL.DGCNN.LABEL_SMOOTH = 0.0
+
+# -----------------------------------------------------------------------------
+# S2CNN options
+# -----------------------------------------------------------------------------
+_C.MODEL.S2CNN = CN()
+
+_C.MODEL.S2CNN.BAND_WIDTH_IN = 30
+_C.MODEL.S2CNN.FEATURE_CHANNELS = (100, 100)
+_C.MODEL.S2CNN.BAND_WIDTH_LIST = (16, 10)
+
+
+
 # -----------------------------------------------------------------------------
 # Dataset
 # -----------------------------------------------------------------------------

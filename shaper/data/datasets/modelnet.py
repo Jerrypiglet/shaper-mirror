@@ -1,6 +1,4 @@
-import os
 import os.path as osp
-import sys
 
 import h5py
 import numpy as np
@@ -10,7 +8,7 @@ from torch.utils.data import Dataset
 
 
 class ModelNet(Dataset):
-    ROOT_DIR = "../../../data/modelnet40"
+    ROOT_DIR = "data/modelnet40"
     data_dir = "modelnet40_ply_hdf5_2048"
     dataset_map = {
         "train": "train_files.txt",
@@ -30,6 +28,19 @@ class ModelNet(Dataset):
             meta_data = self._load_dataset(dataset_name)
             self.meta_data.extend(meta_data)
 
+        self.fid_list = []
+        self.total_pts_ind_list = []
+        self.meta_data_pts = []
+        self.meta_data_labels = []
+
+        total_pts_ind = 0
+        for file in self.meta_data:
+            total_pts_ind += file['data_length']
+            self.total_pts_ind_list.append(total_pts_ind)
+            with h5py.File(osp.join(self.root_dir, file['offset'], file['token']), 'r') as fid:
+                self.meta_data_pts.append(fid['data'][:])
+                self.meta_data_labels.append(fid['label'][:])
+
     def _load_dataset(self, dataset_name):
         files_path = osp.join(self.root_dir, self.data_dir, self.dataset_map[dataset_name])
         fname_list = [line.rstrip() for line in open(files_path)]
@@ -46,22 +57,19 @@ class ModelNet(Dataset):
         return meta_data
 
     def __getitem__(self, index):
-        total_pts_ind = 0
-        for file in self.meta_data:
-            total_pts_ind += file['data_length']
-            if index <= total_pts_ind: break
-        with h5py.File(osp.join(self.root_dir, file['offset'], file['token']), 'r') as fid:
-            data = fid['data'][:]
-            label = fid['label'][:]
-            ind = index - (total_pts_ind - file['data_length'])
-            point_set = data[ind, ...]
-            class_ind = label[ind]
+        for file_ind, total_pts_ind in enumerate(self.total_pts_ind_list):
+            if index < total_pts_ind: break
+        ind = index - (total_pts_ind - self.meta_data_labels[file_ind].shape[0])
+        point_set = self.meta_data_pts[file_ind][ind, ...]
+        class_ind = int(self.meta_data_labels[file_ind][ind][0])
         if self.num_points > 0:
             if self.shuffle_points:
                 choice = np.random.choice(point_set.shape[0], self.num_points, replace=False)
             else:
                 choice = np.arange(self.num_points)
-            point_set = point_set[choice].dtype('float32')
+            point_set = point_set[choice].astype(np.float32)
+
+        point_set = point_set.transpose()
 
         # point_set = torch.as_tensor(point_set).type(torch.float32)
         # class_ind = torch.as_tensor(class_ind)
@@ -76,15 +84,9 @@ class ModelNet(Dataset):
 
 
 if __name__ == "__main__":
-    root_dir = ROOT_DIR
+    root_dir = "../../../data/modelnet40"
     modelnet = ModelNet(root_dir, ['test'])
     print('total data num: ', modelnet.__len__())
-    print(modelnet[0][0].size(), modelnet[0][0].type())
-    print(modelnet[0])
+    # print(modelnet[0][0].size(), modelnet[0][0].type())
+    # print(modelnet[0])
     # Visualizer.visualize_pts(modelnet[0][0])
-
-
-
-
-
-

@@ -1,0 +1,18 @@
+TASK:
+  "classification"
+MODEL:
+  TYPE: "DGCNN"
+  DGCNN:
+    LABEL_SMOOTH: 0.2
+DATASET:
+  TYPE: "ModelNet"
+  NUM_CLASSES: 40
+  TRAIN: ("train",)
+  TEST: ("test",)
+DATALOADER:
+  NUM_WORKERS: 1
+TRAIN:
+  BATCH_SIZE: 4
+TEST:
+  BATCH_SIZE: 4
+OUTPUT_DIR: "@"
