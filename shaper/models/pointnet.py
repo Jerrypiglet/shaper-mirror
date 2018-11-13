@@ -139,6 +139,7 @@ class PointNetCls(nn.Module):
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
+                 dropout_ratio=0.5,
                  bn=True):
         super(PointNetCls, self).__init__()
 
@@ -148,6 +149,7 @@ class PointNetCls(nn.Module):
         self.stem = PointNetStem(in_channels, stem_channels, bn=bn)
         self.mlp_local = PointNetLocal(self.stem.out_channels, local_channels, bn=bn)
         self.mlp_global = PointNetGlobal(self.mlp_local.out_channels, global_channels, bn=bn)
+        self.dropout = nn.Dropout(p=dropout_ratio, inplace=True)
         self.linear = nn.Linear(self.mlp_global.out_channels, out_channels, bias=False)
 
         self.init_weights()
@@ -160,6 +162,7 @@ class PointNetCls(nn.Module):
         x, max_indices = torch.max(x, 2)
         end_points['key_points'] = max_indices
         x = self.mlp_global(x)
+        x = self.dropout(x)
         x = self.linear(x)
 
         preds = {
@@ -191,7 +194,7 @@ class PointNetClsLoss(nn.Module):
             trans_stem = preds["trans_stem"]
             trans_norm = torch.bmm(trans_stem, trans_stem.transpose(2, 1))  # [out, out]
             I = torch.eye(trans_norm.size()[1], dtype=trans_norm.dtype, device=trans_norm.device)
-            reg_loss = F.mse_loss(trans_norm, I)
+            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).repeat(trans_norm.size(0), 1, 1))
             loss_dict["reg_loss"] = reg_loss
 
         return loss_dict
@@ -216,6 +219,7 @@ def build_pointnet(cfg):
             stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
             local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
             global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
+            dropout_ratio=cfg.MODEL.POINTNET.DROPOUT_RATIO,
         )
         loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
         metric_fn = PointNetMetric()

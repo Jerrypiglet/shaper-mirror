@@ -34,6 +34,7 @@ _C.MODEL.POINTNET.STEM_FUNC = ""
 _C.MODEL.POINTNET.STEM_CHANNELS = (64, 64)
 _C.MODEL.POINTNET.LOCAL_CHANNELS = (64, 128, 1024)
 _C.MODEL.POINTNET.GLOBAL_CHANNELS = (512, 256)
+_C.MODEL.POINTNET.DROPOUT_RATIO = 0.5
 
 _C.MODEL.POINTNET.REG_WEIGHT = 0.0
 
@@ -60,7 +61,6 @@ _C.MODEL.S2CNN.FEATURE_CHANNELS = (100, 100)
 _C.MODEL.S2CNN.BAND_WIDTH_LIST = (16, 10)
 
 
-
 # -----------------------------------------------------------------------------
 # Dataset
 # -----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ _C.DATASET.TEST = ()
 # -----------------------------------------------------------------------------
 _C.DATALOADER = CN()
 # Number of data loading threads
-_C.DATALOADER.NUM_WORKERS = 8
+_C.DATALOADER.NUM_WORKERS = 4
 
 
 # ---------------------------------------------------------------------------- #
@@ -113,10 +113,10 @@ _C.SOLVER.Adam.betas = (0.9, 0.999)
 # ---------------------------------------------------------------------------- #
 _C.TRAIN = CN()
 
-_C.TRAIN.BATCH_SIZE = 1
+_C.TRAIN.BATCH_SIZE = 32
 
 _C.TRAIN.CHECKPOINT_PERIOD = 1
-_C.TRAIN.LOG_PERIOD = 1
+_C.TRAIN.LOG_PERIOD = 10
 
 # Validation
 _C.TRAIN.VAL_PERIOD = 1
@@ -129,13 +129,13 @@ _C.TRAIN.AUGMENTATION = ()
 # ---------------------------------------------------------------------------- #
 _C.TEST = CN()
 
-_C.TEST.BATCH_SIZE = 1
+_C.TEST.BATCH_SIZE = 32
 
 
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
-_C.OUTPUT_DIR = ""  # if set to @, the filename of config will be used by default
+_C.OUTPUT_DIR = "@"  # if set to @, the filename of config will be used by default
 
 # For reproducibility...but not really because modern fast GPU libraries use
 # non-deterministic op implementations

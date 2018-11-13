@@ -45,7 +45,7 @@ def train_model(model,
             logger.info(
                 meters.delimiter.join(
                     [
-                        "iter: {iter}",
+                        "iter: {iter:4d}",
                         "{meters}",
                         "lr: {lr:.6f}",
                         "max mem: {memory:.0f}",
@@ -89,7 +89,7 @@ def validate_model(model,
                 logger.info(
                     meters.delimiter.join(
                         [
-                            "iter[{iter}]",
+                            "iter: {iter:4d}",
                             "{meters}",
                         ]
                     ).format(
@@ -132,11 +132,13 @@ def train(cfg, output_dir=""):
     val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
     # train
-    logger.info("Start training")
+    start_epoch = checkpoint_data.get("epoch", 0)
+    logger.info("Start training from epoch {}".format(start_epoch))
     max_epoch = cfg.SOLVER.MAX_EPOCH
-    for epoch in range(checkpoint_data.get("epoch", 0), max_epoch):
+    for epoch in range(start_epoch, max_epoch):
+        cur_epoch = epoch + 1
         scheduler.step()
-        logger.info("Epoch[{}]-Start".format(epoch))
+        start_time = time.time()
         train_meters = train_model(model,
                                    loss_fn,
                                    metric_fn,
@@ -144,13 +146,14 @@ def train(cfg, output_dir=""):
                                    optimizer=optimizer,
                                    log_period=cfg.TRAIN.LOG_PERIOD,
                                    )
-        logger.info("Epoch[{}]-Train {}".format(epoch, train_meters.summary_str))
+        epoch_time = time.time() - start_time
+        logger.info("Epoch[{}]-Train {}  total_time: {:.2f}s".format(
+            cur_epoch, train_meters.summary_str, epoch_time))
 
         # checkpoint
-        cur_epoch = epoch + 1
         if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
             checkpoint_data["epoch"] = cur_epoch
-            checkpointer.save("model_{:07d}".format(cur_epoch), **checkpoint_data)
+            checkpointer.save("model_{:03d}".format(cur_epoch), **checkpoint_data)
 
         # validate
         if val_period < 1:
@@ -162,6 +165,6 @@ def train(cfg, output_dir=""):
                                         val_data_loader,
                                         log_period=cfg.TRAIN.LOG_PERIOD,
                                         )
-            logger.info("Epoch[{}]-Val {}".format(epoch, val_meters.summary_str))
+            logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
 
     return model

@@ -4,16 +4,28 @@ INPUT:
   NUM_POINTS: 1024
 MODEL:
   TYPE: "PointNet"
+  POINTNET:
+    DROPOUT_RATIO: 0.5
+    REG_WEIGHT: 128.0
 DATASET:
-  ROOT_DIR: "data/shapenet"
-  TYPE: "ShapeNet"
-  NUM_CLASSES: 16
+  ROOT_DIR: "data/modelnet40"
+  TYPE: "ModelNet"
+  NUM_CLASSES: 40
   TRAIN: ("train",)
-  VAL: ("val",)
+  VAL: ("test",)
   TEST: ("test",)
+DATALOADER:
+  NUM_WORKERS: 4
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 250
+  GAMMA: 0.8
+  STEPS: (20, 40, 60, 80, 120, 140, 160, 180, 200, 220)
 TRAIN:
   BATCH_SIZE: 32
-  VAL_PERIOD: 1
+  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2), "PointCloudTranslate", "PointCloudScale", "PointCloudJitter",)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 20
+  VAL_PERIOD: 5
 TEST:
   BATCH_SIZE: 32
-OUTPUT_DIR: "@"
