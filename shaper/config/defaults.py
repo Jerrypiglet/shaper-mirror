@@ -117,6 +117,9 @@ _C.SOLVER.GAMMA = 0.1
 _C.SOLVER.STEPS = ()
 
 # Specific parameters of solvers
+_C.SOLVER.SGD = CN()
+_C.SOLVER.SGD.momentum = 0.9
+
 _C.SOLVER.Adam = CN()
 _C.SOLVER.Adam.betas = (0.9, 0.999)
 
@@ -128,7 +131,7 @@ _C.TRAIN = CN()
 
 _C.TRAIN.BATCH_SIZE = 32
 
-_C.TRAIN.CHECKPOINT_PERIOD = 20
+_C.TRAIN.CHECKPOINT_PERIOD = 1000
 _C.TRAIN.LOG_PERIOD = 10
 
 # Validation

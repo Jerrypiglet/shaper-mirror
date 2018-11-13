@@ -132,9 +132,10 @@ def train(cfg, output_dir=""):
     val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
     # train
+    max_epoch = cfg.SOLVER.MAX_EPOCH
+    best_metric = None
     start_epoch = checkpoint_data.get("epoch", 0)
     logger.info("Start training from epoch {}".format(start_epoch))
-    max_epoch = cfg.SOLVER.MAX_EPOCH
     for epoch in range(start_epoch, max_epoch):
         cur_epoch = epoch + 1
         scheduler.step()
@@ -166,5 +167,9 @@ def train(cfg, output_dir=""):
                                         log_period=cfg.TRAIN.LOG_PERIOD,
                                         )
             logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
+            cur_metric = val_meters.meters["acc"]
+            if best_metric is None or cur_metric > best_metric:
+                checkpoint_data["epoch"] = cur_epoch
+                checkpointer.save("model_best".format(cur_epoch), **checkpoint_data)
 
     return model
