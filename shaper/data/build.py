@@ -12,10 +12,10 @@ def build_transform(cfg, is_train=True):
                 transform_list.append(getattr(T, aug[0])(*aug[1:]))
             else:
                 transform_list.append(getattr(T, aug)())
-        transform_list.append(T.PointCloudToTensor())
+        transform_list.append(T.PointCloudTensorTranspose())
         transform = T.Compose(transform_list)
     else:
-        transform = T.PointCloudToTensor()
+        transform = T.PointCloudTensorTranspose()
     return transform
 
 
@@ -39,7 +39,8 @@ def build_dataset(cfg, mode="train"):
     elif cfg.DATASET.TYPE == "ModelNet":
         dataset = ModelNet(root_dir=cfg.DATASET.ROOT_DIR,
                            dataset_names=dataset_names,
-                           shuffle_points=True, num_points=1024)
+                           shuffle_points=False, num_points=cfg.INPUT.NUM_POINTS,
+                           transform=transform)
     else:
         raise NotImplementedError()
 

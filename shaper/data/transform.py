@@ -26,6 +26,9 @@ class PointCloudToTensor(object):
         points = points.transpose()
         return torch.as_tensor(points).float()
 
+class PointCloudTensorTranspose(object):
+    def __call__(self, points):
+        return points.transpose_(0, 1)
 
 def angle_axis(angle: float, axis: np.ndarray):
     r"""Returns a 4x4 rotation matrix that performs a rotation around axis by angle

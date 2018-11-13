@@ -8,19 +8,20 @@ from torch.utils.data import Dataset
 
 
 class ModelNet(Dataset):
-    ROOT_DIR = "data/modelnet40"
+    ROOT_DIR = "/data/modelnet40"
     data_dir = "modelnet40_ply_hdf5_2048"
     dataset_map = {
         "train": "train_files.txt",
         "test": "test_files.txt",
     }
 
-    def __init__(self, root_dir, dataset_names,
+    def __init__(self, root_dir, dataset_names, transform=None,
                  shuffle_points=False, num_points=-1):
         self.root_dir = root_dir
         self.datasets_names = dataset_names
         self.num_points = num_points
         self.shuffle_points = shuffle_points
+        self.transform = transform
 
         # meta data
         self.meta_data = []
@@ -60,21 +61,28 @@ class ModelNet(Dataset):
         for file_ind, total_pts_ind in enumerate(self.total_pts_ind_list):
             if index < total_pts_ind: break
         ind = index - (total_pts_ind - self.meta_data_labels[file_ind].shape[0])
-        point_set = self.meta_data_pts[file_ind][ind, ...]
+        points = self.meta_data_pts[file_ind][ind, ...]
         class_ind = int(self.meta_data_labels[file_ind][ind][0])
         if self.num_points > 0:
             if self.shuffle_points:
-                choice = np.random.choice(point_set.shape[0], self.num_points, replace=False)
+                choice = np.random.choice(points.shape[0], self.num_points, replace=False)
             else:
                 choice = np.arange(self.num_points)
-            point_set = point_set[choice].astype(np.float32)
+        points = points[choice]
+        points = torch.as_tensor(points).type(torch.float32)  # [N, 3]
 
-        point_set = point_set.transpose()
+        # point_set = point_set.transpose()
+
+        if self.transform is not None:
+            points = self.transform(points)
 
         # point_set = torch.as_tensor(point_set).type(torch.float32)
         # class_ind = torch.as_tensor(class_ind)
 
-        return point_set, class_ind
+        return {
+            "points": points,
+            "cls_labels": class_ind,
+        }
 
     def __len__(self):
         total_pts_ind = 0
