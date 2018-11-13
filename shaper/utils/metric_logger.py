@@ -52,9 +52,18 @@ class MetricLogger(object):
         return object.__getattr__(self, attr)
 
     def __str__(self):
-        loss_str = []
+        metric_str = []
         for name, meter in self.meters.items():
-            loss_str.append(
+            metric_str.append(
                 "{}: {:.4f} ({:.4f})".format(name, meter.avg, meter.global_avg)
             )
-        return self.delimiter.join(loss_str)
+        return self.delimiter.join(metric_str)
+
+    @property
+    def summary_str(self):
+        metric_str = []
+        for name, meter in self.meters.items():
+            metric_str.append(
+                "{}: {:.4f}".format(name, meter.global_avg)
+            )
+        return self.delimiter.join(metric_str)

@@ -66,8 +66,6 @@ _C.MODEL.S2CNN.BAND_WIDTH_LIST = (16, 10)
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
 _C.DATASET.TYPE = ""
-# Preload data into memory
-_C.DATASET.PRELOAD = True
 _C.DATASET.NUM_CLASSES = 0
 
 # Root directory of dataset
@@ -94,7 +92,7 @@ _C.SOLVER = CN()
 
 _C.SOLVER.TYPE = "Adam"
 
-_C.SOLVER.MAX_EPOCH = 2
+_C.SOLVER.MAX_EPOCH = 1
 
 # Basic parameters of solvers
 _C.SOLVER.BASE_LR = 0.001
@@ -103,7 +101,7 @@ _C.SOLVER.WEIGHT_DECAY = 0.0
 
 # training schedule
 _C.SOLVER.GAMMA = 0.1
-_C.SOLVER.STEPS = (1,)
+_C.SOLVER.STEPS = ()
 
 # Specific parameters of solvers
 _C.SOLVER.Adam = CN()

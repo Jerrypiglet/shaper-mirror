@@ -20,7 +20,6 @@ def train_model(model,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
-    max_iter = len(data_loader)
     model.train()
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
@@ -42,7 +41,7 @@ def train_model(model,
         end = time.time()
         meters.update(time=batch_time, data=data_time)
 
-        if iteration % log_period == 0 or iteration == (max_iter - 1):
+        if iteration % log_period == 0:
             logger.info(
                 meters.delimiter.join(
                     [
@@ -58,6 +57,7 @@ def train_model(model,
                     memory=torch.cuda.max_memory_cached() / 1024.0 / 1024.0,
                 )
             )
+    return meters
 
 
 def validate_model(model,
@@ -67,7 +67,6 @@ def validate_model(model,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
     meters = MetricLogger(delimiter="  ")
-    max_iter = len(data_loader)
     model.eval()
     end = time.time()
     with torch.no_grad():
@@ -86,11 +85,11 @@ def validate_model(model,
             end = time.time()
             meters.update(time=batch_time, data=data_time)
 
-            if iteration % log_period == 0 or iteration == (max_iter - 1):
+            if iteration % log_period == 0:
                 logger.info(
                     meters.delimiter.join(
                         [
-                            "iter: {iter}",
+                            "iter[{iter}]",
                             "{meters}",
                         ]
                     ).format(
@@ -98,6 +97,7 @@ def validate_model(model,
                         meters=str(meters),
                     )
                 )
+    return meters
 
 
 def train(cfg, output_dir=""):
@@ -136,33 +136,32 @@ def train(cfg, output_dir=""):
     max_epoch = cfg.SOLVER.MAX_EPOCH
     for epoch in range(checkpoint_data.get("epoch", 0), max_epoch):
         scheduler.step()
-        logger.info("Epoch {} starts".format(epoch))
-        start_time = time.time()
-        train_model(model,
-                    loss_fn,
-                    metric_fn,
-                    train_data_loader,
-                    optimizer=optimizer,
-                    log_period=cfg.TRAIN.LOG_PERIOD,
-                    )
-        epoch_time = time.time() - start_time
-        logger.info("Epoch {} ends within {}s.".format(epoch, epoch_time))
+        logger.info("Epoch[{}]-Start".format(epoch))
+        train_meters = train_model(model,
+                                   loss_fn,
+                                   metric_fn,
+                                   train_data_loader,
+                                   optimizer=optimizer,
+                                   log_period=cfg.TRAIN.LOG_PERIOD,
+                                   )
+        logger.info("Epoch[{}]-Train {}".format(epoch, train_meters.summary_str))
 
         # checkpoint
-        if (epoch % ckpt_period == 0 and epoch > 0) or epoch == (max_epoch - 1):
-            checkpoint_data["epoch"] = epoch
-            checkpointer.save("model_{:07d}".format(epoch), **checkpoint_data)
+        cur_epoch = epoch + 1
+        if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
+            checkpoint_data["epoch"] = cur_epoch
+            checkpointer.save("model_{:07d}".format(cur_epoch), **checkpoint_data)
 
         # validate
         if val_period < 1:
             continue
-        if (epoch % val_period == 0 and epoch > 0) or epoch == (max_epoch - 1):
-            validate_model(
-                model,
-                loss_fn,
-                metric_fn,
-                val_data_loader,
-                log_period=cfg.TRAIN.LOG_PERIOD,
-            )
+        if cur_epoch % val_period == 0 or cur_epoch == max_epoch:
+            val_meters = validate_model(model,
+                                        loss_fn,
+                                        metric_fn,
+                                        val_data_loader,
+                                        log_period=cfg.TRAIN.LOG_PERIOD,
+                                        )
+            logger.info("Epoch[{}]-Val {}".format(epoch, val_meters.summary_str))
 
     return model

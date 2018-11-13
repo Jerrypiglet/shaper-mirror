@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ._dgcnn_utils import get_edge_feature
-from ._utils import Conv1dBlock, Conv2dBlock, LinearBlock
+from ._utils import Conv1d, Conv2d, FC
 from .pointnet import PointNetLocal, PointNetGlobal
 
 
@@ -46,7 +46,7 @@ class DGCNN_TNet(nn.Module):
         self.k = k
         self.mlp_local = nn.ModuleList()
         for local_conv_channels in local_channels:
-            self.mlp_local.append(Conv2dBlock(in_channels, local_conv_channels, 1, bn=bn))
+            self.mlp_local.append(Conv2d(in_channels, local_conv_channels, 1, bn=bn))
             in_channels = local_conv_channels
 
         self.mlp_inter = PointNetLocal(in_channels, inter_channels, bn=bn)
@@ -86,9 +86,9 @@ class DGCNN_GraphLayer(nn.Module):
         self.out_channels = out_channels
         self.graph_conv_list = nn.ModuleList()
         for graph_channels in graph_layer_channels:
-            self.graph_conv_list.append(Conv2dBlock(2 * in_channels, graph_channels, 1, relu=True, bn=bn))
+            self.graph_conv_list.append(Conv2d(2 * in_channels, graph_channels, 1, relu=True, bn=bn))
             in_channels = graph_channels
-        self.final_conv = Conv1dBlock(np.sum(graph_layer_channels), out_channels)
+        self.final_conv = Conv1d(np.sum(graph_layer_channels), out_channels)
         self.k = k
 
     def forward(self, x):
@@ -110,7 +110,7 @@ class DGCNN_Global(nn.ModuleList):
         super(DGCNN_Global, self).__init__()
 
         for ind, out_channels in enumerate(global_channels):
-            self.append(LinearBlock(in_channels, out_channels, bn=bn))
+            self.append(FC(in_channels, out_channels, bn=bn))
             in_channels = out_channels
         self.out_channels = in_channels
 

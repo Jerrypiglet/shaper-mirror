@@ -3,10 +3,10 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class Conv1dBlock(nn.Module):
+class Conv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=1,
                  relu=True, bn=True, bn_momentum=0.1, **kwargs):
-        super(Conv1dBlock, self).__init__()
+        super(Conv1d, self).__init__()
 
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size,
                               bias=(not bn), **kwargs)
@@ -32,10 +32,10 @@ class Conv1dBlock(nn.Module):
             init_bn(self.bn)
 
 
-class Conv2dBlock(nn.Module):
+class Conv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  relu=True, bn=True, bn_momentum=0.1, **kwargs):
-        super(Conv2dBlock, self).__init__()
+        super(Conv2d, self).__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
                               bias=(not bn), **kwargs)
@@ -63,10 +63,10 @@ class Conv2dBlock(nn.Module):
             init_bn(self.bn)
 
 
-class LinearBlock(nn.Module):
+class FC(nn.Module):
     def __init__(self, in_channels, out_channels,
                  relu=True, bn=True, bn_momentum=0.1):
-        super(LinearBlock, self).__init__()
+        super(FC, self).__init__()
 
         self.fc = nn.Linear(in_channels, out_channels, bias=(not bn))
         if bn:

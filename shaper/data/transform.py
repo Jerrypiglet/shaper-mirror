@@ -1,3 +1,7 @@
+"""
+Helpers to transform point clouds. Especially for data augmentation
+"""
+
 import torch
 import numpy as np
 
@@ -26,12 +30,14 @@ class PointCloudToTensor(object):
         points = points.transpose()
         return torch.as_tensor(points).float()
 
+
 class PointCloudTensorTranspose(object):
     def __call__(self, points):
         return points.transpose_(0, 1)
 
+
 def angle_axis(angle: float, axis: np.ndarray):
-    r"""Returns a 4x4 rotation matrix that performs a rotation around axis by angle
+    r"""Returns a 3x3 rotation matrix that performs a rotation around axis by angle
 
     Parameters
     ----------
@@ -46,20 +52,14 @@ def angle_axis(angle: float, axis: np.ndarray):
         3x3 rotation matrix
     """
     u = axis / np.linalg.norm(axis)
-    cosval, sinval = np.cos(angle), np.sin(angle)
+    cos_angle, sin_angle = np.cos(angle), np.sin(angle)
 
-    # yapf: disable
     cross_prod_mat = np.array([[0.0, -u[2], u[1]],
                                 [u[2], 0.0, -u[0]],
                                 [-u[1], u[0], 0.0]])
-
-    R = torch.from_numpy(
-        cosval * np.eye(3)
-        + sinval * cross_prod_mat
-        + (1.0 - cosval) * np.outer(u, u)
-    )
-    # yapf: enable
-    return R.float()
+    R = cos_angle * np.eye(3) + sin_angle * cross_prod_mat + (1.0 - cos_angle) * np.outer(u, u)
+    R = torch.from_numpy(R).float()
+    return R
 
 
 class PointCloudRotate(object):
@@ -126,7 +126,7 @@ class PointCloudTranslate(object):
         return points
 
 
-class PointcloudScale(object):
+class PointCloudScale(object):
     def __init__(self, lo=0.8, hi=1.25):
         self.lo, self.hi = lo, hi
 

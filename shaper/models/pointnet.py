@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ._utils import Conv1dBlock, LinearBlock
+from shaper.models._utils import Conv1d, FC
 
 
 class PointNetLocal(nn.ModuleList):
@@ -26,7 +26,7 @@ class PointNetLocal(nn.ModuleList):
         self.in_channels = in_channels
 
         for ind, out_channels in enumerate(local_channels):
-            self.append(Conv1dBlock(in_channels, out_channels, relu=True, bn=bn))
+            self.append(Conv1d(in_channels, out_channels, relu=True, bn=bn))
             in_channels = out_channels
 
         self.out_channels = in_channels
@@ -46,7 +46,7 @@ class PointNetGlobal(nn.ModuleList):
         self.in_channels = in_channels
 
         for ind, out_channels in enumerate(global_channels):
-            self.append(LinearBlock(in_channels, out_channels, relu=True, bn=bn))
+            self.append(FC(in_channels, out_channels, relu=True, bn=bn))
             in_channels = out_channels
 
         self.out_channels = in_channels
@@ -131,6 +131,9 @@ class PointNetStem(nn.Module):
         return x, end_points
 
 
+# -----------------------------------------------------------------------------
+# PointNet for classification
+# -----------------------------------------------------------------------------
 class PointNetCls(nn.Module):
     def __init__(self, in_channels, out_channels,
                  stem_channels=(64, 64),
@@ -199,12 +202,10 @@ class PointNetMetric(nn.Module):
         cls_logits = preds["cls_logits"]
         cls_labels = labels["cls_labels"]
         pred_labels = cls_logits.argmax(1)
+
         acc = pred_labels.eq(cls_labels).float().mean()
 
-        metric_dict = {
-            'acc': acc
-        }
-        return metric_dict
+        return {"acc": acc}
 
 
 def build_pointnet(cfg):
@@ -227,8 +228,8 @@ def build_pointnet(cfg):
 if __name__ == '__main__':
     batch_size = 32
     in_channels = 3
-    num_points = 2048
-    num_classes = 10
+    num_points = 1024
+    num_classes = 40
 
     data = torch.rand(batch_size, in_channels, num_points)
     transform = TNet()
@@ -236,5 +237,6 @@ if __name__ == '__main__':
     print('TNet', out.shape)
 
     pointnet = PointNetCls(in_channels, num_classes)
-    out, _ = pointnet(data)
-    print('pointnet', out.shape)
+    out_dict = pointnet({"points": data})
+    for k, v in out_dict.items():
+        print('pointnet:', k, v.shape)
