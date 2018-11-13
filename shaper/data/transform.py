@@ -27,7 +27,6 @@ class Compose(object):
 class PointCloudToTensor(object):
     def __call__(self, points):
         assert isinstance(points, np.ndarray)
-        points = points.transpose()
         return torch.as_tensor(points).float()
 
 
@@ -36,7 +35,7 @@ class PointCloudTensorTranspose(object):
         return points.transpose_(0, 1)
 
 
-def angle_axis(angle: float, axis: np.ndarray):
+def get_rot_mat(angle, axis):
     r"""Returns a 3x3 rotation matrix that performs a rotation around axis by angle
 
     Parameters
@@ -68,23 +67,24 @@ class PointCloudRotate(object):
 
     def __call__(self, points):
         rotation_angle = np.random.uniform() * 2 * np.pi
-        rotation_matrix = angle_axis(rotation_angle, self.axis)
+        rotation_matrix = get_rot_mat(rotation_angle, self.axis)
 
         normals = points.size(1) > 3
         if not normals:
-            return points @ rotation_matrix.t()
+            return points @ rotation_matrix.t_()
         else:
             pc_xyz = points[:, 0:3]
             pc_normals = points[:, 3:]
-            points[:, 0:3] = pc_xyz @ rotation_matrix.t()
-            points[:, 3:] = pc_normals @ rotation_matrix.t()
-
+            rotation_matrix_t = rotation_matrix.t_()
+            points[:, 0:3] = pc_xyz @ rotation_matrix_t
+            points[:, 3:] = pc_normals @ rotation_matrix_t
             return points
 
 
 class PointCloudRotatePerturbation(object):
     def __init__(self, angle_sigma=0.06, angle_clip=0.18):
-        self.angle_sigma, self.angle_clip = angle_sigma, angle_clip
+        self.angle_sigma = angle_sigma
+        self.angle_clip = angle_clip
 
     def _get_angles(self):
         angles = np.clip(
@@ -96,21 +96,21 @@ class PointCloudRotatePerturbation(object):
 
     def __call__(self, points):
         angles = self._get_angles()
-        Rx = angle_axis(angles[0], np.array([1.0, 0.0, 0.0]))
-        Ry = angle_axis(angles[1], np.array([0.0, 1.0, 0.0]))
-        Rz = angle_axis(angles[2], np.array([0.0, 0.0, 1.0]))
+        Rx = get_rot_mat(angles[0], np.array([1.0, 0.0, 0.0]))
+        Ry = get_rot_mat(angles[1], np.array([0.0, 1.0, 0.0]))
+        Rz = get_rot_mat(angles[2], np.array([0.0, 0.0, 1.0]))
 
         rotation_matrix = Rz @ Ry @ Rx
 
         normals = points.size(1) > 3
         if not normals:
-            return points @ rotation_matrix.t()
+            return points @ rotation_matrix.t_()
         else:
             pc_xyz = points[:, 0:3]
             pc_normals = points[:, 3:]
-            points[:, 0:3] = pc_xyz @ rotation_matrix.t()
-            points[:, 3:] = pc_normals @ rotation_matrix.t()
-
+            rotation_matrix_t = rotation_matrix.t_()
+            points[:, 0:3] = pc_xyz @ rotation_matrix_t
+            points[:, 3:] = pc_normals @ rotation_matrix_t
             return points
 
 
@@ -131,8 +131,8 @@ class PointCloudScale(object):
         self.lo, self.hi = lo, hi
 
     def __call__(self, points):
-        scaler = np.random.uniform(self.lo, self.hi)
-        points[:, 0:3] *= scaler
+        scale = np.random.uniform(self.lo, self.hi)
+        points[:, 0:3] *= scale
         return points
 
 
@@ -150,15 +150,13 @@ class PointCloudJitter(object):
 
 class PointCloudRandomInputDropout(object):
     def __init__(self, max_dropout_ratio=0.875):
-        assert max_dropout_ratio >= 0 and max_dropout_ratio < 1
+        assert 0 <= max_dropout_ratio  < 1
         self.max_dropout_ratio = max_dropout_ratio
 
     def __call__(self, points):
-        pc = points.numpy()
-
         dropout_ratio = np.random.random() * self.max_dropout_ratio  # 0~0.875
-        drop_idx = np.where(np.random.random((pc.shape[0])) <= dropout_ratio)[0]
-        if len(drop_idx) > 0:
-            pc[drop_idx] = pc[0]  # set to the first point
+        dropout_indices = torch.nonzero(torch.rand(points.size(0)) <= dropout_ratio)[0]
+        if dropout_indices.numel() > 0:
+            points[dropout_indices] = points[0]  # set to the first point
 
-        return torch.from_numpy(pc).float()
+        return points

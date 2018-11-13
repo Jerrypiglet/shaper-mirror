@@ -85,8 +85,6 @@ class ShapeNet(Dataset):
                 choice = np.concatenate([choice, pad])
         points = points[choice]
 
-        # points = points.transpose()  # [in_channels, num_points]
-
         if self.transform is not None:
             points = self.transform(points)
 

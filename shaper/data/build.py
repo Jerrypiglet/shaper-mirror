@@ -6,7 +6,7 @@ from . import transform as T
 
 def build_transform(cfg, is_train=True):
     if is_train:
-        transform_list = []
+        transform_list = [T.PointCloudToTensor()]
         for aug in cfg.TRAIN.AUGMENTATION:
             if isinstance(aug, (list, tuple)):
                 transform_list.append(getattr(T, aug[0])(*aug[1:]))
@@ -15,7 +15,11 @@ def build_transform(cfg, is_train=True):
         transform_list.append(T.PointCloudTensorTranspose())
         transform = T.Compose(transform_list)
     else:
-        transform = T.PointCloudTensorTranspose()
+        transform = T.Compose([
+            T.PointCloudToTensor(),
+            T.PointCloudTensorTranspose()
+        ])
+
     return transform
 
 

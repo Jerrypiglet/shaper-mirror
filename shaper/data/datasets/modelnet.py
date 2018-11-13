@@ -3,13 +3,11 @@ import os.path as osp
 import h5py
 import numpy as np
 
-import torch
 from torch.utils.data import Dataset
 
 
 class ModelNet(Dataset):
     ROOT_DIR = "/data/modelnet40"
-    data_dir = "modelnet40_ply_hdf5_2048"
     dataset_map = {
         "train": "train_files.txt",
         "test": "test_files.txt",
@@ -35,25 +33,23 @@ class ModelNet(Dataset):
         self.meta_data_labels = []
 
         total_pts_ind = 0
-        for file in self.meta_data:
-            total_pts_ind += file['data_length']
+        for meta_data in self.meta_data:
+            total_pts_ind += meta_data['data_length']
             self.total_pts_ind_list.append(total_pts_ind)
-            with h5py.File(osp.join(self.root_dir, file['offset'], file['token']), 'r') as fid:
+            with h5py.File(osp.join(meta_data["path"]), 'r') as fid:
                 self.meta_data_pts.append(fid['data'][:])
                 self.meta_data_labels.append(fid['label'][:])
 
     def _load_dataset(self, dataset_name):
-        files_path = osp.join(self.root_dir, self.data_dir, self.dataset_map[dataset_name])
+        files_path = osp.join(self.root_dir, self.dataset_map[dataset_name])
         fname_list = [line.rstrip() for line in open(files_path)]
         meta_data = []
         for fname in fname_list:
-            _, offset, token = fname.split("/")
-            data_path = osp.join(self.root_dir, offset, token)
+            data_path = osp.join(self.root_dir, osp.basename(fname))
             with h5py.File(data_path) as f:
                 data_length = f['label'][:].shape[0]
-            meta_data.append({'offset': offset,
-                              'token': token,
-                              'data_length': data_length})
+            meta_data.append({'data_length': data_length,
+                              'path': data_path})
 
         return meta_data
 
@@ -69,15 +65,9 @@ class ModelNet(Dataset):
             else:
                 choice = np.arange(self.num_points)
         points = points[choice]
-        points = torch.as_tensor(points).type(torch.float32)  # [N, 3]
-
-        # point_set = point_set.transpose()
 
         if self.transform is not None:
             points = self.transform(points)
-
-        # point_set = torch.as_tensor(point_set).type(torch.float32)
-        # class_ind = torch.as_tensor(class_ind)
 
         return {
             "points": points,
