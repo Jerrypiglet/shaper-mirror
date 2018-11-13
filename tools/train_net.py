@@ -59,9 +59,9 @@ def main():
     # logger.info("\n" + collect_env_info())
 
     logger.info("Loaded configuration file {}".format(args.config_file))
-    with open(args.config_file, "r") as fid:
-        config_str = "\n" + fid.read()
-        logger.info(config_str)
+    # with open(args.config_file, "r") as fid:
+    #     config_str = "\n" + fid.read()
+    #     logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
     model = train(cfg, output_dir)

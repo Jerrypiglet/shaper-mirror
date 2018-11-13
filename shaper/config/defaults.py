@@ -136,6 +136,7 @@ _C.TRAIN.LOG_PERIOD = 10
 
 # Validation
 _C.TRAIN.VAL_PERIOD = 1
+_C.TRAIN.VAL_METRIC = "acc"
 
 # Data augmentation
 _C.TRAIN.AUGMENTATION = ()

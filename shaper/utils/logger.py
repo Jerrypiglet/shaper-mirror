@@ -5,7 +5,7 @@ import sys
 import time
 
 
-def setup_logger(name, save_dir, prefix="log", timestamp=True):
+def setup_logger(name, save_dir, prefix="", timestamp=True):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(stream=sys.stdout)
@@ -16,7 +16,9 @@ def setup_logger(name, save_dir, prefix="log", timestamp=True):
 
     if save_dir:
         timestamp = time.strftime(".%m_%d_%H_%M_%S") if timestamp else ""
-        fh = logging.FileHandler(os.path.join(save_dir, "%s.txt" % (prefix + timestamp)))
+        prefix = "." + prefix if prefix else ""
+        log_file = os.path.join(save_dir, "log{}.txt".format(prefix + timestamp))
+        fh = logging.FileHandler(log_file)
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(formatter)
         logger.addHandler(fh)

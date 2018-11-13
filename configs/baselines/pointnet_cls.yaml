@@ -26,6 +26,6 @@ TRAIN:
   AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2), "PointCloudTranslate", "PointCloudScale", "PointCloudJitter",)
   LOG_PERIOD: 50
   CHECKPOINT_PERIOD: 20
-  VAL_PERIOD: 5
+  VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32

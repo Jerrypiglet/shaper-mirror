@@ -6,45 +6,48 @@ import numpy as np
 import torch
 
 
-class SmoothedValue(object):
+class AverageMeter(object):
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
 
     def __init__(self, window_size=20):
-        self.deque = deque(maxlen=window_size)
-        self.total = 0.0
+        self.values = deque(maxlen=window_size)
+        self.counts = deque(maxlen=window_size)
+        self.sum = 0.0
         self.count = 0
 
-    def update(self, value):
-        self.deque.append(value)
-        self.count += 1
-        self.total += value
-
-    @property
-    def median(self):
-        return np.median(self.deque)
+    def update(self, value, count=1):
+        self.values.append(value)
+        self.counts.append(count)
+        self.sum += value
+        self.count += count
 
     @property
     def avg(self):
-        return np.mean(self.deque)
+        return np.sum(self.values) / np.sum(self.counts)
 
     @property
     def global_avg(self):
-        return self.total / self.count
+        return self.sum / self.count
 
 
 class MetricLogger(object):
     def __init__(self, delimiter="\t"):
-        self.meters = defaultdict(SmoothedValue)
+        self.meters = defaultdict(AverageMeter)
         self.delimiter = delimiter
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
+            count = 1
             if isinstance(v, torch.Tensor):
-                v = v.item()
+                if v.numel() == 1:
+                    v = v.item()
+                else:
+                    count = v.numel()
+                    v = v.sum().item()
             assert isinstance(v, (float, int))
-            self.meters[k].update(v)
+            self.meters[k].update(v, count)
 
     def __getattr__(self, attr):
         if attr in self.meters:

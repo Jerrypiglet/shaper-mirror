@@ -47,14 +47,14 @@ def train_model(model,
                     [
                         "iter: {iter:4d}",
                         "{meters}",
-                        "lr: {lr:.6f}",
+                        "lr: {lr:.2e}",
                         "max mem: {memory:.0f}",
                     ]
                 ).format(
                     iter=iteration,
                     meters=str(meters),
                     lr=optimizer.param_groups[0]["lr"],
-                    memory=torch.cuda.max_memory_cached() / 1024.0 / 1024.0,
+                    memory=torch.cuda.max_memory_cached() / (1024.0 ** 2),
                 )
             )
     return meters
@@ -167,9 +167,11 @@ def train(cfg, output_dir=""):
                                         log_period=cfg.TRAIN.LOG_PERIOD,
                                         )
             logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
-            cur_metric = val_meters.meters["acc"]
+            cur_metric = val_meters.meters[cfg.TRAIN.VAL_METRIC].global_avg
             if best_metric is None or cur_metric > best_metric:
+                best_metric = cur_metric
                 checkpoint_data["epoch"] = cur_epoch
-                checkpointer.save("model_best".format(cur_epoch), **checkpoint_data)
+                checkpointer.save("model_best", **checkpoint_data)
+    logger.info("Best val-{} = {}".format(cfg.TRAIN.VAL_METRIC, best_metric))
 
     return model
