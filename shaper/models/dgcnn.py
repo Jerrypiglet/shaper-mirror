@@ -139,8 +139,9 @@ class DGCNN_Cls(nn.Module):
 
         self.init_weights()
 
-    def forward(self, x):
+    def forward(self, data_batch):
         end_points = {}
+        x = data_batch["points"]
         trans_input = self.transform_input(x)
         x = torch.bmm(trans_input, x)
         end_points['trans_input'] = trans_input
@@ -184,6 +185,17 @@ class DGCNN_ClsLoss(nn.Module):
         }
         return loss_dict
 
+class DGCNN_Metric(nn.Module):
+    def forward(self, preds, labels):
+        cls_logits = preds["cls_logits"]
+        cls_labels = labels["cls_labels"]
+        pred_labels = cls_logits.argmax(1)
+        acc = pred_labels.eq(cls_labels).float().mean()
+
+        metric_dict = {
+            'acc': acc
+        }
+        return metric_dict
 
 def build_dgcnn(cfg):
     if cfg.TASK == "classification":
@@ -196,10 +208,11 @@ def build_dgcnn(cfg):
             global_channels=cfg.MODEL.DGCNN.GLOBAL_CHANNELS
         )
         loss_fn = DGCNN_ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTH)
+        metric_fn = DGCNN_Metric()
     else:
         raise NotImplementedError()
 
-    return net, loss_fn
+    return net, loss_fn, metric_fn
 
 
 if __name__ == "__main__":

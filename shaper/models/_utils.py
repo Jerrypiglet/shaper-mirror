@@ -1,6 +1,34 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from typing import List
+
+class SharedMLP(nn.Sequential):
+
+    def __init__(
+            self,
+            args: List[int],
+            *,
+            bn: bool = False,
+            activation=nn.ReLU(inplace=True),
+            preact: bool = False,
+            first: bool = False,
+            name: str = ""
+    ):
+        super().__init__()
+
+        for i in range(len(args) - 1):
+            self.add_module(
+                name + 'layer{}'.format(i),
+                Conv2d(
+                    args[i],
+                    args[i + 1],
+                    kernel_size=1,
+                    bn=(not first or (i != 0)) and bn,
+                    relu=True
+                    if (not first or (i != 0)) else False,
+                )
+            )
 
 
 class Conv1d(nn.Module):
