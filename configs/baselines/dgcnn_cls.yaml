@@ -3,9 +3,9 @@ TASK:
 MODEL:
   TYPE: "DGCNN"
   DGCNN:
-    LABEL_SMOOTH: 0.2
+    LABEL_SMOOTHING: 0.2
 INPUT:
-  NUM_POINTS: 40
+  NUM_POINTS: 1024
 DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"
@@ -14,16 +14,15 @@ DATASET:
   VAL: ("test",)
   TEST: ("test",)
 DATALOADER:
-  NUM_WORKERS: 8
+  NUM_WORKERS: 4
 SOLVER:
   BASE_LR: 0.001
   MAX_EPOCH: 250
-  GAMMA: 0.7
+  GAMMA: 0.5
   STEPS: (20, 40, 60, 80, 120, 140, 160, 180, 200, 220)
 TRAIN:
-  BATCH_SIZE: 32
-  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2), "PointCloudTranslate", "PointcloudScale", "PointCloudJitter",)
+  BATCH_SIZE: 16
+  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2), "PointCloudTranslate", "PointCloudScale", "PointCloudJitter",)
   VAL_PERIOD: 1
 TEST:
-  BATCH_SIZE: 32
-OUTPUT_DIR: "@"
+  BATCH_SIZE: 16

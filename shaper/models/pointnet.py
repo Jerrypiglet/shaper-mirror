@@ -23,18 +23,17 @@ class TNet(nn.Module):
                  in_channels=3,
                  out_channels=3,
                  local_channels=(64, 128, 1024),
-                 global_channels=(512, 256),
-                 bn=True):
+                 global_channels=(512, 256)):
         super(TNet, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
 
         # local features
-        self.mlp_local = SharedMLP(in_channels, local_channels, bn=bn)
+        self.mlp_local = SharedMLP(in_channels, local_channels)
 
         # global features
-        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels, bn=bn)
+        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels)
 
         # linear output
         self.linear = nn.Linear(self.mlp_global.out_channels, in_channels * out_channels, bias=True)
@@ -60,8 +59,7 @@ class TNet(nn.Module):
 class Stem(nn.Module):
     def __init__(self, in_channels,
                  stem_channels=(64, 64),
-                 with_transform=True,
-                 bn=True):
+                 with_transform=True):
         super(Stem, self).__init__()
 
         self.in_channels = in_channels
@@ -69,13 +67,13 @@ class Stem(nn.Module):
         self.with_transform = with_transform
 
         # feature stem
-        self.stem = SharedMLP(in_channels, stem_channels, bn=bn)
+        self.mlp = SharedMLP(in_channels, stem_channels)
 
         if self.with_transform:
             # input transform
-            self.transform_input = TNet(in_channels, in_channels, bn=bn)
+            self.transform_input = TNet(in_channels, in_channels)
             # feature transform
-            self.transform_stem = TNet(self.out_channels, self.out_channels, bn=bn)
+            self.transform_feature = TNet(self.out_channels, self.out_channels)
 
     def forward(self, x):
         end_points = {}
@@ -87,13 +85,13 @@ class Stem(nn.Module):
             end_points['trans_input'] = trans_input
 
         # feature stem
-        x = self.stem(x)
+        x = self.mlp(x)
 
         # feature transform
         if self.with_transform:
-            trans_stem = self.transform_stem(x)
-            x = torch.bmm(trans_stem, x)
-            end_points['trans_stem'] = trans_stem
+            trans_feature = self.transform_feature(x)
+            x = torch.bmm(trans_feature, x)
+            end_points['trans_feature'] = trans_feature
 
         return x, end_points
 
@@ -107,16 +105,15 @@ class PointNetCls(nn.Module):
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
                  dropout_ratio=0.5,
-                 with_transform=True,
-                 bn=True):
+                 with_transform=True):
         super(PointNetCls, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.stem = Stem(in_channels, stem_channels, with_transform=with_transform, bn=bn)
-        self.mlp_local = SharedMLP(self.stem.out_channels, local_channels, bn=bn)
-        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels, bn=bn)
+        self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
+        self.mlp_local = SharedMLP(self.stem.out_channels, local_channels)
+        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels)
         self.dropout = nn.Dropout(p=dropout_ratio, inplace=True)
         self.linear = nn.Linear(self.mlp_global.out_channels, out_channels, bias=True)
 
@@ -128,7 +125,7 @@ class PointNetCls(nn.Module):
 
         x = self.mlp_local(x)
         x, max_indices = torch.max(x, 2)
-        end_points['key_points'] = max_indices
+        end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
         x = self.dropout(x)
         x = self.linear(x)
@@ -160,8 +157,8 @@ class PointNetClsLoss(nn.Module):
 
         # regularization over transform matrix
         if self.reg_weight > 0.0:
-            trans_stem = preds["trans_stem"]
-            trans_norm = torch.bmm(trans_stem, trans_stem.transpose(2, 1))  # [out, out]
+            trans_feature = preds["trans_feature"]
+            trans_norm = torch.bmm(trans_feature, trans_feature.transpose(2, 1))  # [out, out]
             I = torch.eye(trans_norm.size()[1], dtype=trans_norm.dtype, device=trans_norm.device)
             reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).repeat(trans_norm.size(0), 1, 1))
             loss_dict["reg_loss"] = reg_loss
@@ -202,4 +199,4 @@ if __name__ == '__main__':
     pointnet = PointNetCls(in_channels, num_classes)
     out_dict = pointnet({"points": data})
     for k, v in out_dict.items():
-        print('pointnet:', k, v.shape)
+        print('PointNet:', k, v.shape)
