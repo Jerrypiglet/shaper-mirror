@@ -14,47 +14,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from shaper.models._utils import Conv1d, FC
-
-
-class PointNetLocal(nn.ModuleList):
-    def __init__(self, in_channels,
-                 local_channels=(64, 128, 1024),
-                 bn=True):
-        super(PointNetLocal, self).__init__()
-
-        self.in_channels = in_channels
-
-        for ind, out_channels in enumerate(local_channels):
-            self.append(Conv1d(in_channels, out_channels, relu=True, bn=bn))
-            in_channels = out_channels
-
-        self.out_channels = in_channels
-
-    def forward(self, x):
-        for module in self:
-            x = module(x)
-        return x
-
-
-class PointNetGlobal(nn.ModuleList):
-    def __init__(self, in_channels,
-                 global_channels=(512, 256),
-                 bn=True):
-        super(PointNetGlobal, self).__init__()
-
-        self.in_channels = in_channels
-
-        for ind, out_channels in enumerate(global_channels):
-            self.append(FC(in_channels, out_channels, relu=True, bn=bn))
-            in_channels = out_channels
-
-        self.out_channels = in_channels
-
-    def forward(self, x):
-        for module in self:
-            x = module(x)
-        return x
+from shaper.nn import MLP, SharedMLP
+from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
@@ -70,11 +31,12 @@ class TNet(nn.Module):
         self.out_channels = out_channels
 
         # local features
-        self.mlp_local = PointNetLocal(in_channels, local_channels, bn=bn)
+        self.mlp_local = SharedMLP(in_channels, local_channels, bn=bn)
 
         # global features
-        self.mlp_global = PointNetGlobal(self.mlp_local.out_channels, global_channels, bn=bn)
+        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels, bn=bn)
 
+        # linear output
         self.linear = nn.Linear(self.mlp_global.out_channels, in_channels * out_channels, bias=True)
 
         self.init_weights()
@@ -95,38 +57,43 @@ class TNet(nn.Module):
         nn.init.zeros_(self.linear.bias)
 
 
-class PointNetStem(nn.Module):
+class Stem(nn.Module):
     def __init__(self, in_channels,
                  stem_channels=(64, 64),
+                 with_transform=True,
                  bn=True):
-        super(PointNetStem, self).__init__()
+        super(Stem, self).__init__()
 
         self.in_channels = in_channels
-
-        # input transform
-        self.transform_input = TNet(in_channels, in_channels, bn=bn)
+        self.out_channels = stem_channels[-1]
+        self.with_transform = with_transform
 
         # feature stem
-        self.stem = PointNetLocal(in_channels, stem_channels, bn=bn)
-        self.out_channels = self.stem.out_channels
+        self.stem = SharedMLP(in_channels, stem_channels, bn=bn)
 
-        # feature transform
-        self.transform_stem = TNet(self.out_channels, self.out_channels, bn=bn)
+        if self.with_transform:
+            # input transform
+            self.transform_input = TNet(in_channels, in_channels, bn=bn)
+            # feature transform
+            self.transform_stem = TNet(self.out_channels, self.out_channels, bn=bn)
 
     def forward(self, x):
         end_points = {}
 
         # input transform
-        trans_input = self.transform_input(x)
-        x = torch.bmm(trans_input, x)
-        end_points['trans_input'] = trans_input
+        if self.with_transform:
+            trans_input = self.transform_input(x)
+            x = torch.bmm(trans_input, x)
+            end_points['trans_input'] = trans_input
 
         # feature stem
         x = self.stem(x)
 
-        trans_stem = self.transform_stem(x)
-        x = torch.bmm(trans_stem, x)
-        end_points['trans_stem'] = trans_stem
+        # feature transform
+        if self.with_transform:
+            trans_stem = self.transform_stem(x)
+            x = torch.bmm(trans_stem, x)
+            end_points['trans_stem'] = trans_stem
 
         return x, end_points
 
@@ -140,17 +107,18 @@ class PointNetCls(nn.Module):
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
                  dropout_ratio=0.5,
+                 with_transform=True,
                  bn=True):
         super(PointNetCls, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.stem = PointNetStem(in_channels, stem_channels, bn=bn)
-        self.mlp_local = PointNetLocal(self.stem.out_channels, local_channels, bn=bn)
-        self.mlp_global = PointNetGlobal(self.mlp_local.out_channels, global_channels, bn=bn)
+        self.stem = Stem(in_channels, stem_channels, with_transform=with_transform, bn=bn)
+        self.mlp_local = SharedMLP(self.stem.out_channels, local_channels, bn=bn)
+        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels, bn=bn)
         self.dropout = nn.Dropout(p=dropout_ratio, inplace=True)
-        self.linear = nn.Linear(self.mlp_global.out_channels, out_channels, bias=False)
+        self.linear = nn.Linear(self.mlp_global.out_channels, out_channels, bias=True)
 
         self.init_weights()
 
@@ -174,6 +142,7 @@ class PointNetCls(nn.Module):
 
     def init_weights(self):
         nn.init.kaiming_uniform_(self.linear.weight, nonlinearity='linear')
+        nn.init.zeros_(self.linear.bias)
 
 
 class PointNetClsLoss(nn.Module):
@@ -200,17 +169,6 @@ class PointNetClsLoss(nn.Module):
         return loss_dict
 
 
-class PointNetMetric(nn.Module):
-    def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        pred_labels = cls_logits.argmax(1)
-
-        acc = pred_labels.eq(cls_labels).float()
-
-        return {"acc": acc}
-
-
 def build_pointnet(cfg):
     if cfg.TASK == "classification":
         net = PointNetCls(
@@ -220,9 +178,10 @@ def build_pointnet(cfg):
             local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
             global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
             dropout_ratio=cfg.MODEL.POINTNET.DROPOUT_RATIO,
+            with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
         )
         loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
-        metric_fn = PointNetMetric()
+        metric_fn = Accuracy()
     else:
         raise NotImplementedError()
 
