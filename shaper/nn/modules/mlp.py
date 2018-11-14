@@ -9,6 +9,13 @@ class MLP(nn.Sequential):
                  in_channels,
                  mlp_channels,
                  bn=True):
+        """Multilayer perceptron
+
+        Args:
+            in_channels (int): the number of channels of input tensor
+            mlp_channels (tuple): the numbers of channels of fully connected layers
+            bn (bool): whether to use batch normalization
+        """
         super(MLP, self).__init__()
 
         self.in_channels = in_channels
@@ -27,6 +34,14 @@ class SharedMLP(nn.Sequential):
                  mlp_channels,
                  ndim=1,
                  bn=True):
+        """Multilayer perceptron shared on resolution (1D or 2D)
+
+        Args:
+            in_channels (int): the number of channels of input tensor
+            mlp_channels (tuple): the numbers of channels of fully connected layers
+            ndim (int): the number of dimensions to share
+            bn (bool): whether to use batch normalization
+        """
         super(SharedMLP, self).__init__()
 
         self.in_channels = in_channels

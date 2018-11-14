@@ -1,5 +1,4 @@
-"""
-PointNet
+"""PointNet
 
 References:
     @article{qi2016pointnet,
@@ -19,6 +18,8 @@ from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
+    """Transformation Network. The structure is similar with PointNet"""
+
     def __init__(self,
                  in_channels=3,
                  out_channels=3,
@@ -33,16 +34,16 @@ class TNet(nn.Module):
         self.mlp_local = SharedMLP(in_channels, local_channels)
 
         # global features
-        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels)
+        self.mlp_global = MLP(local_channels[-1], global_channels)
 
         # linear output
-        self.linear = nn.Linear(self.mlp_global.out_channels, in_channels * out_channels, bias=True)
+        self.linear = nn.Linear(global_channels[-1], in_channels * out_channels, bias=True)
 
         self.init_weights()
 
     def forward(self, x):
-        x = self.mlp_local(x)  # [N, C, W]
-        x, _ = torch.max(x, 2)  # [N, C]
+        x = self.mlp_local(x)  # (batch_size, channels, num_points)
+        x, _ = torch.max(x, 2)  # (batch_size, channels)
         x = self.mlp_global(x)
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
@@ -51,12 +52,20 @@ class TNet(nn.Module):
         return x
 
     def init_weights(self):
-        # set linear transform be 0
+        # Initialize linear transform to 0
         nn.init.zeros_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
 
 
 class Stem(nn.Module):
+    """Stem (main body or stalk). Extract features from raw point clouds
+
+    Structure: input (-> [TNet] -> transform_input) -> [MLP] -> features (-> [TNet] -> transform_feature)
+    
+    Attributes:
+        with_transform: whether to use TNet
+    """
+
     def __init__(self, in_channels,
                  stem_channels=(64, 64),
                  with_transform=True):
@@ -84,7 +93,7 @@ class Stem(nn.Module):
             x = torch.bmm(trans_input, x)
             end_points['trans_input'] = trans_input
 
-        # feature stem
+        # feature
         x = self.mlp(x)
 
         # feature transform
@@ -100,7 +109,14 @@ class Stem(nn.Module):
 # PointNet for classification
 # -----------------------------------------------------------------------------
 class PointNetCls(nn.Module):
-    def __init__(self, in_channels, out_channels,
+    """PointNet for classification
+
+    Structure: input -> [Stem] -> features -> [SharedMLP] -> local features
+    -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
+    """
+
+    def __init__(self,
+                 in_channels, out_channels,
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
@@ -112,20 +128,24 @@ class PointNetCls(nn.Module):
         self.out_channels = out_channels
 
         self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
-        self.mlp_local = SharedMLP(self.stem.out_channels, local_channels)
-        self.mlp_global = MLP(self.mlp_local.out_channels, global_channels)
+        self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
+        self.mlp_global = MLP(local_channels[-1], global_channels)
         self.dropout = nn.Dropout(p=dropout_ratio, inplace=True)
-        self.linear = nn.Linear(self.mlp_global.out_channels, out_channels, bias=True)
+        self.linear = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
 
     def forward(self, data_batch):
         x = data_batch["points"]
-        x, end_points = self.stem(x)
 
+        # stem
+        x, end_points = self.stem(x)
+        # mlp for local features
         x = self.mlp_local(x)
+        # max pool over points
         x, max_indices = torch.max(x, 2)
         end_points['key_point_inds'] = max_indices
+        # mlp for global features
         x = self.mlp_global(x)
         x = self.dropout(x)
         x = self.linear(x)
@@ -143,6 +163,12 @@ class PointNetCls(nn.Module):
 
 
 class PointNetClsLoss(nn.Module):
+    """Pointnet classification loss with optional regularization loss
+
+    Attributes:
+        reg_weight (float): regularization weight for feature transform matrix
+    """
+
     def __init__(self, reg_weight):
         super(PointNetClsLoss, self).__init__()
         self.reg_weight = reg_weight
@@ -151,6 +177,7 @@ class PointNetClsLoss(nn.Module):
         cls_logits = preds["cls_logits"]
         cls_labels = labels["cls_labels"]
         cls_loss = F.cross_entropy(cls_logits, cls_labels)
+
         loss_dict = {
             'cls_loss': cls_loss,
         }

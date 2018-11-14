@@ -1,4 +1,7 @@
+"""Helpers for DGCNN"""
+
 import torch
+
 
 def cal_pairwise_dist(input_feature):
     """
@@ -62,8 +65,8 @@ def construct_edge_feature(feature, knn_inds):
 
 
 def get_edge_feature(input_feature, k):
-    """
-    Get edge feature for input_feature
+    """Get edge feature for input_feature
+
     Args:
         input_feature: (batch_size, num_dims, num_nodes)
         k:int, # of nearest neighbours

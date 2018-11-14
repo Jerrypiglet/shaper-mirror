@@ -3,6 +3,17 @@ import torch.nn.functional as F
 
 
 def smooth_cross_entropy(input, target, label_smoothing):
+    """Cross entropy with label smoothing
+
+    Args:
+        input (torch.Tensor): (N, C)
+        target (torch.Tensor): (N,)
+        label_smoothing (float):
+
+    Returns:
+        loss (torch.Tensor): scalar
+
+    """
     assert input.dim() == 2 and target.dim() == 1
     assert isinstance(label_smoothing, float) and label_smoothing > 0.0
     batch_size, num_classes = input.shape

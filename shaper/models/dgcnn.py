@@ -1,5 +1,4 @@
-"""
-DGCNN
+"""DGCNN
 
 References:
     @article{dgcnn,
@@ -21,6 +20,17 @@ from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
+    """Transformation Network
+
+    Structure: input -> [EdgeFeature] -> [EdgeConv]s -> [EdgePool] -> features -> [MLP] -> local features
+    -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
+
+    Args:
+        conv_channels (tuple of int): the numbers of channels of edge convolution layers
+        k: k-nn for edge feature extractor
+
+    """
+
     def __init__(self,
                  in_channels=3,
                  out_channels=3,
@@ -49,11 +59,11 @@ class TNet(nn.Module):
         Returns:
             torch.Tensor: (batch_size, out_channels, in_channels)
         """
-        x = get_edge_feature(x, self.k)
+        x = get_edge_feature(x, self.k)  # (batch_size, 2 * in_channels, num_points, k)
         x = self.edge_conv(x)
-        x, _ = torch.max(x, 3)
+        x, _ = torch.max(x, 3)  # (batch_size, edge_channels[-1], num_points)
         x = self.mlp_local(x)
-        x, _ = torch.max(x, 2)
+        x, _ = torch.max(x, 2)  # (batch_size, local_channels[-1], num_points)
         x = self.mlp_global(x)
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
@@ -67,7 +77,24 @@ class TNet(nn.Module):
         nn.init.zeros_(self.linear.bias)
 
 
+# -----------------------------------------------------------------------------
+# DGCNN for classification
+# -----------------------------------------------------------------------------
 class DGCNNCls(nn.Module):
+    """DGCNN for classification
+
+    Structure: input (-> [TNet] -> transform_input) -> [EdgeConvBlock]s -> [Concat EdgeConvBlock features]
+    -> [MLP] -> intermediate features -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
+
+    [EdgeConvBlock]: in_features -> [EdgeFeature] -> [EdgeConv] -> [EdgePool] -> out_features
+
+    Args:
+        edge_conv_channels (tuple of int): the numbers of channels of edge convolution layers
+        inter_channels (int): the number of channels of intermediate features before MaxPool
+        k (int): k-nn for edge feature extractor
+
+    """
+
     def __init__(self,
                  in_channels, out_channels,
                  edge_conv_channels=(64, 64, 64, 128),
@@ -100,11 +127,13 @@ class DGCNNCls(nn.Module):
         end_points = {}
         x = data_batch["points"]
 
+        # input transform
         if self.with_transform:
             trans_input = self.transform_input(x)
             x = torch.bmm(trans_input, x)
             end_points['trans_input'] = trans_input
 
+        # EdgeConvMLP
         features = []
         for edge_conv in self.mlp_edge_conv:
             x = get_edge_feature(x, self.k)
@@ -132,6 +161,12 @@ class DGCNNCls(nn.Module):
 
 
 class DGCNNClsLoss(nn.Module):
+    """DGCNN classification loss with optional label smoothing
+
+    Attributes:
+        label_smoothing (float):
+    """
+
     def __init__(self, label_smoothing):
         super(DGCNNClsLoss, self).__init__()
         self.label_smoothing = label_smoothing

@@ -5,6 +5,15 @@ from ..init import init_uniform, init_bn
 
 
 class FC(nn.Module):
+    """Applies a linear transformation to the incoming data
+    optionally followed by batch normalization and relu activation
+
+    Attributes:
+        conv (nn.Module): convolution module
+        bn (nn.Module): batch normalization module
+        relu (bool): whether to activate by relu
+    """
+
     def __init__(self, in_channels, out_channels,
                  relu=True, bn=True, bn_momentum=0.1):
         super(FC, self).__init__()

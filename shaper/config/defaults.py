@@ -12,6 +12,7 @@ _C.AUTO_RESUME = True
 
 _C.MODEL = CN()
 _C.MODEL.TYPE = ""
+# Pre-trained weights
 _C.MODEL.WEIGHT = ""
 
 
@@ -103,11 +104,13 @@ _C.DATALOADER.NUM_WORKERS = 4
 # ---------------------------------------------------------------------------- #
 _C.SOLVER = CN()
 
+# Type of optimizer
 _C.SOLVER.TYPE = "Adam"
 
 _C.SOLVER.MAX_EPOCH = 1
 
 # Basic parameters of solvers
+# Notice to change learning rate according to batch size
 _C.SOLVER.BASE_LR = 0.001
 
 _C.SOLVER.WEIGHT_DECAY = 0.0
@@ -138,7 +141,8 @@ _C.TRAIN.LOG_PERIOD = 10
 _C.TRAIN.VAL_PERIOD = 1
 _C.TRAIN.VAL_METRIC = "acc"
 
-# Data augmentation
+# Data augmentation. The format is "method" or ("method", *args)
+# For example, ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2))
 _C.TRAIN.AUGMENTATION = ()
 
 # ---------------------------------------------------------------------------- #
@@ -152,7 +156,8 @@ _C.TEST.BATCH_SIZE = 32
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
-_C.OUTPUT_DIR = "@"  # if set to @, the filename of config will be used by default
+# if set to @, the filename of config will be used by default
+_C.OUTPUT_DIR = "@"
 
 # For reproducibility...but not really because modern fast GPU libraries use
 # non-deterministic op implementations
