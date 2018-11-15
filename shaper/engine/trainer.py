@@ -10,6 +10,7 @@ from shaper.data import build_dataloader
 from shaper.utils.torch_utils import set_random_seed
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
+from shaper.utils.tensorboard_logger import TensorboardLogger
 
 
 def train_model(model,
@@ -131,10 +132,14 @@ def train(cfg, output_dir=""):
     val_period = cfg.TRAIN.VAL_PERIOD
     val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
+    # build tensorboard logger (optionally by comment)
+    tensorboard_logger = TensorboardLogger(output_dir)
+
     # train
     max_epoch = cfg.SOLVER.MAX_EPOCH
-    best_metric = None
     start_epoch = checkpoint_data.get("epoch", 0)
+    best_metric_name = "best_{}".format(cfg.TRAIN.VAL_METRIC)
+    best_metric = checkpoint_data.get(best_metric_name, None)
     logger.info("Start training from epoch {}".format(start_epoch))
     for epoch in range(start_epoch, max_epoch):
         cur_epoch = epoch + 1
@@ -151,9 +156,12 @@ def train(cfg, output_dir=""):
         logger.info("Epoch[{}]-Train {}  total_time: {:.2f}s".format(
             cur_epoch, train_meters.summary_str, epoch_time))
 
+        tensorboard_logger.add_scalars(train_meters.meters, cur_epoch, prefix="train")
+
         # checkpoint
         if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
             checkpoint_data["epoch"] = cur_epoch
+            checkpoint_data[best_metric_name] = best_metric
             checkpointer.save("model_{:03d}".format(cur_epoch), **checkpoint_data)
 
         # validate
@@ -167,11 +175,17 @@ def train(cfg, output_dir=""):
                                         log_period=cfg.TRAIN.LOG_PERIOD,
                                         )
             logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
+
+            tensorboard_logger.add_scalars(val_meters.meters, cur_epoch, prefix="val")
+
+            # best validation
             cur_metric = val_meters.meters[cfg.TRAIN.VAL_METRIC].global_avg
             if best_metric is None or cur_metric > best_metric:
                 best_metric = cur_metric
                 checkpoint_data["epoch"] = cur_epoch
+                checkpoint_data[best_metric_name] = best_metric
                 checkpointer.save("model_best", **checkpoint_data)
+
     logger.info("Best val-{} = {}".format(cfg.TRAIN.VAL_METRIC, best_metric))
 
     return model

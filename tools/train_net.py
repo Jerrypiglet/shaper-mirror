@@ -46,9 +46,9 @@ def main():
 
     output_dir = cfg.OUTPUT_DIR
     if output_dir:
-        if output_dir == "@":
-            output_dir = args.config_file.replace("configs", "outputs")
-            output_dir = osp.splitext(output_dir)[0]
+        config_path = osp.splitext(args.config_file)[0]
+        config_path = config_path.replace("configs", "outputs")
+        output_dir = output_dir.replace('@', config_path)
         mkdir(output_dir)
 
     logger = setup_logger("shaper", output_dir, prefix="train")
