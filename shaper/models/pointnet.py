@@ -185,7 +185,9 @@ class PointNetClsLoss(nn.Module):
             trans_feature = preds["trans_feature"]
             trans_norm = torch.bmm(trans_feature, trans_feature.transpose(2, 1))  # [out, out]
             I = torch.eye(trans_norm.size()[1], dtype=trans_norm.dtype, device=trans_norm.device)
-            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).repeat(trans_norm.size(0), 1, 1))
+            # Notice that torch.expand() will cause unexpected result when you try to modify it, like a[:, 0] = 1
+            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm))
+            # reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).repeat(trans_norm.size(0), 1, 1))
             loss_dict["reg_loss"] = reg_loss
 
         return loss_dict

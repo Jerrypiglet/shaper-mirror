@@ -3,79 +3,70 @@
 import torch
 
 
-def cal_pairwise_dist(input_feature):
-    """
-    Compute pairwise distance of input_feature.
+def pairwise_distance(features):
+    """Compute pairwise distances of features.
+
     Args:
-        input_feature: tensor (batch_size, num_dims, num_nodes)
+        features (torch.Tensor): (batch_size, channels, num_features)
 
     Returns:
-        pairwise_distance: tensor (batch_size, num_nodes, num_nodes)
+        pairwise_distance (torch.Tensor): (batch_size, num_features, num_features)
+
+    Notes:
+        This method returns square distances.
+
     """
-    batch_size, num_dims, num_nodes = list(input_feature.size())
-    # feature = input_feature.squeeze()
-    # if batch_size == 1:
-    #     feature.unqueeze_(0)
-    feature_transpose = input_feature.transpose(1, 2)
-    feature_inner = torch.matmul(feature_transpose, input_feature)  # (batch_size, num_nodes, num_nodes)
-    feature_inner = -2 * feature_inner
-    feature_square_sum = torch.sum(input_feature ** 2, 1, keepdim=True)
-    feature_transpose_square_sum = feature_square_sum.transpose(1, 2)
+    # (batch_size, num_features, num_features)
+    inner_product = torch.bmm(features.transpose(1, 2), features)
 
-    pairwise_dist = feature_square_sum + feature_inner + feature_transpose_square_sum
+    batch_idx = torch.arange(features.size(0)).view(-1, 1)
+    diag_idx = torch.arange(features.size(2)).view(1, -1)
+    # advance indexing, (batch_size, num_features)
+    norm = inner_product[batch_idx, diag_idx, diag_idx]
 
-    return pairwise_dist
+    distance = norm.unsqueeze(1) + norm.unsqueeze(2) - (2 * inner_product)
+
+    return distance
 
 
-def get_knn_inds(pairwise_dist, k=20):
-    """
-    Get k nearest neighbour index based on the pairwise_distance.
+def construct_edge_feature(features, knn_inds):
+    """Construct edge feature for each point
+
     Args:
-        pairwise_dist: tensor (batch_size, num_nodes, num_nodes)
-        k: int
+        features (torch.Tensor): (batch_size, channels, num_nodes)
+        knn_inds (torch.Tensor): (batch_size, num_nodes, k)
 
     Returns:
-        knn_inds: (batch_size, num_nodes, k)
+        edge_features: (batch_size, 2*channels, num_nodes, k)
+
     """
-    _, knn_inds = torch.topk(pairwise_dist, k, largest=False)
-    return knn_inds
+    batch_size, channels, num_nodes = features.shape
+    k = knn_inds.size(-1)
 
-
-def construct_edge_feature(feature, knn_inds):
-    """
-    Construct edge feature for each point
-    Args:
-        feature: (batch_size, num_dims, num_nodes)
-        knn_inds: (batch_size, num_nodes, k)
-
-    Returns:
-        edge_features: (batch_size, 2*num_dims, num_nodes, k)
-    """
-    batch_size, num_dims, num_nodes = list(feature.size())
-    k = list(knn_inds.size())[-1]
-
-    feature_central = feature.unsqueeze(-1).repeat(1, 1, 1, k)
-    feature_tile = feature.unsqueeze(-1).repeat(1, 1, 1, num_nodes)
-    knn_inds = knn_inds.unsqueeze(1).repeat(1, num_dims, 1, 1)
-    feature_neighbour = torch.gather(feature_tile, -1, knn_inds)  # (batch_size, num_dims, num_nodes, k)
-
+    feature_central = features.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
+    batch_idx = torch.arange(batch_size).view(-1, 1, 1, 1)
+    feature_idx = torch.arange(channels).view(1, -1, 1, 1)
+    # (batch_size, channels, num_nodes, k)
+    feature_neighbour = features[batch_idx, feature_idx, knn_inds.unsqueeze(1)]
+    # (batch_size, 2 * channels, num_nodes, k)
     edge_feature = torch.cat((feature_central, feature_neighbour - feature_central), 1)
 
     return edge_feature
 
 
-def get_edge_feature(input_feature, k):
+def get_edge_feature(features, k):
     """Get edge feature for input_feature
 
     Args:
-        input_feature: (batch_size, num_dims, num_nodes)
-        k:int, # of nearest neighbours
+        features (torch.Tensor): (batch_size, channels, num_nodes)
+        k (int): the number of nearest neighbours
 
     Returns:
-        edge_feature: (batch_size, 2*num_dims, num_nodes, k)
+        edge_feature (torch.Tensor): (batch_size, 2*num_dims, num_nodes, k)
+
     """
-    pairwise_dist = cal_pairwise_dist(input_feature)
-    knn_inds = get_knn_inds(pairwise_dist, k)
-    edge_feature = construct_edge_feature(input_feature, knn_inds)
+    pdist = pairwise_distance(features)
+    _, knn_inds = torch.topk(pdist, k, largest=False)
+    edge_feature = construct_edge_feature(features, knn_inds)
 
     return edge_feature

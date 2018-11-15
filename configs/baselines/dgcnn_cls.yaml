@@ -21,8 +21,8 @@ SOLVER:
   GAMMA: 0.5
   STEPS: (20, 40, 60, 80, 120, 140, 160, 180, 200, 220)
 TRAIN:
-  BATCH_SIZE: 16
+  BATCH_SIZE: 32
   AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2), "PointCloudTranslate", "PointCloudScale", "PointCloudJitter",)
   VAL_PERIOD: 1
 TEST:
-  BATCH_SIZE: 16
+  BATCH_SIZE: 32
