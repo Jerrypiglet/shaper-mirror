@@ -107,6 +107,7 @@ def train(cfg, output_dir=""):
 
     # build model
     model, loss_fn, metric_fn = build_model(cfg)
+    logger.info("Build model:\n{}".format(str(model)))
     device_ids = cfg.DEVICE_IDS if cfg.DEVICE_IDS else None
     model = nn.DataParallel(model, device_ids=device_ids).cuda()
 

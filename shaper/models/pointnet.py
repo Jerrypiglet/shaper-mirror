@@ -42,8 +42,16 @@ class TNet(nn.Module):
         self.init_weights()
 
     def forward(self, x):
-        x = self.mlp_local(x)  # (batch_size, channels, num_points)
-        x, _ = torch.max(x, 2)  # (batch_size, channels)
+        """TNet forward
+
+        Args:
+            x (torch.Tensor): (batch_size, in_channels, num_points)
+
+        Returns:
+            torch.Tensor: (batch_size, out_channels, in_channels)
+        """
+        x = self.mlp_local(x)  # (batch_size, local_channels[-1], num_points)
+        x, _ = torch.max(x, 2)  # (batch_size, local_channels[-1])
         x = self.mlp_global(x)
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
@@ -85,6 +93,18 @@ class Stem(nn.Module):
             self.transform_feature = TNet(self.out_channels, self.out_channels)
 
     def forward(self, x):
+        """PointNet Stem forward
+
+        Args:
+            x (torch.Tensor): (batch_size, in_channels, num_points)
+
+        Returns:
+            torch.Tensor: (batch_size, stem_channels[-1], num_points)
+            dict (optional non-empty):
+                trans_input: (batch_size, in_channels, in_channels)
+                trans_feature: (batch_size, stem_channels[-1], stem_channels[-1])
+
+        """
         end_points = {}
 
         # input transform
