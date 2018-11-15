@@ -101,6 +101,7 @@ class DGCNNCls(nn.Module):
                  inter_channels=1024,
                  global_channels=(256, 128),
                  k=20,
+                 dropout_prob=0.5,
                  with_transform=True):
         super(DGCNNCls, self).__init__()
 
@@ -118,7 +119,7 @@ class DGCNNCls(nn.Module):
             self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
             in_channels = out_channels
         self.mlp_local = Conv1d(sum(edge_conv_channels), inter_channels, 1)
-        self.mlp_global = MLP(inter_channels, global_channels)
+        self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
         self.linear = nn.Linear(global_channels[-1], self.out_channels, bias=True)
 
         self.init_weights()
@@ -193,6 +194,7 @@ def build_dgcnn(cfg):
             inter_channels=cfg.MODEL.DGCNN.INTER_CHANNELS,
             global_channels=cfg.MODEL.DGCNN.GLOBAL_CHANNELS,
             k=cfg.MODEL.DGCNN.K,
+            dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
         )
         loss_fn = DGCNNClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
         metric_fn = Accuracy()

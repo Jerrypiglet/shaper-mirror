@@ -1,34 +1,46 @@
 from torch import nn
+import torch.nn.functional as F
 
 from .conv import Conv1d, Conv2d
 from .linear import FC
 
 
-class MLP(nn.Sequential):
+class MLP(nn.ModuleList):
+    """Multilayer perceptron
+
+    Args:
+        in_channels (int): the number of channels of input tensor
+        mlp_channels (tuple): the numbers of channels of fully connected layers
+        dropout (float or None): dropout ratio
+        bn (bool): whether to use batch normalization
+
+    """
+
     def __init__(self,
                  in_channels,
                  mlp_channels,
+                 dropout=None,
                  bn=True):
-        """Multilayer perceptron
-
-        Args:
-            in_channels (int): the number of channels of input tensor
-            mlp_channels (tuple): the numbers of channels of fully connected layers
-            bn (bool): whether to use batch normalization
-        """
         super(MLP, self).__init__()
 
         self.in_channels = in_channels
+        self.dropout = dropout
 
         for ind, out_channels in enumerate(mlp_channels):
-            module = FC(in_channels, out_channels, relu=True, bn=bn)
-            self.add_module(str(ind), module)
+            self.append(FC(in_channels, out_channels, relu=True, bn=bn))
             in_channels = out_channels
 
         self.out_channels = in_channels
 
+    def forward(self, x):
+        for module in self:
+            x = module(x)
+            if self.dropout:
+                x = F.dropout(x, self.dropout, self.training, inplace=True)
+        return x
 
-class SharedMLP(nn.Sequential):
+
+class SharedMLP(nn.ModuleList):
     def __init__(self,
                  in_channels,
                  mlp_channels,
@@ -54,8 +66,12 @@ class SharedMLP(nn.Sequential):
             raise ValueError()
 
         for ind, out_channels in enumerate(mlp_channels):
-            module = mlp_module(in_channels, out_channels, 1, relu=True, bn=bn)
-            self.add_module(str(ind), module)
+            self.append(mlp_module(in_channels, out_channels, 1, relu=True, bn=bn))
             in_channels = out_channels
 
         self.out_channels = in_channels
+
+    def forward(self, x):
+        for module in self:
+            x = module(x)
+        return x

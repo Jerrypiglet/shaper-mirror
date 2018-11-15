@@ -5,7 +5,7 @@ INPUT:
 MODEL:
   TYPE: "PointNet"
   POINTNET:
-    DROPOUT_RATIO: 0.5
+    DROPOUT_PROB: 0.3
     REG_WEIGHT: 128.0
 DATASET:
   ROOT_DIR: "data/modelnet40"

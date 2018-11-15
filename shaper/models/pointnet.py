@@ -120,7 +120,7 @@ class PointNetCls(nn.Module):
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
-                 dropout_ratio=0.5,
+                 dropout_prob=0.5,
                  with_transform=True):
         super(PointNetCls, self).__init__()
 
@@ -129,8 +129,7 @@ class PointNetCls(nn.Module):
 
         self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
         self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
-        self.mlp_global = MLP(local_channels[-1], global_channels)
-        self.dropout = nn.Dropout(p=dropout_ratio, inplace=True)
+        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
         self.linear = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
@@ -147,7 +146,6 @@ class PointNetCls(nn.Module):
         end_points['key_point_inds'] = max_indices
         # mlp for global features
         x = self.mlp_global(x)
-        x = self.dropout(x)
         x = self.linear(x)
 
         preds = {
@@ -201,7 +199,7 @@ def build_pointnet(cfg):
             stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
             local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
             global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
-            dropout_ratio=cfg.MODEL.POINTNET.DROPOUT_RATIO,
+            dropout_prob=cfg.MODEL.POINTNET.DROPOUT_PROB,
             with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
         )
         loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
