@@ -143,8 +143,9 @@ class PointCloudTranslate(object):
 
     def __call__(self, points):
         translation = np.random.uniform(
-            -self.translate_range, self.translate_range
-        )
+            -self.translate_range, self.translate_range, [3])
+        translation = torch.from_numpy(translation).float().to(points.device)
+        translation = translation.unsqueeze(0).expand(points.size(0), 3)
         points[:, 0:3] += translation
         return points
 

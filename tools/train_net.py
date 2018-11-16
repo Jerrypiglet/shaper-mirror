@@ -24,7 +24,7 @@ def parse_args():
         "--skip-test",
         dest="skip_test",
         help="Do not test the final model",
-        action="store_true",
+        action="store_false",
     )
     parser.add_argument(
         "opts",

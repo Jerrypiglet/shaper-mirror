@@ -33,7 +33,7 @@ class PointNet2SSG_Cls(nn.Module):
 
     def __init__(self, in_channels, out_channels,
                  num_points_list=(512, 128), radius_list=(0.2, 0.4),
-                 nsamples_list=(64, 64), group_mlps=((64, 64, 128), (128, 128, 256)),
+                 nsamples_list=(32, 64), group_mlps=((64, 64, 128), (128, 128, 256)),
                  global_mlps=(256, 512, 1024), fc_channels=(512, 256),
                  drop_prob=0.5, use_xyz=True):
         super().__init__()
