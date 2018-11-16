@@ -1,0 +1,65 @@
+import argparse
+import os.path as osp
+
+import torch
+
+from shaper.config import cfg
+from shaper.engine.tester import test
+from shaper.utils.io import mkdir
+from shaper.utils.logger import setup_logger
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="PyTorch 3D Deep Learning Testing")
+    parser.add_argument(
+        "--cfg",
+        dest="config_file",
+        default="",
+        metavar="FILE",
+        help="path to config file",
+        type=str,
+    )
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = parse_args()
+    num_gpus = torch.cuda.device_count()
+
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
+
+    output_dir = cfg.OUTPUT_DIR
+    if output_dir:
+        if output_dir == "@":
+            output_dir = args.config_file.replace("configs", "outputs")
+            output_dir = osp.splitext(output_dir)[0]
+        mkdir(output_dir)
+
+    logger = setup_logger("shaper", output_dir, prefix="test")
+    logger.info("Using {} GPUs".format(num_gpus))
+    logger.info(args)
+
+    # logger.info("Collecting env info (might take some time)")
+    # logger.info("\n" + collect_env_info())
+
+    logger.info("Loaded configuration file {}".format(args.config_file))
+    # with open(args.config_file, "r") as fid:
+    #     config_str = "\n" + fid.read()
+    #     logger.info(config_str)
+    logger.info("Running with config:\n{}".format(cfg))
+
+    model = test(cfg, output_dir)
+
+
+if __name__ == "__main__":
+    main()

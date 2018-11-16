@@ -15,10 +15,16 @@ def build_transform(cfg, is_train=True):
         transform_list.append(T.PointCloudTensorTranspose())
         transform = T.Compose(transform_list)
     else:
-        transform = T.Compose([
-            T.PointCloudToTensor(),
-            T.PointCloudTensorTranspose()
-        ])
+        # testing
+        transform_list = [T.PointCloudToTensor()]
+        for aug in cfg.TEST.AUGMENTATION:
+            if isinstance(aug, (list, tuple)):
+                transform_list.append(getattr(T, aug[0])(*aug[1:]))
+            else:
+                transform_list.append(getattr(T, aug)())
+        transform_list.append(T.PointCloudTensorTranspose())
+        transform = T.Compose(transform_list)
+
 
     return transform
 

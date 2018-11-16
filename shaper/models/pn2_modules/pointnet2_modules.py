@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.models.pn2_modules import pointnet2_utils
-from shaper.models._utils import SharedMLP
+from shaper.nn import SharedMLP
 from typing import List
 
 
@@ -104,7 +104,7 @@ class PointnetSAModuleMSG(_PointnetSAModuleBase):
             if use_xyz:
                 mlp_spec[0] += 3
 
-            self.mlps.append(SharedMLP(mlp_spec, bn=bn))
+            self.mlps.append(SharedMLP(mlp_spec[0], mlps[1:], bn=bn))
 
 
 class PointnetSAModule(PointnetSAModuleMSG):
@@ -157,7 +157,7 @@ class PointnetFPModule(nn.Module):
 
     def __init__(self, *, mlp: List[int], bn: bool = True):
         super().__init__()
-        self.mlp = SharedMLP(mlp, bn=bn)
+        self.mlp = SharedMLP(mlp[0], mlp[1:], bn=bn)
 
     def forward(
             self, unknown: torch.Tensor, known: torch.Tensor,

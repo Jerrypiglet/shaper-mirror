@@ -11,6 +11,7 @@ DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"
   NUM_CLASSES: 40
+  SHAPE_NAME_PATH: "data/modelnet40/shape_names.txt"
   TRAIN: ("train",)
   VAL: ("test",)
   TEST: ("test",)
@@ -23,9 +24,16 @@ SOLVER:
   STEPS: (20, 40, 60, 80, 120, 140, 160, 180, 200, 220)
 TRAIN:
   BATCH_SIZE: 32
-  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2), "PointCloudTranslate", "PointCloudScale", "PointCloudJitter",)
+  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.06, 0.18), "PointCloudTranslate", "PointCloudScale", "PointCloudJitter",)
   LOG_PERIOD: 50
   CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
+  VISUAL: True
+  PIC_PATH: "outputs/wrong_pts"
+  TYPE: "Vote"
+  VOTE:
+    NUMBER: 2
+    TYPE: ["Logits", "Softmax", "Label"]
+OUTPUT_DIR: "@"

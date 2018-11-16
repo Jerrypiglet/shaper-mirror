@@ -54,8 +54,8 @@ def get_rot_mat(angle, axis):
     cos_angle, sin_angle = np.cos(angle), np.sin(angle)
 
     cross_prod_mat = np.array([[0.0, -u[2], u[1]],
-                                [u[2], 0.0, -u[0]],
-                                [-u[1], u[0], 0.0]])
+                               [u[2], 0.0, -u[0]],
+                               [-u[1], u[0], 0.0]])
     R = cos_angle * np.eye(3) + sin_angle * cross_prod_mat + (1.0 - cos_angle) * np.outer(u, u)
     R = torch.from_numpy(R).float()
     return R
@@ -79,6 +79,29 @@ class PointCloudRotate(object):
             points[:, 0:3] = pc_xyz @ rotation_matrix_t
             points[:, 3:] = pc_normals @ rotation_matrix_t
             return points
+
+
+class PointCloudRotateByAngle(object):
+    def __init__(self, axis_name, angle):
+        assert axis_name in ["x", "y", "z"]
+        if axis_name == "x":
+            self.axis = np.array([1.0, 0.0, 0.0])
+        elif axis_name == "y":
+            self.axis = np.array([0.0, 1.0, 0.0])
+        else:
+            self.axis = np.array([0.0, 0.0, 1.0])
+        self.angle = angle
+        self.rotation_matrix = get_rot_mat(self.angle, self.axis)
+
+    def __call__(self, points):
+        normals = points.size(1) > 3
+        if not normals:
+            return points @ self.rotation_matrix.t()
+        else:
+            pc_xyz = points[:, 0:3]
+            pc_normals = points[:, 3:]
+            points[:, 0:3] = pc_xyz @ self.rotation_matrix.t()
+            points[:, 3:] = pc_normals @ self.rotation_matrix.t()
 
 
 class PointCloudRotatePerturbation(object):
@@ -150,7 +173,7 @@ class PointCloudJitter(object):
 
 class PointCloudRandomInputDropout(object):
     def __init__(self, max_dropout_ratio=0.875):
-        assert 0 <= max_dropout_ratio  < 1
+        assert 0 <= max_dropout_ratio < 1
         self.max_dropout_ratio = max_dropout_ratio
 
     def __call__(self, points):

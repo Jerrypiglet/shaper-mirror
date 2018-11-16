@@ -15,7 +15,6 @@ _C.MODEL.TYPE = ""
 # Pre-trained weights
 _C.MODEL.WEIGHT = ""
 
-
 # -----------------------------------------------------------------------------
 # INPUT (Only support point cloud now)
 # -----------------------------------------------------------------------------
@@ -23,7 +22,6 @@ _C.INPUT = CN()
 
 _C.INPUT.IN_CHANNELS = 3
 _C.INPUT.NUM_POINTS = -1
-
 
 # -----------------------------------------------------------------------------
 # PointNet options
@@ -39,7 +37,6 @@ _C.MODEL.POINTNET.WITH_TRANSFORM = True
 
 _C.MODEL.POINTNET.REG_WEIGHT = 0.0
 
-
 # -----------------------------------------------------------------------------
 # DGCNN options
 # -----------------------------------------------------------------------------
@@ -49,6 +46,7 @@ _C.MODEL.DGCNN.K = 20
 _C.MODEL.DGCNN.EDGE_CONV_CHANNELS = (64, 64, 64, 128)
 _C.MODEL.DGCNN.INTER_CHANNELS = 1024
 _C.MODEL.DGCNN.GLOBAL_CHANNELS = (512, 256)
+_C.MODEL.DGCNN.DROP_PROB = 0.5
 
 _C.MODEL.DGCNN.DROPOUT_PROB = 0.5
 _C.MODEL.DGCNN.LABEL_SMOOTHING = 0.0
@@ -70,11 +68,48 @@ _C.MODEL.PN2MSG = CN()
 _C.MODEL.PN2MSG.NUM_POINTS = (512, 128)
 _C.MODEL.PN2MSG.RADIUS = ((0.1, 0.2, 0.4), (0.2, 0.4, 0.8))
 _C.MODEL.PN2MSG.NUM_SAMPLE = ((16, 32, 128), (32, 64, 128))
-_C.MODEL.PN2MSG.GROUP_MLPS = (((32, 32, 64), (64, 64, 128), (64, 96, 128)), ((64, 64, 128), (128, 128, 256), (128, 128, 256)))
+_C.MODEL.PN2MSG.GROUP_MLPS = (
+    ((32, 32, 64), (64, 64, 128), (64, 96, 128)), ((64, 64, 128), (128, 128, 256), (128, 128, 256)))
 _C.MODEL.PN2MSG.GLOBAL_MLPS = (256, 512, 1024)
 _C.MODEL.PN2MSG.FC_CHANNELS = (512, 256)
 _C.MODEL.PN2MSG.DROP_PROB = 0.5
 _C.MODEL.PN2MSG.USE_XYZ = True
+
+# -----------------------------------------------------------------------------
+# PN2SSG options
+# -----------------------------------------------------------------------------
+_C.MODEL.PN2SSG = CN()
+
+_C.MODEL.PN2SSG.NUM_POINTS = (512, 128)
+_C.MODEL.PN2SSG.RADIUS = (0.2, 0.4)
+_C.MODEL.PN2SSG.NUM_SAMPLE = (64, 64)
+_C.MODEL.PN2SSG.GROUP_MLPS = ((64, 64, 128), (128, 128, 256))
+_C.MODEL.PN2SSG.GLOBAL_MLPS = (256, 512, 1024)
+_C.MODEL.PN2SSG.FC_CHANNELS = (512, 256)
+_C.MODEL.PN2SSG.DROP_PROB = 0.5
+_C.MODEL.PN2SSG.USE_XYZ = True
+
+# -----------------------------------------------------------------------------
+# DGPN2 options
+# -----------------------------------------------------------------------------
+_C.MODEL.DGPN2 = CN()
+
+# Local pointnet paras
+_C.MODEL.DGPN2.NUM_POINTS = 256
+_C.MODEL.DGPN2.RADIUS = (0.1, 0.2, 0.4)
+_C.MODEL.DGPN2.NUM_SAMPLES = (16, 32, 128)
+_C.MODEL.DGPN2.GROUP_MLPS = ((32, 32, 64), (64, 64, 128), (64, 96, 128))
+
+# Dynamic graph paras
+_C.MODEL.DGPN2.EDGE_CONV_CHANNELS = (128, 256, 512)
+_C.MODEL.DGPN2.INTER_CHANNELS = 128
+_C.MODEL.DGPN2.GLOBAL_CHANNELS = (512, 256)
+_C.MODEL.DGPN2.K = 20
+_C.MODEL.DGPN2.TRANSFORM_XYZ = True
+_C.MODEL.DGPN2.DROP_PROB = 0.5
+
+_C.MODEL.DGPN2.LABEL_SMOOTH = 0.0
+_C.MODEL.DGPN2.TRANS_REG_WEIGHT = 0.0
 
 # -----------------------------------------------------------------------------
 # Dataset
@@ -82,6 +117,7 @@ _C.MODEL.PN2MSG.USE_XYZ = True
 _C.DATASET = CN()
 _C.DATASET.TYPE = ""
 _C.DATASET.NUM_CLASSES = 0
+_C.DATASET.SHAPE_NAME_PATH = ""
 
 # Root directory of dataset
 _C.DATASET.ROOT_DIR = ""
@@ -98,7 +134,6 @@ _C.DATASET.TEST = ()
 _C.DATALOADER = CN()
 # Number of data loading threads
 _C.DATALOADER.NUM_WORKERS = 4
-
 
 # ---------------------------------------------------------------------------- #
 # Solver (optimizer, learning schedule)
@@ -127,7 +162,6 @@ _C.SOLVER.SGD.momentum = 0.9
 _C.SOLVER.Adam = CN()
 _C.SOLVER.Adam.betas = (0.9, 0.999)
 
-
 # ---------------------------------------------------------------------------- #
 # Specific train options
 # ---------------------------------------------------------------------------- #
@@ -137,6 +171,7 @@ _C.TRAIN.BATCH_SIZE = 32
 
 _C.TRAIN.CHECKPOINT_PERIOD = 1000
 _C.TRAIN.LOG_PERIOD = 10
+
 
 # Validation
 _C.TRAIN.VAL_PERIOD = 1
@@ -152,7 +187,19 @@ _C.TRAIN.AUGMENTATION = ()
 _C.TEST = CN()
 
 _C.TEST.BATCH_SIZE = 32
+_C.TEST.LOG_PERIOD = 10
+_C.TEST.VISUAL = False
+_C.TEST.PIC_PATH = ""
 
+
+_C.TEST.AUGMENTATION = ()
+_C.TEST.TEST_BEST = False
+_C.TEST.TYPE = "Vanilla"
+
+_C.TEST.VOTE = CN()
+_C.TEST.VOTE.AXIS = "y"
+_C.TEST.VOTE.NUMBER = 12
+_C.TEST.VOTE.TYPE = ["Softmax"]  # ["Logits", "Softmax", "Label"]
 
 # ---------------------------------------------------------------------------- #
 # Misc options
