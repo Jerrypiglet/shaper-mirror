@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def softmax(X, theta=1.0, axis=-1):
+def np_softmax(X, theta=1.0, axis=-1):
     """
     Compute the softmax of each element along an axis of X.
 
@@ -44,4 +44,4 @@ def softmax(X, theta=1.0, axis=-1):
 if __name__ == "__main__":
     x = np.random.rand(2, 4, 3)
     print("Input:\n", x)
-    print("Softmax: \n", softmax(x))
+    print("Softmax: \n", np_softmax(x))

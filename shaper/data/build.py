@@ -15,7 +15,7 @@ def build_transform(cfg, is_train=True):
         transform_list.append(T.PointCloudTensorTranspose())
         transform = T.Compose(transform_list)
     else:
-        # testing
+        # testing (might be different with training)
         transform_list = [T.PointCloudToTensor()]
         for aug in cfg.TEST.AUGMENTATION:
             if isinstance(aug, (list, tuple)):
@@ -24,7 +24,6 @@ def build_transform(cfg, is_train=True):
                 transform_list.append(getattr(T, aug)())
         transform_list.append(T.PointCloudTensorTranspose())
         transform = T.Compose(transform_list)
-
 
     return transform
 
@@ -49,7 +48,8 @@ def build_dataset(cfg, mode="train"):
     elif cfg.DATASET.TYPE == "ModelNet":
         dataset = ModelNet(root_dir=cfg.DATASET.ROOT_DIR,
                            dataset_names=dataset_names,
-                           shuffle_points=False, num_points=cfg.INPUT.NUM_POINTS,
+                           shuffle_points=False,
+                           num_points=cfg.INPUT.NUM_POINTS,
                            transform=transform)
     else:
         raise NotImplementedError()

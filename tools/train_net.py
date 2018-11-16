@@ -5,6 +5,7 @@ import torch
 
 from shaper.config import cfg
 from shaper.engine.trainer import train
+from shaper.engine.tester import test
 from shaper.utils.io import mkdir
 from shaper.utils.logger import setup_logger
 
@@ -64,11 +65,11 @@ def main():
     #     logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
-    model = train(cfg, output_dir)
+    train(cfg, output_dir)
 
-    # TODO: add test
     if not args.skip_test:
-        pass
+        torch.cuda.empty_cache()
+        test(cfg, output_dir)
 
 
 if __name__ == "__main__":

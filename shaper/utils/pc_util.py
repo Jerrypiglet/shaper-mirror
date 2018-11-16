@@ -1,26 +1,20 @@
-""" Utility functions for processing point clouds.
+"""Utility functions for processing point clouds.
 
 Author: Charles R. Qi, Hao Su
 Date: November 2016
 """
 
-import os
-import sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(BASE_DIR)
-
-# Draw point cloud
-from eulerangles import euler2mat
-
 # Point cloud IO
 import numpy as np
+import matplotlib.pyplot as plt
 from plyfile import PlyData, PlyElement
 
- 
+from .eulerangles import euler2mat
+
+
 # ----------------------------------------
 # Point Cloud/Volume Conversions
 # ----------------------------------------
-
 def point_cloud_to_volume_batch(point_clouds, vsize=12, radius=1.0, flatten=True):
     """ Input is BxNx3 batch of point cloud
         Output is Bx(vsize^3)
@@ -50,8 +44,6 @@ def point_cloud_to_volume(points, vsize, radius=1.0):
     vol[locations[:,0],locations[:,1],locations[:,2]] = 1.0
     return vol
 
-#a = np.zeros((16,1024,3))
-#print point_cloud_to_volume_batch(a, 12, 1.0, False).shape
 
 def volume_to_point_cloud(vol):
     """ vol is occupancy grid (value = 0 or 1) of size vsize*vsize*vsize
@@ -70,10 +62,10 @@ def volume_to_point_cloud(vol):
     points = np.vstack(points)
     return points
 
+
 # ----------------------------------------
 # Point cloud IO
 # ----------------------------------------
-
 def read_ply(filename):
     """ read XYZ point cloud from filename PLY file """
     plydata = PlyData.read(filename)
@@ -93,7 +85,6 @@ def write_ply(points, filename, text=True):
 # ----------------------------------------
 # Simple Point cloud and Volume Renderers
 # ----------------------------------------
-
 def draw_point_cloud(input_points, canvasSize=500, space=200, diameter=25,
                      xrot=0, yrot=0, zrot=0, switch_xyz=[0,1,2], normalize=True):
     """ Render point cloud to image with alpha channel.
@@ -153,6 +144,26 @@ def draw_point_cloud(input_points, canvasSize=500, space=200, diameter=25,
     image = image / np.max(image)
     return image
 
+
+def pyplot_draw_point_cloud(points, output_filename):
+    """ points is a Nx3 numpy array """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(points[:,0], points[:,1], points[:,2])
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    #savefig(output_filename)
+
+
+def pyplot_draw_volume(vol, output_filename):
+    """ vol is of size vsize*vsize*vsize
+        output an image to output_filename
+    """
+    points = volume_to_point_cloud(vol)
+    pyplot_draw_point_cloud(points, output_filename)
+
+
 def point_cloud_three_views(points):
     """ input points Nx3 numpy array (+y is up direction).
         return an numpy array gray image of size 500x1500. """ 
@@ -168,32 +179,14 @@ def point_cloud_three_views(points):
     return image_large
 
 
-from PIL import Image
 def point_cloud_three_views_demo():
     """ Demo for draw_point_cloud function """
+    from PIL import Image
     points = read_ply('../third_party/mesh_sampling/piano.ply')
     im_array = point_cloud_three_views(points)
     img = Image.fromarray(np.uint8(im_array*255.0))
     img.save('piano.jpg')
 
+
 if __name__=="__main__":
     point_cloud_three_views_demo()
-
-
-import matplotlib.pyplot as plt
-def pyplot_draw_point_cloud(points, output_filename):
-    """ points is a Nx3 numpy array """
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(points[:,0], points[:,1], points[:,2])
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    #savefig(output_filename)
-
-def pyplot_draw_volume(vol, output_filename):
-    """ vol is of size vsize*vsize*vsize
-        output an image to output_filename
-    """
-    points = volume_to_point_cloud(vol)
-    pyplot_draw_point_cloud(points, output_filename)

@@ -1,8 +1,9 @@
 import logging
 import time
+from collections import defaultdict
+
 import numpy as np
-import os.path as osp
-import imageio
+import scipy.stats as stats
 
 import torch
 from torch import nn
@@ -10,57 +11,12 @@ from torch import nn
 from shaper.models import build_model
 from shaper.data import build_dataloader
 from shaper.data.build import build_transform
-from shaper.utils.torch_utils import set_random_seed
+from shaper.data.datasets import evaluate_classification
+from shaper.utils.torch_util import set_random_seed
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
-from shaper.utils.np_utils import softmax
-from shaper.utils.pc_util import point_cloud_three_views
 from shaper.utils.io import mkdir
-
-
-def cal_avg_class_acc(pred, label, num_classes, visual=False, prefix="",
-                      points=None, shape_names=None, pic_path=""):
-    total_seen_class = [0 for _ in range(num_classes)]
-    total_correct_class = [0 for _ in range(num_classes)]
-    err_cnt = 0
-    assert (not visual) or ((points is not None) and (shape_names is not None) or (pic_path != ""))
-    if not osp.exists(pic_path):
-        mkdir(pic_path)
-    for i in range(pred.shape[0]):
-        l = label[i]
-        total_seen_class[l] += 1
-        total_correct_class[l] += (pred[i] == l)
-
-        if pred[i] != l and visual:
-            if prefix == "":
-                file_name = "{:04d}_label_{}_pred_{}".format(
-                    err_cnt, shape_names[l], shape_names[pred[i]])
-                img_file_name = file_name + ".jpg"
-                xyz_file_name = file_name + ".xyz"
-            else:
-                file_name = prefix+"_{:04d}_label_{}_pred_{}".format(
-                    err_cnt, shape_names[l], shape_names[pred[i]])
-                img_file_name = file_name + ".jpg"
-                xyz_file_name = file_name + ".xyz"
-
-            img_file_name = osp.join(pic_path, img_file_name)
-            xyz_file_name = osp.join(pic_path, xyz_file_name)
-
-            wrong_pts = np.squeeze(points[i, ...])
-            wrong_pts = np.transpose(wrong_pts)
-            out_img = point_cloud_three_views(wrong_pts)
-            imageio.imwrite(img_file_name, out_img)
-
-            np.savetxt(xyz_file_name, wrong_pts, fmt="%.4f")
-
-            err_cnt += 1
-
-    avg_class_acc = np.mean(np.array(total_correct_class)/np.array(total_seen_class, dtype=np.float))
-
-    return avg_class_acc
-
-
-
+from shaper.utils.np_util import np_softmax
 
 
 
@@ -68,19 +24,32 @@ def test_model(model,
                loss_fn,
                metric_fn,
                data_loader,
-               log_period=1):
+               log_period=1,
+               with_label=True):
+    """Test model
+
+    In some case, the model is tested without labels, where loss_fn and metric_fn are invalid.
+    This method will forward the model to get predictions in the order of dataloader.
+
+    Args:
+        model (nn.Module): model to test
+        loss_fn (nn.Module or Function): loss function
+        metric_fn (nn.Module or Function): metric function
+        data_loader (torch.utils.data.DataLoader):
+        log_period (int):
+        with_label (bool): whether dataloader has labels
+
+    Returns:
+
+    """
     logger = logging.getLogger("shaper.test")
     meters = MetricLogger(delimiter="  ")
     model.eval()
-    end = time.time()
 
-    test_result_dict = {
-        "points": [],
-        "cls_labels": [],
-        "cls_logits": [],
-    }
+    test_result_dict = defaultdict(list)
 
     with torch.no_grad():
+        end = time.time()
         for iteration, data_batch in enumerate(data_loader):
             data_time = time.time() - end
 
@@ -88,24 +57,16 @@ def test_model(model,
 
             preds = model(data_batch)
 
-            test_result_dict["points"].append(data_batch["points"])
-            test_result_dict["cls_labels"].append(data_batch["cls_labels"])
-            test_result_dict["cls_logits"].append(preds["cls_logits"])
+            for k, v in preds.items():
+                test_result_dict[k].append(v.cpu().numpy())
 
-            loss_dict = loss_fn(preds, data_batch)
-            # for key, value in loss_dict.items():
-            #     if key not in test_result_dict.keys():
-            #         test_result_dict[key] = []
-            #     test_result_dict[key].append(value)
+            if with_label:
+                loss_dict = loss_fn(preds, data_batch)
+                metric_dict = metric_fn(preds, data_batch)
 
-            metric_dict = metric_fn(preds, data_batch)
-            for key, value in metric_dict.items():
-                if key not in test_result_dict.keys():
-                    test_result_dict[key] = []
-                test_result_dict[key].append(value)
+                losses = sum(loss_dict.values())
+                meters.update(loss=losses, **loss_dict, **metric_dict)
 
-            losses = sum(loss_dict.values())
-            meters.update(loss=losses, **loss_dict, **metric_dict)
             batch_time = time.time() - end
             end = time.time()
             meters.update(time=batch_time, data=data_time)
@@ -123,15 +84,8 @@ def test_model(model,
                     )
                 )
 
-    # transform to np.array and concatenate
-    for key, value_list in test_result_dict.items():
-        val_numpy = []
-        if isinstance(value_list, (list, tuple)):
-            for value in value_list:
-                _ = value.cpu().numpy()
-                val_numpy.append(_)
-            val_numpy = np.concatenate(val_numpy, axis=0)
-            test_result_dict[key] = val_numpy
+    # concatenate
+    test_result_dict = {k: np.concatenate(v, axis=0) for k, v in test_result_dict.items()}
 
     return meters, test_result_dict
 
@@ -148,124 +102,86 @@ def test(cfg, output_dir=""):
     # build checkpointer
     checkpointer = Checkpointer(model, save_dir=output_dir)
 
-    if cfg.TEST.TEST_BEST:
-        checkpoint_data = checkpointer.load("model_best", resume=False)
+    if cfg.TEST.WEIGHT:
+        weight_path = cfg.TEST.WEIGHT.replace("@", output_dir)
+        checkpointer.load(weight_path, resume=False)
     else:
-        checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=True)
+        checkpointer.load(None, resume=True)
 
     # build data loader
     test_data_loader = build_dataloader(cfg, mode="test")
-
-    # visualization
-    visual = cfg.TEST.VISUAL
-    shape_names = None
-    if visual:
-        assert osp.exists(cfg.DATASET.SHAPE_NAME_PATH)
-        shape_names = [line.rstrip() for line in \
-                   open(cfg.DATASET.SHAPE_NAME_PATH)]
+    test_dataset = test_data_loader.dataset
 
     # test
-    test_result_collection = {}
+    test_result_collection = []
+    vis_dir = cfg.TEST.VIS_DIR.replace("@", output_dir)
+    if vis_dir:
+        mkdir(vis_dir)
 
-    start_time = time.time()
-    assert cfg.TEST.TYPE in ["Vanilla", "Vote"]
-    if cfg.TEST.TYPE == "Vanilla":
-        test_meters, test_result_dict = test_model(model,
-                                                   loss_fn,
-                                                   metric_fn,
-                                                   test_data_loader, log_period=cfg.TEST.LOG_PERIOD)
-        test_result_collection.update(test_result_dict)
-    elif cfg.TEST.TYPE == "Vote":
-        for i in range(cfg.TEST.VOTE.NUMBER):
-            period_start_time = time.time()
-            test_result_collection[i] = {}
-            cfg.defrost()
-            angle = i / cfg.TEST.VOTE.NUMBER * 2 * np.pi
-            test_result_collection[i]["angle"] = angle
-            cfg.TEST.AUGMENTATION = (("PointCloudRotateByAngle", cfg.TEST.VOTE.AXIS, angle),)
-            test_data_loader.dataset.transform = build_transform(cfg, False)
-            cfg.freeze()
+    if cfg.TEST.VOTE.ENABLE:  # Multi-view voting
+        for view_ind in range(cfg.TEST.VOTE.NUM_VIEW):
+            start_time = time.time()
+            tmp_cfg = cfg.clone()
+            tmp_cfg.defrost()
+            angle = 2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VIEW
+            tmp_cfg.TEST.AUGMENTATION = (("PointCloudRotateByAngle", cfg.TEST.VOTE.AXIS, angle),)
+            test_data_loader.dataset.transform = build_transform(tmp_cfg, False)
             test_meters, test_result_dict = test_model(model,
                                                        loss_fn,
                                                        metric_fn,
-                                                       test_data_loader, log_period=cfg.TEST.LOG_PERIOD)
-            test_result_collection[i].update(test_result_dict)
-            period_test_time = time.time() - period_start_time
-            logger.info("Test rotation over [{}] by [{:.4f}] rad".format(cfg.TEST.VOTE.AXIS, angle))
-            logger.info("Test {}  period_time: {:.2f}s".format(test_meters.summary_str, period_test_time))
+                                                       test_data_loader,
+                                                       log_period=cfg.TEST.LOG_PERIOD)
 
-        # Vote
-        ensemble_sum_logits = None
-        ensemble_sum_softmax = None
-        ensemble_sum_label = None
-        cls_labels = None
-        num_classes = None
-        points = None
+            test_result_collection.append(test_result_dict)
+            test_time = time.time() - start_time
+            logger.info("Test rotation over [{}] axis by [{:.4f}] rad".format(cfg.TEST.VOTE.AXIS, angle))
+            logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
+    else:
+        start_time = time.time()
+        test_meters, test_result_dict = test_model(model,
+                                                   loss_fn,
+                                                   metric_fn,
+                                                   test_data_loader,
+                                                   log_period=cfg.TEST.LOG_PERIOD)
+        test_result_collection.append(test_result_dict)
+        test_time = time.time() - start_time
+        logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
 
-        for index, test_result_dict in test_result_collection.items():
-            if cls_labels is None:
-                cls_labels = test_result_dict['cls_labels']
-            if num_classes is None:
-                num_classes = test_result_dict['cls_logits'].shape[1]
-            if visual and (points is None):
-                points = test_result_dict['points']
+    # ---------------------------------------------------------------------------- #
+    # Ensemble
+    # ---------------------------------------------------------------------------- #
+    # For classification, only use 'cls_logits'
+    cls_logits_all = [d["cls_logits"] for d in test_result_collection]
+    # sanity check
+    assert all(len(cls_logits) == len(test_dataset) for cls_logits in cls_logits_all)
+    # remove transform
+    test_dataset.transform = None
 
-            assert set(cfg.TEST.VOTE.TYPE) <= set(["Logits", "Softmax", "Label"])
-            if "Logits" in cfg.TEST.VOTE.TYPE:
-                if ensemble_sum_logits is None:
-                    ensemble_sum_logits = np.zeros(test_result_dict['cls_logits'].shape)
-                ensemble_sum_logits += test_result_dict['cls_logits']
-            if "Softmax" in cfg.TEST.VOTE.TYPE:
-                if ensemble_sum_softmax is None:
-                    ensemble_sum_softmax = np.zeros(test_result_dict['cls_logits'].shape)
-                ensemble_sum_softmax += softmax(test_result_dict['cls_logits'])
-            if "Label" in cfg.TEST.VOTE.TYPE:
-                if ensemble_sum_label is None:
-                    ensemble_sum_label = np.zeros(test_result_dict['cls_logits'].shape)
-                max_inds = np.argmax(test_result_dict['cls_logits'], axis=-1)
-
-                one_hot_pred = np.zeros(test_result_dict['cls_logits'].shape)
-                for row_index in range(one_hot_pred.shape[0]):
-                    one_hot_pred[row_index, max_inds[row_index]] = 1.0
-                ensemble_sum_label += one_hot_pred
-        logger.info("Ensemble [{}] rotations over [{}] axis: ".format(cfg.TEST.VOTE.NUMBER, cfg.TEST.VOTE.AXIS))
-
-        if "Logits" in cfg.TEST.VOTE.TYPE:
-            ensemble_pred_logits = np.argmax(ensemble_sum_logits, -1)
-            accuracy_logits = np.mean(ensemble_pred_logits == cls_labels)
-            if visual:
-                avg_class_acc = cal_avg_class_acc(ensemble_pred_logits, cls_labels, num_classes, visual=True,
-                                                  prefix="logits", points=points, shape_names=shape_names,
-                                                  pic_path=cfg.TEST.PIC_PATH)
+    if cfg.TEST.VOTE.ENABLE:
+        for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
+            if score_heur == "logit":
+                cls_logits_ensemble = np.mean(cls_logits_all, axis=0)
+                pred_labels = np.argmax(cls_logits_ensemble, -1)  # (num_samples,)
+            elif score_heur == "softmax":
+                cls_probs_all = np_softmax(np.asarray(cls_logits_all))
+                cls_probs_ensemble = np.mean(cls_probs_all, axis=0)
+                pred_labels = np.argmax(cls_probs_ensemble, -1)
+            elif score_heur == "label":
+                pred_labels_all = np.argmax(cls_logits_all, -1)
+                pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
             else:
-                avg_class_acc = cal_avg_class_acc(ensemble_pred_logits, cls_labels, num_classes)
-            logger.info("Ensemble logits  pred accuracy: {:.4f}  avg class accuracy: {:.4f}".format(
-                accuracy_logits, avg_class_acc))
+                raise ValueError("Unknown score heuristic")
 
-        if "Softmax" in cfg.TEST.VOTE.TYPE:
-            ensemble_pred_softmax = np.argmax(ensemble_sum_softmax, -1)
-            accuracy_softmax = np.mean(ensemble_pred_softmax == cls_labels)
-            if visual:
-                avg_class_acc = cal_avg_class_acc(ensemble_pred_softmax, cls_labels, num_classes, visual=True,
-                                                  prefix="softmax", points=points, shape_names=shape_names,
-                                                  pic_path=cfg.TEST.PIC_PATH)
-            else:
-                avg_class_acc = cal_avg_class_acc(ensemble_pred_softmax, cls_labels, num_classes)
-            logger.info("Ensemble softmax pred accuracy: {:.4f}  avg class accuracy: {:.4f}".format(
-                accuracy_softmax, avg_class_acc))
+            logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
+                score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
-        if "Label" in cfg.TEST.VOTE.TYPE:
-            ensemble_pred_label = np.argmax(ensemble_sum_label, -1)
-            accuracy_label = np.mean(ensemble_pred_label == cls_labels)
-            if visual:
-                avg_class_acc = cal_avg_class_acc(ensemble_pred_label, cls_labels, num_classes, visual=True,
-                                                  prefix="label", points=points, shape_names=shape_names,
-                                                  pic_path=cfg.TEST.PIC_PATH)
-            else:
-                avg_class_acc = cal_avg_class_acc(ensemble_pred_label, cls_labels, num_classes)
-            logger.info("Ensemble label   pred accuracy: {:.4f}  avg class accuracy: {:.4f}".format(
-                accuracy_label, avg_class_acc))
+            evaluate_classification(test_dataset, pred_labels,
+                                    output_dir=output_dir,
+                                    vis_dir=vis_dir,
+                                    suffix=score_heur)
 
-    total_test_time = time.time() - start_time
-    logger.info("Test finish  total_time: {:.2f}s".format(total_test_time))
-    return model
+    else:
+        pred_labels = np.argmax(cls_logits_all[0], -1)
+        evaluate_classification(test_dataset, pred_labels,
+                                output_dir=output_dir,
+                                vis_dir=vis_dir)

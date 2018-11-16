@@ -7,7 +7,7 @@ from torch import nn
 from shaper.models import build_model
 from shaper.solver import build_optimizer
 from shaper.data import build_dataloader
-from shaper.utils.torch_utils import set_random_seed
+from shaper.utils.torch_util import set_random_seed
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
@@ -55,7 +55,7 @@ def train_model(model,
                     iter=iteration,
                     meters=str(meters),
                     lr=optimizer.param_groups[0]["lr"],
-                    memory=torch.cuda.max_memory_cached() / (1024.0 ** 2),
+                    memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
                 )
             )
     return meters
@@ -173,7 +173,7 @@ def train(cfg, output_dir=""):
                                         loss_fn,
                                         metric_fn,
                                         val_data_loader,
-                                        log_period=cfg.TRAIN.LOG_PERIOD,
+                                        log_period=cfg.TEST.LOG_PERIOD,
                                         )
             logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
 

@@ -11,7 +11,6 @@ DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"
   NUM_CLASSES: 40
-  SHAPE_NAME_PATH: "data/modelnet40/shape_names.txt"
   TRAIN: ("train",)
   VAL: ("test",)
   TEST: ("test",)
@@ -30,10 +29,9 @@ TRAIN:
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
-  VISUAL: True
-  PIC_PATH: "outputs/wrong_pts"
-  TYPE: "Vote"
+  VIS_DIR: "@/vis_error"
   VOTE:
-    NUMBER: 2
-    TYPE: ["Logits", "Softmax", "Label"]
+    ENABLE: True
+    NUM_VIEW: 12
+    SCORE_HEUR: ("logit",)
 OUTPUT_DIR: "@"

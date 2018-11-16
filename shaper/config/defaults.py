@@ -172,7 +172,6 @@ _C.TRAIN.BATCH_SIZE = 32
 _C.TRAIN.CHECKPOINT_PERIOD = 1000
 _C.TRAIN.LOG_PERIOD = 10
 
-
 # Validation
 _C.TRAIN.VAL_PERIOD = 1
 _C.TRAIN.VAL_METRIC = "acc"
@@ -187,19 +186,34 @@ _C.TRAIN.AUGMENTATION = ()
 _C.TEST = CN()
 
 _C.TEST.BATCH_SIZE = 32
-_C.TEST.LOG_PERIOD = 10
-_C.TEST.VISUAL = False
-_C.TEST.PIC_PATH = ""
 
+# The path of weights to be tested. "@" has similar syntax as OUTPUT_DIR.
+# If not set, the last checkpoint will be used by default.
+_C.TEST.WEIGHT = ""
 
+# Data augmentation.
 _C.TEST.AUGMENTATION = ()
-_C.TEST.TEST_BEST = False
-_C.TEST.TYPE = "Vanilla"
 
+_C.TEST.LOG_PERIOD = 10
+
+# Visualize errors. Path to visualize point clouds
+_C.TEST.VIS_DIR = ""
+
+# ---------------------------------------------------------------------------- #
+# Test-time augmentations for point cloud classification
+# Now only support multi-view voting
+# ---------------------------------------------------------------------------- #
 _C.TEST.VOTE = CN()
+
+_C.TEST.VOTE.ENABLE = False
+
+# The axis along which to rotate
 _C.TEST.VOTE.AXIS = "y"
-_C.TEST.VOTE.NUMBER = 12
-_C.TEST.VOTE.TYPE = ["Softmax"]  # ["Logits", "Softmax", "Label"]
+# The number of views to vote
+_C.TEST.VOTE.NUM_VIEW = 12
+# Heuristic used to combine predicted classification scores
+#   Valid options: ("logit", "softmax", "label")
+_C.TEST.VOTE.SCORE_HEUR = ("logit",)
 
 # ---------------------------------------------------------------------------- #
 # Misc options
