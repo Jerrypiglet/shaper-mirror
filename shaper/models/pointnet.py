@@ -49,6 +49,7 @@ class TNet(nn.Module):
 
         Returns:
             torch.Tensor: (batch_size, out_channels, in_channels)
+
         """
         x = self.mlp_local(x)  # (batch_size, local_channels[-1], num_points)
         x, _ = torch.max(x, 2)  # (batch_size, local_channels[-1])
@@ -56,7 +57,7 @@ class TNet(nn.Module):
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
         I = torch.eye(self.out_channels, self.in_channels, dtype=x.dtype, device=x.device)
-        x.add_(I)  # broadcast first dimension
+        x.add_(I)  # CAUTION: add identity in-place
         return x
 
     def init_weights(self):
@@ -72,6 +73,7 @@ class Stem(nn.Module):
     
     Attributes:
         with_transform: whether to use TNet
+
     """
 
     def __init__(self, in_channels,
@@ -133,6 +135,7 @@ class PointNetCls(nn.Module):
 
     Structure: input -> [Stem] -> features -> [SharedMLP] -> local features
     -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
+
     """
 
     def __init__(self,
@@ -185,6 +188,7 @@ class PointNetClsLoss(nn.Module):
 
     Attributes:
         reg_weight (float): regularization weight for feature transform matrix
+
     """
 
     def __init__(self, reg_weight):

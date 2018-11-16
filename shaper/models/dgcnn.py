@@ -20,7 +20,7 @@ from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
-    """Transformation Network
+    """Transformation Network for DGCNN
 
     Structure: input -> [EdgeFeature] -> [EdgeConv]s -> [EdgePool] -> features -> [MLP] -> local features
     -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
@@ -52,12 +52,14 @@ class TNet(nn.Module):
         self.init_weights()
 
     def forward(self, x):
-        """
+        """TNet forward
+
         Args:
             x (torch.Tensor): (batch_size, in_channels, num_points)
 
         Returns:
             torch.Tensor: (batch_size, out_channels, in_channels)
+
         """
         x = get_edge_feature(x, self.k)  # (batch_size, 2 * in_channels, num_points, k)
         x = self.edge_conv(x)
