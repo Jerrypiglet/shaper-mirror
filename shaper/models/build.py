@@ -1,4 +1,5 @@
-"""Build models
+"""
+Build models
 
 Notes:
     When a new model is implemented, please provide a builder to build the model with config,
@@ -17,6 +18,8 @@ from .pointnet import build_pointnet
 from .dgcnn import build_dgcnn
 # from .s2cnn import build_s2cnn
 # from .pn2_msg import build_pointnet2msg
+# from .pn2_ssg import build_pointnet2ssg
+# from .dg_pn2 import build_dgpn2
 
 
 _MODEL_BUILDERS = {
@@ -24,6 +27,8 @@ _MODEL_BUILDERS = {
     "DGCNN": build_dgcnn,
     # "S2CNN": build_s2cnn,
     # "PN2MSG": build_pointnet2msg,
+    # "PN2SSG": build_pointnet2ssg,
+    # "DGPN2": build_dgpn2,
 }
 
 

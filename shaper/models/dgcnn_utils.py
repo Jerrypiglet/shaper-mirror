@@ -40,15 +40,16 @@ def get_knn_inds(pdist, k=20, remove=False):
 
     """
     if remove:
-        _, knn_inds = torch.topk(pdist, k+1, largest=False)
+        _, knn_inds = torch.topk(pdist, k + 1, largest=False)
         return knn_inds[..., 1:]
     else:
         _, knn_inds = torch.topk(pdist, k, largest=False)
         return knn_inds
 
 
-def construct_edge_feature(features, knn_inds):
+def construct_edge_feature_index(features, knn_inds):
     """Construct edge feature for each point (or regarded as a node)
+    using advanced indexing
 
     Args:
         features (torch.Tensor): point features, (batch_size, channels, num_nodes),
@@ -58,7 +59,40 @@ def construct_edge_feature(features, knn_inds):
         edge_feature: (batch_size, 2*channels, num_nodes, k)
 
     Notes:
-        Gather is more efficient than advance indexing
+        Gather is 50x faster than advanced indexing, but needs 2x more memory.
+        However for training whole network, the speed improvement is not significant
+        (about 0.001s per batch), but gather needs more memory, and the batch_size can
+        only be set as 16 for one-card training, while it can be set as 32 using advanced
+        indexing.
+
+    """
+    batch_size, channels, num_nodes = features.shape
+    k = knn_inds.size(-1)
+
+    # CAUTION: torch.expand
+    feature_central = features.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
+    batch_idx = torch.arange(batch_size).view(-1, 1, 1, 1)
+    feature_idx = torch.arange(channels).view(1, -1, 1, 1)
+    # (batch_size, channels, num_nodes, k)
+    feature_neighbour = features[batch_idx, feature_idx, knn_inds.unsqueeze(1)]
+    edge_feature = torch.cat((feature_central, feature_neighbour - feature_central), 1)
+
+    return edge_feature
+
+
+def construct_edge_feature_gather(features, knn_inds):
+    """Construct edge feature for each point (or regarded as a node)
+    using torch.gather
+
+    Args:
+        features (torch.Tensor): point features, (batch_size, channels, num_nodes),
+        knn_inds (torch.Tensor): indices of k-nearest neighbour, (batch_size, num_nodes, k)
+
+    Returns:
+        edge_feature: (batch_size, 2*channels, num_nodes, k)
+
+    Notes:
+        Gather is 50x faster than advanced indexing, but needs 2x more memory.
 
     """
     batch_size, channels, num_nodes = features.shape
@@ -89,9 +123,16 @@ def get_edge_feature(features, k):
     with torch.no_grad():
         pdist = pairwise_distance(features)
         knn_inds = get_knn_inds(pdist, k)
+        # knn_inds = torch.ones(features.size(0), features.size(2), k, dtype=torch.int64, device=features.device)
+    # if  features.size(1)<10:
+    #     edge_feature = construct_edge_feature_gather(features, knn_inds)
+    # else:
+    #     edge_feature = construct_edge_feature_index(features, knn_inds)
 
-    edge_feature = construct_edge_feature(features, knn_inds)
+    # edge_feature = construct_edge_feature_gather(features, knn_inds)
+    edge_feature = construct_edge_feature_index(features, knn_inds)
 
+    # edge_feature = torch.ones(features.size(0), 2*features.size(1), features.size(2), k, device=features.device)
     return edge_feature
 
 
@@ -178,7 +219,7 @@ if __name__ == '__main__':
     k = 20
 
     features = np.random.rand(batch_size, channels, num_points)
-    features_tensor = torch.from_numpy(features).cuda()
+    features_tensor = torch.from_numpy(features).cuda(0)
 
     # check pairwise distance
     pdist = np.stack([sdist.squareform(np.square(sdist.pdist(feat.T))) for feat in features])
@@ -189,23 +230,38 @@ if __name__ == '__main__':
         end = time.time()
         for _ in range(50):
             pdist_tensor = pairwise_distance(features_tensor)
-        print("pairwise distance", (time.time() - end) / 50, torch.cuda.max_memory_cached() / 1024 ** 2)
+        print("Pairwise distance\n  Time: {:.6f}s".format((time.time() - end) / 50),
+              "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))
 
-    print(np.allclose(pdist, pdist_tensor.cpu().numpy()))
+    print("Tensor and Numpy are same? ", np.allclose(pdist, pdist_tensor.cpu().numpy()), "\n")
 
     # check construct edge feature
+    # advanced intexing
     torch.cuda.empty_cache()
     with torch.no_grad():
-        for warmup in range(5):
-            pdist_tensor = pairwise_distance(features_tensor)
-
-        # knn_inds = torch.arange(k).view(1, 1, -1).expand(batch_size, num_points, k).cuda()
+        # for warmup in range(5):
+        pdist_tensor = pairwise_distance(features_tensor)
         _, knn_inds = torch.topk(pdist_tensor, k, largest=False)
-
         end = time.time()
         for _ in range(5):
-            edge_feature = construct_edge_feature(features_tensor, knn_inds)
-        print("construct edge feature", (time.time() - end) / 5, torch.cuda.max_memory_cached() / 1024 ** 2)
+            edge_feature_index = construct_edge_feature_index(features_tensor, knn_inds)
+        print("Construct edge feature using advanced index.\n  Time: {:.6f}s".format((time.time() - end) / 5),
+              "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))
+
+    # torch gather
+    torch.cuda.empty_cache()
+    with torch.no_grad():
+        # for warmup in range(5):
+        pdist_tensor = pairwise_distance(features_tensor)
+        _, knn_inds = torch.topk(pdist_tensor, k, largest=False)
+        end = time.time()
+        for _ in range(5):
+            edge_feature_gather = construct_edge_feature_gather(features_tensor, knn_inds)
+        print("Construct edge feature using torch gather.\n  Time: {:.6f}s".format((time.time() - end) / 5),
+              "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))
+
+    print("Advanced index and torch gather results are same? ",
+          np.allclose(edge_feature_index.cpu().numpy(), edge_feature_gather.cpu().numpy()), "\n")
 
     # check module speed
     features = np.random.rand(batch_size, channels, num_points).astype(np.float32)
@@ -213,11 +269,12 @@ if __name__ == '__main__':
 
     torch.cuda.empty_cache()
     edge_conv = EdgeConvBlockV2(channels, 64, k)
-    end = time.time()
     with torch.no_grad():
+        end = time.time()
         for _ in range(5):
-            edge_feature = edge_conv(features_tensor)
-        print("EdgeConvBlockV2", (time.time() - end) / 5, torch.cuda.max_memory_cached() / 1024 ** 2)
+            edge_featureV2 = edge_conv(features_tensor)
+        print("EdgeConvBlockV2 with no grad\n  Time: {:.6f}s".format((time.time() - end) / 5),
+              "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))
 
     torch.cuda.empty_cache()
     edge_conv = EdgeConvBlock(channels, [64], k)
@@ -225,4 +282,26 @@ if __name__ == '__main__':
     with torch.no_grad():
         for _ in range(5):
             edge_feature = edge_conv(features_tensor)
-        print("EdgeConvBlock", (time.time() - end) / 5, torch.cuda.max_memory_cached() / 1024 ** 2)
+        print("EdgeConvBlock with no grad\n  Time: {:.6f}s".format((time.time() - end) / 5),
+              "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2), "\n")
+
+    torch.cuda.empty_cache()
+    edge_conv = EdgeConvBlockV2(channels, 64, k)
+    end = time.time()
+    for _ in range(5):
+        edge_featureV2 = edge_conv(features_tensor)
+    edge_featureV2.backward(torch.ones_like(edge_featureV2, device=edge_featureV2.device),
+                            retain_graph=True, create_graph=True)
+    print("EdgeConvBlockV2 with backward\n  Time: {:.6f}s".format((time.time() - end) / 5),
+          "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))
+
+    torch.cuda.empty_cache()
+    edge_conv = EdgeConvBlock(channels, [64], k)
+    end = time.time()
+    for _ in range(5):
+        edge_feature = edge_conv(features_tensor)
+    edge_feature.backward(torch.ones_like(edge_feature, device=edge_feature.device),
+                          retain_graph=True, create_graph=True)
+
+    print("EdgeConvBlock with backward\n  Time: {:.6f}s".format((time.time() - end) / 5),
+          "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))

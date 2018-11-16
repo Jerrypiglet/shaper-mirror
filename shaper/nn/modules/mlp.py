@@ -36,7 +36,7 @@ class MLP(nn.ModuleList):
         for module in self:
             x = module(x)
             if self.dropout:
-                x = F.dropout(x, self.dropout, self.training, inplace=True)
+                x = F.dropout(x, self.dropout, self.training, inplace=False)
         return x
 
 
