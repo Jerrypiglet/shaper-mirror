@@ -3,7 +3,7 @@ import math
 from functools import lru_cache
 import torch
 import torch.cuda
-from s2cnn_modules.utils.decorator import cached_dirpklgz
+from shaper.models.s2cnn_modules.utils.decorator import cached_dirpklgz
 
 
 # inspired by https://gist.github.com/szagoruyko/89f83b6f5f4833d3c8adf81ee49f22a8

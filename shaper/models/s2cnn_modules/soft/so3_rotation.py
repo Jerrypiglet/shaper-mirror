@@ -2,10 +2,10 @@
 import torch
 import numpy as np
 
-from .so3_fft import SO3_fft_real, SO3_ifft_real
-from s2cnn_modules.utils.complex import complex_mm
+from shaper.models.s2cnn_modules.soft.so3_fft import SO3_fft_real, SO3_ifft_real
+from shaper.models.s2cnn_modules.utils.complex import complex_mm
 from functools import lru_cache
-from s2cnn_modules.utils.decorator import cached_dirpklgz
+from shaper.models.s2cnn_modules.utils.decorator import cached_dirpklgz
 
 
 def so3_rotation(x, alpha, beta, gamma):

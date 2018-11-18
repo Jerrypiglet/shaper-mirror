@@ -4,10 +4,10 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.nn.modules import Module
 
-from .s2_fft import S2_fft_real
-from .so3_fft import SO3_ifft_real
-from s2cnn_modules import s2_mm
-from s2cnn_modules import s2_rft
+from shaper.models.s2cnn_modules.soft.s2_fft import S2_fft_real
+from shaper.models.s2cnn_modules.soft.so3_fft import SO3_ifft_real
+from shaper.models.s2cnn_modules import s2_mm
+from shaper.models.s2cnn_modules import s2_rft
 
 
 class S2Convolution(Module):

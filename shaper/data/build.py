@@ -1,6 +1,7 @@
 import torch
 
 from .datasets import *
+from .datasets.modelnetfewshot import ModelNetFewShot
 from . import transform as T
 
 
@@ -47,6 +48,12 @@ def build_dataset(cfg, mode="train"):
                            transform=transform)
     elif cfg.DATASET.TYPE == "ModelNet":
         dataset = ModelNet(root_dir=cfg.DATASET.ROOT_DIR,
+                           dataset_names=dataset_names,
+                           shuffle_points=False,
+                           num_points=cfg.INPUT.NUM_POINTS,
+                           transform=transform)
+    elif cfg.DATASET.TYPE == "ModelNetFewShot":
+        dataset = ModelNetFewShot(root_dir=cfg.DATASET.ROOT_DIR,
                            dataset_names=dataset_names,
                            shuffle_points=False,
                            num_points=cfg.INPUT.NUM_POINTS,

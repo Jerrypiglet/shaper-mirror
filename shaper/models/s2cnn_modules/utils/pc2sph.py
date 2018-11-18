@@ -65,7 +65,7 @@ class PointCloudProjector(nn.Module):
         super(PointCloudProjector, self).__init__()
 
         self.bandwidth = bandwidth
-        self.grid = torch.as_tensor(get_projection_grid(self.bandwidth, grid_type))
+        self.grid = torch.as_tensor(get_projection_grid(self.bandwidth, grid_type)).type(torch.float32)
         self.gridT = torch.transpose(self.grid, 0, 1).type(torch.float32)
 
     def forward(self, x, pts_cnt=None):
@@ -159,11 +159,11 @@ if __name__ == "__main__":
 
     pc_projector = PointCloudProjector(bandwidth=16)
     pc = np.random.rand(4, 3, 20, 10)
-    pc = torch.as_tensor(pc)
+    pc = torch.as_tensor(pc).type(torch.float32)
     grid_val = pc_projector(pc)
     print('pc grid shape: ', grid_val.shape)
 
     pcn = np.random.rand(4, 6, 20, 10)
-    pcn = torch.as_tensor(pcn)
+    pcn = torch.as_tensor(pcn).type(torch.float32)
     grid_val_pcn = pc_projector(pcn)
     print('pcn grid shape: ', grid_val_pcn[0].shape, grid_val_pcn[1].shape)

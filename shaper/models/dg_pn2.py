@@ -24,11 +24,11 @@ class DGPN2Cls(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels,
-                 num_points=256, radius_list=(0.1, 0.2, 0.4), num_samples_list=(16, 32, 128),
-                 group_mlps_list=((32, 32, 64), (64, 64, 128), (64, 96, 128)),  # local pointnet paras
+                 num_points=256, radius_list=(0.2,), num_samples_list=(64,),
+                 group_mlps_list=((64, 64, 128),),  # local pointnet paras
                  edge_conv_channels=(128, 256, 512), inter_channels=128,  # dynamic graph paras
                  global_channels=(512, 256), k=20, transform_xyz=True, drop_prob=0.5):
-        super().__init__()
+        super(DGPN2Cls, self).__init__()
 
         local_sa_scale_num = len(radius_list)
         assert len(num_samples_list) == local_sa_scale_num
@@ -52,7 +52,8 @@ class DGPN2Cls(nn.Module):
                                               mlps=group_sa_mlps, use_xyz=True)
 
         # TODO: Try using concat feature to predict trainsform matrix
-        self.transform_input = TNet(in_channels, in_channels)
+        if self.transform_xyz:
+            self.transform_input = TNet(in_channels, in_channels, k=k)
 
         concat_feature_channels = group_sa_out_channels + 3  # features+xyz
 

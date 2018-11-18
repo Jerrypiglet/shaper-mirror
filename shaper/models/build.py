@@ -17,18 +17,20 @@ Notes:
 from .pointnet import build_pointnet
 from .dgcnn import build_dgcnn
 # from .s2cnn import build_s2cnn
-# from .pn2_msg import build_pointnet2msg
+from .pn2_msg import build_pointnet2msg
 from .pn2_ssg import build_pointnet2ssg
 # from .dg_pn2 import build_dgpn2
+from .dg_s2cnn import build_dgs2cnn
 
 
 _MODEL_BUILDERS = {
     "PointNet": build_pointnet,
     "DGCNN": build_dgcnn,
     # "S2CNN": build_s2cnn,
-    # "PN2MSG": build_pointnet2msg,
+    "PN2MSG": build_pointnet2msg,
     "PN2SSG": build_pointnet2ssg,
     # "DGPN2": build_dgpn2,
+    "DGS2CNN": build_dgs2cnn,
 }
 
 

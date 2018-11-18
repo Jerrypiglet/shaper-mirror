@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP
+from shaper.nn.modules.linear import FC
 from shaper.models.metric import Accuracy
 
 
@@ -149,10 +150,12 @@ class PointNetCls(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.dropout_prob = dropout_prob
 
         self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
         self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
-        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
+        self.mlp_global = MLP(local_channels[-1], global_channels)
+
         self.linear = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
@@ -169,6 +172,7 @@ class PointNetCls(nn.Module):
         end_points['key_point_inds'] = max_indices
         # mlp for global features
         x = self.mlp_global(x)
+        x = F.dropout(x, self.dropout_prob, self.training, inplace=False)
         x = self.linear(x)
 
         preds = {

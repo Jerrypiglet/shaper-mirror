@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 from functools import lru_cache
-from s2cnn_modules.utils.decorator import cached_dirpklgz
+from shaper.models.s2cnn_modules.utils.decorator import cached_dirpklgz
 
 
 def s2_rft(x, b, grid):

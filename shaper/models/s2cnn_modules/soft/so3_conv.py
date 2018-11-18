@@ -4,9 +4,9 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.nn.modules import Module
 
-from .so3_fft import SO3_fft_real, SO3_ifft_real
-from s2cnn_modules import so3_mm
-from s2cnn_modules import so3_rft
+from shaper.models.s2cnn_modules.soft.so3_fft import SO3_fft_real, SO3_ifft_real
+from shaper.models.s2cnn_modules import so3_mm
+from shaper.models.s2cnn_modules import so3_rft
 
 
 class SO3Convolution(Module):

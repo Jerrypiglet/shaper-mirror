@@ -13,7 +13,7 @@ def s2_mm(x, y):
     :param y: [l * m,     feature_in, feature_out, complex]
     :return:  [l * m * n, batch,      feature_out, complex]
     '''
-    from s2cnn_modules.utils.complex import complex_mm
+    from .utils.complex import complex_mm
 
     assert y.size(3) == 2
     assert x.size(3) == 2
@@ -67,7 +67,7 @@ class _cuda_S2_mm(torch.autograd.Function):
         return _cuda_s2_mm(x, y)
 
     def backward(self, gradz):  # pylint: disable=W
-        import s2cnn_modules.utils.cuda as cuda_utils
+        from .utils import cuda as cuda_utils
         x, y = self.saved_tensors
         nl = round(x.size(0) ** 0.5)
         nbatch = x.size(1)
@@ -108,7 +108,7 @@ def _cuda_s2_mm(x, y):
     :param y: [l * m,     feature_in, feature_out, complex]
     :return:  [l * m * n, batch,      feature_out, complex]
     '''
-    import s2cnn_modules.utils.cuda as cuda_utils
+    from .utils import cuda as cuda_utils
     assert x.is_cuda and x.dtype == torch.float32
     assert y.is_cuda and y.dtype == torch.float32
     assert y.size(3) == 2
@@ -195,7 +195,7 @@ __global__ void main_(const float* in_x, const float* in_y, float* out) {
                  'nfeature_in': nfeature_in,
                  'nfeature_out': nfeature_out})
 
-    import s2cnn_modules.utils.cuda as cuda_utils
+    from .utils import cuda as cuda_utils
     return cuda_utils.compile_kernel(kernel, 's2mm.cu', 'main_')
 
 
@@ -252,7 +252,7 @@ __global__ void main_(const float* grad_z, const float* y, float* grad_x) {
                  'nfeature_in': nfeature_in,
                  'nfeature_out': nfeature_out})
 
-    import s2cnn_modules.utils.cuda as cuda_utils
+    from .utils import cuda as cuda_utils
     return cuda_utils.compile_kernel(kernel, 's2mm_gradx.cu', 'main_')
 
 
@@ -309,7 +309,7 @@ __global__ void main_(const float* grad_z, const float* x, float* grad_y) {
                  'nfeature_in': nfeature_in,
                  'nfeature_out': nfeature_out})
 
-    import s2cnn_modules.utils.cuda as cuda_utils
+    from .utils import cuda as cuda_utils
     return cuda_utils.compile_kernel(kernel, 's2mm_grady.cu', 'main_')
 
 
