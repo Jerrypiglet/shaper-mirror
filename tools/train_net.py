@@ -21,10 +21,10 @@ def parse_args():
         type=str,
     )
     parser.add_argument(
-        "--skip-test",
-        dest="skip_test",
-        help="Do not test the final model",
-        action="store_false",
+        "--do-test",
+        dest="do_test",
+        help="Test the final model",
+        action="store_true",
     )
     parser.add_argument(
         "opts",
@@ -67,7 +67,7 @@ def main():
 
     train(cfg, output_dir)
 
-    if not args.skip_test:
+    if args.do_test:
         torch.cuda.empty_cache()
         test(cfg, output_dir)
 

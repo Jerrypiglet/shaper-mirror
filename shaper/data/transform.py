@@ -1,5 +1,7 @@
-"""
-Helpers to transform point clouds. Especially for data augmentation
+"""Helpers to transform point clouds. Especially for data augmentation
+
+FIXME: Multi-thread loading will cause wrong behaviour of numpy random
+
 """
 
 import torch

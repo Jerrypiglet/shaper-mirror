@@ -8,9 +8,14 @@ def init_bn(module):
         nn.init.zeros_(module.bias)
 
 
-def init_uniform(module, relu=True):
+def set_bn(model, momentum):
+    for m in model.modules():
+        if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+            m.momentum = momentum
+
+
+def init_uniform(module):
     if module.weight is not None:
-        nn.init.kaiming_uniform_(module.weight,
-                                 nonlinearity="relu" if relu else "linear")
+        nn.init.xavier_uniform_(module.weight)
     if module.bias is not None:
         nn.init.zeros_(module.bias)

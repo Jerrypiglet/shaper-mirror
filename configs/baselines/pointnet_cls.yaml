@@ -6,7 +6,7 @@ MODEL:
   TYPE: "PointNet"
   POINTNET:
     DROPOUT_PROB: 0.3
-    REG_WEIGHT: 128.0
+    REG_WEIGHT: 0.032
 DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"
@@ -14,24 +14,21 @@ DATASET:
   TRAIN: ("train",)
   VAL: ("test",)
   TEST: ("test",)
-DATALOADER:
-  NUM_WORKERS: 4
 SOLVER:
   BASE_LR: 0.001
   MAX_EPOCH: 250
-  GAMMA: 0.8
-  STEPS: (20, 40, 60, 80, 120, 140, 160, 180, 200, 220)
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
 TRAIN:
   BATCH_SIZE: 32
-  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.06, 0.18), "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)
   LOG_PERIOD: 50
   CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
-  VIS_DIR: "@/vis_error"
+#  VIS_DIR: "@/vis_error"
   VOTE:
     ENABLE: True
     NUM_VIEW: 12
     SCORE_HEUR: ("logit",)
-OUTPUT_DIR: "@"

@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data import DataLoader
 
 from .datasets import *
 from . import transform as T
@@ -66,9 +67,11 @@ def build_dataloader(cfg, mode="train"):
 
     is_train = mode == "train"
     dataset = build_dataset(cfg, mode)
-    data_loader = torch.utils.data.DataLoader(
+    data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=is_train,
-        num_workers=cfg.DATALOADER.NUM_WORKERS)
+        drop_last=is_train,
+        num_workers=cfg.DATALOADER.NUM_WORKERS,
+    )
     return data_loader

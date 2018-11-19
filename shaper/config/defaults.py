@@ -133,7 +133,7 @@ _C.DATASET.TEST = ()
 # -----------------------------------------------------------------------------
 _C.DATALOADER = CN()
 # Number of data loading threads
-_C.DATALOADER.NUM_WORKERS = 4
+_C.DATALOADER.NUM_WORKERS = 0
 
 # ---------------------------------------------------------------------------- #
 # Solver (optimizer, learning schedule)
@@ -223,7 +223,4 @@ _C.OUTPUT_DIR = "@"
 
 # For reproducibility...but not really because modern fast GPU libraries use
 # non-deterministic op implementations
-_C.RNG_SEED = 0
-
-# GPU devices to use; all available devices by default
-_C.DEVICE_IDS = ()
+# _C.RNG_SEED = 0

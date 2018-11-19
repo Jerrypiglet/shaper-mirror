@@ -7,7 +7,6 @@ from torch import nn
 from shaper.models import build_model
 from shaper.solver import build_optimizer
 from shaper.data import build_dataloader
-from shaper.utils.torch_util import set_random_seed
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
@@ -102,14 +101,12 @@ def validate_model(model,
 
 
 def train(cfg, output_dir=""):
-    set_random_seed(cfg.RNG_SEED)
     logger = logging.getLogger("shaper.trainer")
 
     # build model
     model, loss_fn, metric_fn = build_model(cfg)
     logger.info("Build model:\n{}".format(str(model)))
-    device_ids = cfg.DEVICE_IDS if cfg.DEVICE_IDS else None
-    model = nn.DataParallel(model, device_ids=device_ids).cuda()
+    model = nn.DataParallel(model).cuda()
 
     # build optimizer
     optimizer = build_optimizer(cfg, model)

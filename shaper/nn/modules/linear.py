@@ -12,6 +12,7 @@ class FC(nn.Module):
         conv (nn.Module): convolution module
         bn (nn.Module): batch normalization module
         relu (bool): whether to activate by relu
+
     """
 
     def __init__(self, in_channels, out_channels,
@@ -33,6 +34,7 @@ class FC(nn.Module):
         return x
 
     def init_weights(self):
-        init_uniform(self.fc, self.relu)
+        """default initialization"""
+        init_uniform(self.fc)
         if self.bn is not None:
             init_bn(self.bn)

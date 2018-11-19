@@ -91,13 +91,11 @@ def test_model(model,
 
 
 def test(cfg, output_dir=""):
-    set_random_seed(cfg.RNG_SEED)
     logger = logging.getLogger("shaper.tester")
 
     # build model
     model, loss_fn, metric_fn = build_model(cfg)
-    device_ids = cfg.DEVICE_IDS if cfg.DEVICE_IDS else None
-    model = nn.DataParallel(model, device_ids=device_ids).cuda()
+    model = nn.DataParallel(model).cuda()
 
     # build checkpointer
     checkpointer = Checkpointer(model, save_dir=output_dir)
