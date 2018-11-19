@@ -112,32 +112,6 @@ _C.MODEL.DGPN2.LABEL_SMOOTH = 0.0
 _C.MODEL.DGPN2.TRANS_REG_WEIGHT = 0.0
 
 # -----------------------------------------------------------------------------
-# DGS2CNN options
-# -----------------------------------------------------------------------------
-_C.MODEL.DGS2CNN = CN()
-
-# Local group paras
-_C.MODEL.DGS2CNN.NUM_POINTS = 16
-_C.MODEL.DGS2CNN.RADIUS_LIST = (0.2,)
-_C.MODEL.DGS2CNN.NUM_SAMPLE_LIST = (16,)
-
-# Local s2cnn paras
-_C.MODEL.DGS2CNN.BAND_WIDTH_IN_LIST = (16,)
-_C.MODEL.DGS2CNN.FEATURE_CHANNELS_LIST = ((32, 64),)
-_C.MODEL.DGS2CNN.BAND_WIDTH_LIST = ((16, 8),)
-
-# Dynamic graph paras
-_C.MODEL.DGS2CNN.EDGE_CONV_CHANNELS = (128, 256, 512)
-_C.MODEL.DGS2CNN.INTER_CHANNELS = 128
-_C.MODEL.DGS2CNN.GLOBAL_CHANNELS = (512, 256)
-_C.MODEL.DGS2CNN.K = 4
-_C.MODEL.DGS2CNN.TRANSFORM_XYZ = True
-_C.MODEL.DGS2CNN.DROP_PROB = 0.5
-
-_C.MODEL.DGS2CNN.LABEL_SMOOTH = 0.0
-_C.MODEL.DGS2CNN.TRANS_REG_WEIGHT = 0.0
-
-# -----------------------------------------------------------------------------
 # Dataset
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
