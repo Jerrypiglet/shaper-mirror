@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.models.pn2_modules.pointnet2_modules import PointnetSAModuleMSG, PointnetSAModule
-from shaper.nn import FC
+from shaper.nn import MLP
 from shaper.models.metric import Accuracy
 
 
@@ -81,13 +81,8 @@ class Pointnet2MSG_Cls(nn.Module):
             )
         )
         fc_in_channels = global_mlps[-1]
-        FC_layers = []
-        for fc_out_channels in fc_channels:
-            FC_layers.append(FC(fc_in_channels, fc_out_channels))
-            FC_layers.append(nn.Dropout(p=drop_prob, inplace=True))
-            fc_in_channels = fc_out_channels
-        self.FC_layer = nn.Sequential(*FC_layers)
-        self.classifier = nn.Linear(fc_in_channels, out_channels)
+        self.mlp_global = MLP(fc_in_channels, fc_channels, dropout=drop_prob)
+        self.classifier = nn.Linear(fc_channels[-1], out_channels, bias=True)
 
         self.init_weights()
 
@@ -107,7 +102,7 @@ class Pointnet2MSG_Cls(nn.Module):
 
         for module in self.SA_modules:
             xyz, features = module(xyz, features)
-        x = self.FC_layer(features.squeeze(-1))
+        x = self.mlp_global(features.squeeze(-1))
         cls_logits = self.classifier(x)
         preds = {
             'cls_logits': cls_logits
@@ -116,7 +111,7 @@ class Pointnet2MSG_Cls(nn.Module):
         return preds
 
     def init_weights(self):
-        nn.init.kaiming_uniform_(self.classifier.weight, nonlinearity='linear')
+        nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
 
 
