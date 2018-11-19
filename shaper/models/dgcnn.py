@@ -17,6 +17,7 @@ from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.nn.functional import smooth_cross_entropy
 from shaper.models.dgcnn_utils import get_edge_feature
 from shaper.models.metric import Accuracy
+from shaper.nn.init import set_bn
 
 
 class TNet(nn.Module):
@@ -155,7 +156,7 @@ class DGCNNCls(nn.Module):
                  in_channels, out_channels,
                  edge_conv_channels=(64, 64, 64, 128),
                  inter_channels=1024,
-                 global_channels=(256, 128),
+                 global_channels=(512, 256),
                  k=20,
                  dropout_prob=0.5,
                  with_transform=True):
@@ -179,6 +180,8 @@ class DGCNNCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], self.out_channels, bias=True)
 
         self.init_weights()
+        set_bn(self, momentum=0.01)
+
 
     def forward(self, data_batch):
         end_points = {}
@@ -212,7 +215,7 @@ class DGCNNCls(nn.Module):
         return preds
 
     def init_weights(self):
-        nn.init.kaiming_uniform_(self.classifier.weight, nonlinearity='linear')
+        nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
 
 
