@@ -176,7 +176,7 @@ class DGCNNCls(nn.Module):
             in_channels = out_channels
         self.mlp_local = Conv1d(sum(edge_conv_channels), inter_channels, 1)
         self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
-        self.linear = nn.Linear(global_channels[-1], self.out_channels, bias=True)
+        self.classifier = nn.Linear(global_channels[-1], self.out_channels, bias=True)
 
         self.init_weights()
 
@@ -203,7 +203,7 @@ class DGCNNCls(nn.Module):
         x, max_indices = torch.max(x, 2)
         end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
-        x = self.linear(x)
+        x = self.classifier(x)
         preds = {
             'cls_logits': x
         }
@@ -212,8 +212,8 @@ class DGCNNCls(nn.Module):
         return preds
 
     def init_weights(self):
-        nn.init.kaiming_uniform_(self.linear.weight, nonlinearity='linear')
-        nn.init.zeros_(self.linear.bias)
+        nn.init.kaiming_uniform_(self.classifier.weight, nonlinearity='linear')
+        nn.init.zeros_(self.classifier.bias)
 
 
 class DGCNNClsLoss(nn.Module):

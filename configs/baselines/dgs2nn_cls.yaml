@@ -1,9 +1,9 @@
 TASK:
   "classification"
+MODEL:
+  TYPE: "DGS2CNN"
 INPUT:
   NUM_POINTS: 1024
-MODEL:
-  TYPE: "PN2SSG"
 DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"
@@ -15,20 +15,13 @@ DATALOADER:
   NUM_WORKERS: 4
 SOLVER:
   BASE_LR: 0.001
-  MAX_EPOCH: 251
-  GAMMA: 0.7
+  MAX_EPOCH: 250
+  GAMMA: 0.5
   STEPS: (20, 40, 60, 80, 120, 140, 160, 180, 200, 220)
 TRAIN:
-  BATCH_SIZE: 16
+  BATCH_SIZE: 32
   AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.06, 0.18), "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
-  LOG_PERIOD: 50
-  CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 16
-  VIS_DIR: "@/vis_error"
-  VOTE:
-    ENABLE: True
-    NUM_VIEW: 12
-    SCORE_HEUR: ("logit",)
-OUTPUT_DIR: "@"
+DEVICE_IDS: (0,)

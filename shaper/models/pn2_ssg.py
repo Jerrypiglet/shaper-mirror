@@ -68,7 +68,7 @@ class PointNet2SSG_Cls(nn.Module):
             FC_layers.append(nn.Dropout(p=drop_prob, inplace=True))
             fc_in_channels = fc_out_channels
         self.FC_layer = nn.Sequential(*FC_layers)
-        self.linear = nn.Linear(fc_in_channels, out_channels)
+        self.classifier = nn.Linear(fc_in_channels, out_channels)
 
         self.init_weights()
 
@@ -92,7 +92,7 @@ class PointNet2SSG_Cls(nn.Module):
             #     print('xyz: ', list(xyz.size()))
             # print('features: ', list(features.size()))
         x = self.FC_layer(features.squeeze(-1))
-        cls_logits = self.linear(x)
+        cls_logits = self.classifier(x)
         preds = {
             'cls_logits': cls_logits
         }
@@ -100,8 +100,8 @@ class PointNet2SSG_Cls(nn.Module):
         return preds
 
     def init_weights(self):
-        nn.init.kaiming_uniform_(self.linear.weight, nonlinearity='linear')
-        nn.init.zeros_(self.linear.bias)
+        nn.init.kaiming_uniform_(self.classifier.weight, nonlinearity='linear')
+        nn.init.zeros_(self.classifier.bias)
 
 
 class PointNet2SSG_ClsLoss(nn.Module):

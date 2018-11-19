@@ -3,7 +3,7 @@ from functools import lru_cache
 import torch
 import torch.cuda
 from string import Template
-from s2cnn_modules.utils.decorator import cached_dirpklgz
+from shaper.models.s2cnn_modules.utils.decorator import cached_dirpklgz
 
 
 # inspired by https://gist.github.com/szagoruyko/89f83b6f5f4833d3c8adf81ee49f22a8
@@ -39,7 +39,7 @@ def s2_fft(x, for_grad=False, b_out=None):
 
     output = x.new_empty((nspec, nbatch, 2))
     if x.is_cuda and x.dtype == torch.float32:
-        import s2cnn_modules.utils.cuda as cuda_utils
+        import shaper.models.s2cnn_modules.utils.cuda as cuda_utils
         cuda_kernel = _setup_s2fft_cuda_kernel(b=b_in, nspec=nspec, nbatch=nbatch, device=x.device.index)
         stream = cuda_utils.Stream(ptr=torch.cuda.current_stream().cuda_stream)
         cuda_kernel(block=(1024, 1, 1),
@@ -82,7 +82,7 @@ def s2_ifft(x, for_grad=False, b_out=None):
     wigner = wigner.view(2 * b_out, -1)  # [beta, l * m] (2 * b_out, nspec)
 
     if x.is_cuda and x.dtype == torch.float32:
-        import s2cnn_modules.utils.cuda as cuda_utils
+        import shaper.models.s2cnn_modules.utils.cuda as cuda_utils
         cuda_kernel = _setup_s2ifft_cuda_kernel(b=b_out, nl=b_in, nbatch=nbatch, device=x.device.index)
         stream = cuda_utils.Stream(ptr=torch.cuda.current_stream().cuda_stream)
         output = x.new_empty((nbatch, 2 * b_out, 2 * b_out, 2))
@@ -180,7 +180,7 @@ __global__ void main_(const float* in, const float* wig, float* out) {
 }
 ''').substitute({'b': b, 'nbatch': nbatch, 'nspec': nspec})
 
-    import s2cnn_modules.utils.cuda as cuda_utils
+    import shaper.models.s2cnn_modules.utils.cuda as cuda_utils
     return cuda_utils.compile_kernel(kernel, 's2fft.cu', 'main_')
 
 
@@ -218,7 +218,7 @@ __global__ void main_(const float* in, const float* wig, float* out) {
 }
 ''').substitute({'b': b, 'nbatch': nbatch, 'nl': nl, 'nspec': nl ** 2})
 
-    import s2cnn_modules.utils.cuda as cuda_utils
+    import shaper.models.s2cnn_modules.utils.cuda as cuda_utils
     return cuda_utils.compile_kernel(kernel, 's2ifft.cu', 'main_')
 
 
@@ -229,7 +229,7 @@ class S2_fft_real(torch.autograd.Function):
         self.b_out = b_out
 
     def forward(self, x):  # pylint: disable=W
-        from s2cnn_modules.utils.complex import as_complex
+        from shaper.models.s2cnn_modules.utils.complex import as_complex
         self.b_in = x.size(-1) // 2
         return s2_fft(as_complex(x), b_out=self.b_out)
 
@@ -249,7 +249,7 @@ class S2_ifft_real(torch.autograd.Function):
         return s2_ifft(x, b_out=self.b_out)[..., 0]
 
     def backward(self, grad_output):  # pylint: disable=W
-        from s2cnn_modules.utils.complex import as_complex
+        from shaper.models.s2cnn_modules.utils.complex import as_complex
         return s2_fft(as_complex(grad_output), for_grad=True, b_out=self.b_in)
 
 

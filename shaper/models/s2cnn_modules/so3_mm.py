@@ -11,7 +11,7 @@ def so3_mm(x, y):
     :param y: [l * m * n, feature_in, feature_out, complex]
     :return:  [l * m * n,   batch,    feature_out, complex]
     '''
-    from s2cnn_modules.utils.complex import complex_mm
+    from .utils.complex import complex_mm
     import math
 
     assert y.size(3) == 2
@@ -248,7 +248,7 @@ __global__ void main_(const float* in_x, const float* in_y, float* out)
     }
 }
 '''
-    import s2cnn_modules.utils.cuda as cuda_utils
+    from .utils import cuda as cuda_utils
     kernel = cuda_utils.compile_kernel(kernel, 'so3_mm.cu', 'main_')
     stream = cuda_utils.Stream(ptr=torch.cuda.current_stream().cuda_stream)
 

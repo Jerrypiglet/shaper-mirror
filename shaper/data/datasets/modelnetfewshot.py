@@ -6,21 +6,29 @@ import numpy as np
 from torch.utils.data import Dataset
 
 
-class ModelNet(Dataset):
-    ROOT_DIR = "/data/modelnet40"
-    cat_file = "shape_names.txt"
+class ModelNetFewShot(Dataset):
+    ROOT_DIR = "/data/modelnet40/modelnet40_fewshot"
+    train_cat_file = "train_shape_names.txt"
+    target_cat_file = "target_shape_names.txt"
     dataset_map = {
         "train": "train_files.txt",
-        "test": "test_files.txt",
+        "valid": "valid_files.txt",
+        "target": "target_files.txt",
     }
 
     def __init__(self, root_dir, dataset_names, transform=None,
                  shuffle_points=False, num_points=-1):
         self.root_dir = root_dir
-        self.datasets_names = dataset_names
+        self.dataset_name = dataset_names[0]
         self.num_points = num_points
         self.shuffle_points = shuffle_points
         self.transform = transform
+        if self.dataset_name in ["train"]:
+            self.cat_file = self.train_cat_file
+        elif self.dataset_name in ["valid", "target"]:
+            self.cat_file = self.target_cat_file
+        else:
+            raise NotImplementedError
 
         self.classes = self._load_cat_file()
         self.classes_to_ind_map = {c: i for i, c in enumerate(self.classes)}
@@ -28,10 +36,9 @@ class ModelNet(Dataset):
         # load data
         self.meta_data = []
         self.data_points = []
-        self.data_normals = []
         self.data_labels = []
-        for dataset_name in dataset_names:
-            self._load_dataset(dataset_name)
+        self.data_normals = []
+        self._load_dataset(self.dataset_name)
         self.data_points = np.concatenate(self.data_points, axis=0)
         self.data_labels = np.concatenate(self.data_labels, axis=0)
         self.data_normals = np.concatenate(self.data_normals, axis=0)
@@ -89,8 +96,8 @@ class ModelNet(Dataset):
 
 
 if __name__ == "__main__":
-    root_dir = "../../../data/modelnet40"
-    modelnet = ModelNet(root_dir, ['test'])
+    root_dir = "../../../data/modelnet40/modelnet40_fewshot"
+    modelnet = ModelNetFewShot(root_dir, 'target')
     print('total data num: ', modelnet.__len__())
     # print(modelnet[0][0].size(), modelnet[0][0].type())
     # print(modelnet[0])

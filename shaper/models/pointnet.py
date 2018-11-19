@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP
-from shaper.nn.init import set_bn
+from shaper.nn.modules.linear import FC
 from shaper.models.metric import Accuracy
 
 
@@ -58,7 +58,7 @@ class TNet(nn.Module):
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
         I = torch.eye(self.out_channels, self.in_channels, dtype=x.dtype, device=x.device)
-        x = x.add(I)  # broadcast add
+        x.add_(I)  # CAUTION: add identity in-place
         return x
 
     def init_weights(self):
@@ -150,14 +150,15 @@ class PointNetCls(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.dropout_prob = dropout_prob
 
         self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
         self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
-        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
-        self.linear = nn.Linear(global_channels[-1], out_channels, bias=True)
+        self.mlp_global = MLP(local_channels[-1], global_channels)
+
+        self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         x = data_batch["points"]
@@ -171,7 +172,8 @@ class PointNetCls(nn.Module):
         end_points['key_point_inds'] = max_indices
         # mlp for global features
         x = self.mlp_global(x)
-        x = self.linear(x)
+        x = F.dropout(x, self.dropout_prob, self.training, inplace=False)
+        x = self.classifier(x)
 
         preds = {
             'cls_logits': x
@@ -181,8 +183,8 @@ class PointNetCls(nn.Module):
         return preds
 
     def init_weights(self):
-        nn.init.xavier_uniform_(self.linear.weight)
-        nn.init.zeros_(self.linear.bias)
+        nn.init.kaiming_uniform_(self.classifier.weight, nonlinearity='linear')
+        nn.init.zeros_(self.classifier.bias)
 
 
 class PointNetClsLoss(nn.Module):
@@ -209,11 +211,12 @@ class PointNetClsLoss(nn.Module):
         # regularization over transform matrix
         if self.reg_weight > 0.0:
             trans_feature = preds["trans_feature"]
-            trans_norm = torch.bmm(trans_feature.transpose(2, 1), trans_feature)  # [in, in]
-            I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
-            # CAUTION: torch.expand
-            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
-            loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
+            trans_norm = torch.bmm(trans_feature, trans_feature.transpose(2, 1))  # [out, out]
+            I = torch.eye(trans_norm.size()[1], dtype=trans_norm.dtype, device=trans_norm.device)
+            # Notice that torch.expand() will cause unexpected result when you try to modify it, like a[:, 0] = 1
+            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm))
+            # reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).repeat(trans_norm.size(0), 1, 1))
+            loss_dict["reg_loss"] = reg_loss
 
         return loss_dict
 

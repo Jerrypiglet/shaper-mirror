@@ -1,7 +1,7 @@
 # pylint: disable=R,C,E1101
 import torch
 from functools import lru_cache
-from s2cnn_modules.utils.decorator import show_running
+from shaper.models.s2cnn_modules.utils.decorator import show_running
 
 
 def so3_integrate(x):
