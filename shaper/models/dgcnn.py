@@ -24,7 +24,7 @@ class TNet(nn.Module):
     """Transformation Network for DGCNN
 
     Structure: input -> [EdgeFeature] -> [EdgeConv]s -> [EdgePool] -> features -> [MLP] -> local features
-    -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
+    -> [MaxPool] -> global features -> [MLP] -> [Linear] -> logits
 
     Args:
         conv_channels (tuple of int): the numbers of channels of edge convolution layers
@@ -71,7 +71,7 @@ class TNet(nn.Module):
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
         I = torch.eye(self.out_channels, self.in_channels, device=x.device)
-        x.add_(I)  # broadcast first dimension
+        x = x.add(I)  # broadcast first dimension
         return x
 
     def init_weights(self):
@@ -182,7 +182,6 @@ class DGCNNCls(nn.Module):
         self.init_weights()
         set_bn(self, momentum=0.01)
 
-
     def forward(self, data_batch):
         end_points = {}
         x = data_batch["points"]
@@ -264,17 +263,16 @@ def build_dgcnn(cfg):
 
 if __name__ == "__main__":
     batch_size = 4
-    in_channels = 15
+    in_channels = 3
     num_points = 1024
-    num_classes = 10
+    num_classes = 40
 
     data = torch.rand(batch_size, in_channels, num_points)
-    data = {"points": data}
-    # transform = DGCNN_TNet()
-    # out = transform(data)
-    # print('DGCNN_TNet: ', out.size())
+    transform = TNet()
+    out = transform(data)
+    print('TNet: ', out.size())
 
     dgcnn = DGCNNCls(in_channels, num_classes, with_transform=False)
-    out_dict = dgcnn(data)
+    out_dict = dgcnn({"points": data})
     for k, v in out_dict.items():
-        print('PointNet:', k, v.shape)
+        print('DGCNN:', k, v.shape)

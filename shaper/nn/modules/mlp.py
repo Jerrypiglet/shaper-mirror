@@ -20,14 +20,16 @@ class MLP(nn.ModuleList):
                  in_channels,
                  mlp_channels,
                  dropout=None,
-                 bn=True):
+                 bn=True,
+                 bn_momentum=0.1):
         super(MLP, self).__init__()
 
         self.in_channels = in_channels
         self.dropout = dropout
 
         for ind, out_channels in enumerate(mlp_channels):
-            self.append(FC(in_channels, out_channels, relu=True, bn=bn))
+            self.append(FC(in_channels, out_channels,
+                           relu=True, bn=bn, bn_momentum=bn_momentum))
             in_channels = out_channels
 
         self.out_channels = in_channels
@@ -46,7 +48,8 @@ class SharedMLP(nn.ModuleList):
                  in_channels,
                  mlp_channels,
                  ndim=1,
-                 bn=True):
+                 bn=True,
+                 bn_momentum=0.1):
         """Multilayer perceptron shared on resolution (1D or 2D)
 
         Args:
@@ -67,7 +70,8 @@ class SharedMLP(nn.ModuleList):
             raise ValueError()
 
         for ind, out_channels in enumerate(mlp_channels):
-            self.append(mlp_module(in_channels, out_channels, 1, relu=True, bn=bn))
+            self.append(mlp_module(in_channels, out_channels, 1,
+                                   relu=True, bn=bn, bn_momentum=bn_momentum))
             in_channels = out_channels
 
         self.out_channels = in_channels
