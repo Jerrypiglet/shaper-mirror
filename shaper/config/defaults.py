@@ -88,6 +88,7 @@ _C.MODEL.PN2SSG.GLOBAL_MLPS = (256, 512, 1024)
 _C.MODEL.PN2SSG.FC_CHANNELS = (512, 256)
 _C.MODEL.PN2SSG.DROP_PROB = 0.5
 _C.MODEL.PN2SSG.USE_XYZ = True
+_C.MODEL.PN2SSG.CONCAT = False
 
 # -----------------------------------------------------------------------------
 # DGPN2 options
@@ -96,7 +97,7 @@ _C.MODEL.DGPN2 = CN()
 
 # Local pointnet paras
 _C.MODEL.DGPN2.NUM_POINTS = 256
-_C.MODEL.DGPN2.RADIUS = (0.1, 0.2, 0.4)
+_C.MODEL.DGPN2.RADIUS = (0.2)
 _C.MODEL.DGPN2.NUM_SAMPLES = (16, 32, 128)
 _C.MODEL.DGPN2.GROUP_MLPS = ((32, 32, 64), (64, 64, 128), (64, 96, 128))
 
@@ -198,6 +199,9 @@ _C.TEST.LOG_PERIOD = 10
 
 # Visualize errors. Path to visualize point clouds
 _C.TEST.VIS_DIR = ""
+
+# Visualize key points in point cloud
+_C.TEST.VIS_KEY_PTS = False
 
 # ---------------------------------------------------------------------------- #
 # Test-time augmentations for point cloud classification
