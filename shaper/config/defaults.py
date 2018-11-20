@@ -133,7 +133,7 @@ _C.DATASET.TEST = ()
 # -----------------------------------------------------------------------------
 _C.DATALOADER = CN()
 # Number of data loading threads
-_C.DATALOADER.NUM_WORKERS = 0
+_C.DATALOADER.NUM_WORKERS = 1
 
 # ---------------------------------------------------------------------------- #
 # Solver (optimizer, learning schedule)
