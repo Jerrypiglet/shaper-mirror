@@ -215,7 +215,7 @@ if __name__ == "__main__":
     xyz_feats = Variable(torch.randn(2, 9, 6).cuda(), requires_grad=True)
 
     test_module = PointnetSAModuleMSG(
-        npoint=2, radii=[5.0, 10.0], nsamples=[6, 3], mlps=[[9, 3], [9, 6]]
+        npoint=3, radii=[0.2, 0.4], nsamples=[3, 6], mlps=[[9, 3], [9, 6]]
     )
     test_module.cuda()
     print(test_module(xyz, xyz_feats))

@@ -179,8 +179,8 @@ def test(cfg, output_dir=""):
 
     else:
         pred_labels = np.argmax(cls_logits_all[0], -1)
-        key_pts = test_result_collection[0]['key_point_inds']
         if cfg.TEST.VIS_KEY_PTS:
+            key_pts = test_result_collection[0]['key_point_inds']
             evaluate_classification_with_keypoints(test_dataset, pred_labels,
                                                    key_pts, output_dir=output_dir,
                                                    vis_dir=vis_dir)

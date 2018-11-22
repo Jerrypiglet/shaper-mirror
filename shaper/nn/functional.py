@@ -41,7 +41,7 @@ def smooth_cross_entropy(input, target, label_smoothing):
 
 
 def test_smooth_cross_entropy():
-    num_samples = 2
+    num_samples = 4
     num_classes = 10
     target = torch.randint(num_classes, (num_samples,)).to(torch.int64)
     print("target:", target)
@@ -50,5 +50,19 @@ def test_smooth_cross_entropy():
     print("smooth CE:", smooth_cross_entropy(uniform_prob, target, 1.0))
 
 
+def test_smooth_cross_entropy_2():
+    num_samples = 3
+    num_classes = 6
+    # target = torch.randint(num_classes, (num_samples,)).to(torch.int64)
+    target = torch.arange(num_samples)
+    print("target:", target)
+    print("one_hot:", encode_one_hot(target, num_classes))
+    uniform_prob = torch.arange(num_samples - 2, num_classes - 2)
+    uniform_prob = encode_one_hot(uniform_prob, num_classes)
+    print("logits: ", uniform_prob)
+    label_smooth = 0.2
+    print('label smooth: ', label_smooth)
+    print("smooth CE:", smooth_cross_entropy(uniform_prob, target, label_smooth))
+
 if __name__ == '__main__':
-    test_smooth_cross_entropy()
+    test_smooth_cross_entropy_2()

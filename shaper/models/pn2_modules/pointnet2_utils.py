@@ -1,3 +1,5 @@
+import numpy as np
+
 import torch
 from torch.autograd import Variable
 from torch.autograd import Function
@@ -314,11 +316,13 @@ class BallQuery(Function):
         npoint = new_xyz.size(1)
         idx = torch.cuda.IntTensor(B, npoint, nsample).zero_()
 
+        pts_cnt = torch.cuda.IntTensor(B, npoint).zero_()
+
         pointnet2.ball_query_wrapper(
-            B, N, npoint, radius, nsample, new_xyz, xyz, idx
+            B, N, npoint, radius, nsample, new_xyz, xyz, idx, pts_cnt
         )
 
-        return idx
+        return idx, pts_cnt
 
     @staticmethod
     def backward(ctx, a=None):
@@ -366,7 +370,21 @@ class QueryAndGroup(nn.Module):
             (B, 3 + C, npoint, nsample) tensor
         """
 
-        idx = ball_query(self.radius, self.nsample, xyz, new_xyz)
+        idx, pts_cnt = ball_query(self.radius, self.nsample, xyz, new_xyz)
+
+        # TODO: Add unique point counting method
+        # print("idx: ", list(idx.size()))
+        # idx_cpu = idx.cpu()
+        # print(idx_cpu.numpy()[0, 10, :])
+        # print("pts_cnt: ", list(pts_cnt.size()))
+        # pts_cnt_cpu = pts_cnt.cpu()
+        # print(pts_cnt_cpu.numpy()[0, 10])
+
+        # batch_size, npoint, nsample = list(idx.size())
+        #
+        # unique_count = np.zeros(batch_size, npoint)
+
+
         xyz_trans = xyz.transpose(1, 2).contiguous()
         grouped_xyz = grouping_operation(
             xyz_trans, idx
