@@ -4,7 +4,6 @@ from __future__ import print_function
 
 from setuptools import setup
 from setuptools import find_packages
-# from Cython.Build import cythonize
 # from setuptools import Extension
 
 exclude_dirs = ("configs", "tests", "scripts", "data", "outputs")

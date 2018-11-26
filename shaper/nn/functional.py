@@ -2,6 +2,34 @@ import torch
 import torch.nn.functional as F
 
 
+# -----------------------------------------------------------------------------
+# Distance
+# -----------------------------------------------------------------------------
+
+def pdist(features):
+    """Compute pairwise distances of features.
+
+    Args:
+        features (torch.Tensor): (batch_size, channels, num_features)
+
+    Returns:
+        distance (torch.Tensor): (batch_size, num_features, num_features)
+
+    Notes:
+        This method returns square distances, and is optimized for lower memory and faster speed.
+        Sqaure sum is more efficient than gather diagonal from inner product.
+
+    """
+    square_sum = torch.sum(features ** 2, 1, keepdim=True)
+    square_sum = square_sum + square_sum.transpose(1, 2)
+    distance = torch.baddbmm(square_sum, features.transpose(1, 2), features, alpha=-2.0)
+    return distance
+
+
+# -----------------------------------------------------------------------------
+# Losses
+# -----------------------------------------------------------------------------
+
 def encode_one_hot(target, num_classes):
     """Encode integer labels into one-hot vectors
 
@@ -19,7 +47,7 @@ def encode_one_hot(target, num_classes):
 
 
 def smooth_cross_entropy(input, target, label_smoothing):
-    """Cross entropy with label smoothing
+    """Cross entropy loss with label smoothing
 
     Args:
         input (torch.Tensor): (N, C)
@@ -36,19 +64,5 @@ def smooth_cross_entropy(input, target, label_smoothing):
     one_hot = torch.zeros_like(input).scatter(1, target.unsqueeze(1), 1)
     smooth_one_hot = one_hot * (1 - label_smoothing) + torch.ones_like(input) * (label_smoothing / num_classes)
     log_prob = F.log_softmax(input, dim=1)
-    loss = F.kl_div(log_prob, smooth_one_hot, reduction="none").sum(1).mean()
+    loss = (- smooth_one_hot * log_prob).sum(1).mean()
     return loss
-
-
-def test_smooth_cross_entropy():
-    num_samples = 2
-    num_classes = 10
-    target = torch.randint(num_classes, (num_samples,)).to(torch.int64)
-    print("target:", target)
-    print("one_hot:",encode_one_hot(target, num_classes))
-    uniform_prob = torch.ones([num_samples, num_classes]) / num_classes
-    print("smooth CE:", smooth_cross_entropy(uniform_prob, target, 1.0))
-
-
-if __name__ == '__main__':
-    test_smooth_cross_entropy()
