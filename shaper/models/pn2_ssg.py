@@ -147,7 +147,8 @@ if __name__ == '__main__':
     data = torch.rand(batch_size, in_channels, num_points)
     data = data.cuda()
 
-    pn2ssg = PointNet2SSG_Cls(in_channels, num_classes)
+    pn2ssg = PointNet2SSG_Cls(in_channels, num_classes, num_points_list=(128, 64),
+                              nsamples_list=(128, 128))
     pn2ssg.cuda()
     out_dict = pn2ssg({"points": data})
     for k, v in out_dict.items():

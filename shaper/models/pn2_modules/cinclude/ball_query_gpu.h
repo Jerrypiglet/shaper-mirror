@@ -7,7 +7,7 @@ extern "C" {
 
 void query_ball_point_kernel_wrapper(int b, int n, int m, float radius,
 				     int nsample, const float *xyz,
-				     const float *new_xyz, int *idx,
+				     const float *new_xyz, int *idx, int *pts_cnt,
 				     cudaStream_t stream);
 
 #ifdef __cplusplus
