@@ -27,4 +27,3 @@ TRAIN:
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
-OUTPUT_DIR: "@/reproduce"

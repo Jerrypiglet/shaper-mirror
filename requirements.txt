@@ -1,0 +1,17 @@
+# Basic tools
+cython
+h5py
+scipy
+yacs
+imageio
+tensorboardX
+tqdm
+PrettyTable
+# Visualization
+plyfile
+open3d-python
+matplotlib
+# s2cnn
+cupy
+requests
+pynvrtc
