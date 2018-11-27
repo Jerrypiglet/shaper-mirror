@@ -26,6 +26,9 @@ TRAIN:
   CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
 TEST:
-  BATCH_SIZE: 8
-  VIS_KEY_PTS: True
+  BATCH_SIZE: 32
+  VOTE:
+    ENABLE: True
+    NUM_VIEW: 12
+    SCORE_HEUR: ("logit",)
   VIS_DIR: "@/vis_error_key_pts"

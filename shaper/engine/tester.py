@@ -11,8 +11,7 @@ from torch import nn
 from shaper.models import build_model
 from shaper.data import build_dataloader
 from shaper.data.build import build_transform
-from shaper.data.datasets import evaluate_classification, evaluate_classification_with_keypoints
-from shaper.utils.torch_util import set_random_seed
+from shaper.data.datasets import evaluate_classification
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.io import mkdir
@@ -179,12 +178,7 @@ def test(cfg, output_dir=""):
 
     else:
         pred_labels = np.argmax(cls_logits_all[0], -1)
-        if cfg.TEST.VIS_KEY_PTS:
-            key_pts = test_result_collection[0]['key_point_inds']
-            evaluate_classification_with_keypoints(test_dataset, pred_labels,
-                                                   key_pts, output_dir=output_dir,
-                                                   vis_dir=vis_dir)
-        else:
-            evaluate_classification(test_dataset, pred_labels,
-                                    output_dir=output_dir,
-                                    vis_dir=vis_dir)
+        evaluate_classification(test_dataset, pred_labels,
+                                aux_preds=test_result_collection[0],
+                                output_dir=output_dir,
+                                vis_dir=vis_dir)
