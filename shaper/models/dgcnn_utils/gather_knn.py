@@ -1,26 +1,30 @@
+# import torch before loading cuda extension
 import torch
 
-from shaper.models.dgcnn_modules import gather_knn_cuda
+try:
+    from shaper.models.dgcnn_utils import dgcnn_ext
+except ImportError:
+    print("Please compile source files before using dgcnn cuda extension.")
 
 
 class GatherKNN(torch.autograd.Function):
     @staticmethod
     def forward(ctx, features, knn_inds):
         ctx.save_for_backward(knn_inds)
-        feature_neighbour = gather_knn_cuda.forward(features, knn_inds)
+        feature_neighbour = dgcnn_ext.gather_knn_forward(features, knn_inds)
         return feature_neighbour
 
     @staticmethod
     def backward(ctx, grad_output):
         knn_inds = ctx.saved_tensors[0]
-        grad_features = gather_knn_cuda.backward(grad_output, knn_inds)
+        grad_features = dgcnn_ext.gather_knn_backward(grad_output, knn_inds)
         return grad_features, None
 
 
 gather_knn = GatherKNN.apply
 
 
-def test_correctness():
+def test_gather_knn():
     torch.manual_seed(1)
     batch_size = 2
     num_inst = 5
@@ -53,4 +57,4 @@ def test_correctness():
 
 
 if __name__ == "__main__":
-    test_correctness()
+    test_gather_knn()

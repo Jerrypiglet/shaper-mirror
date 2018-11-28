@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.nn.functional import smooth_cross_entropy
-from shaper.models.dgcnn_modules.dgcnn_utils import get_edge_feature
+from shaper.models.dgcnn_utils import get_edge_feature
 from shaper.models.metric import Accuracy
 from shaper.nn.init import set_bn
 

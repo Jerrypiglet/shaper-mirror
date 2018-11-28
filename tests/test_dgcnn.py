@@ -1,6 +1,6 @@
 import torch
 
-from shaper.models.dgcnn_modules.dgcnn_utils import pdist, \
+from shaper.models.dgcnn_utils.functions import pdist, \
     construct_edge_feature_index, construct_edge_feature_gather, construct_edge_feature
 
 
