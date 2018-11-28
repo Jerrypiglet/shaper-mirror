@@ -1,12 +1,12 @@
 TASK:
   "classification"
-INPUT:
-  NUM_POINTS: 1024
 MODEL:
-  TYPE: "PointNet"
+  TYPE: "POINTNET"
   POINTNET:
     DROPOUT_PROB: 0.3
     REG_WEIGHT: 0.032
+INPUT:
+  NUM_POINTS: 1024
 DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"

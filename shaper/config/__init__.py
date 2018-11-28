@@ -1,1 +1,1 @@
-from .defaults import _C as cfg
+from .utils import load_cfg_from_file

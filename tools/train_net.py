@@ -4,7 +4,7 @@ import os.path as osp
 
 import torch
 
-from shaper.config import cfg
+from shaper.config import load_cfg_from_file
 from shaper.engine.trainer import train
 from shaper.engine.tester import test
 from shaper.utils.io import mkdir
@@ -42,7 +42,7 @@ def main():
     args = parse_args()
     num_gpus = torch.cuda.device_count()
 
-    cfg.merge_from_file(args.config_file)
+    cfg = load_cfg_from_file(args.config_file, purge=True)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
 

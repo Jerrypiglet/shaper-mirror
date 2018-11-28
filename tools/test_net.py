@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+# test_net.py is almost same to train_net.py;
+# however, it is written for possible discrepancy of functions.
 import argparse
 import os.path as osp
 
 import torch
 
-from shaper.config import cfg
+from shaper.config import load_cfg_from_file
 from shaper.engine.tester import test
 from shaper.utils.io import mkdir
 from shaper.utils.logger import setup_logger
@@ -35,7 +37,7 @@ def main():
     args = parse_args()
     num_gpus = torch.cuda.device_count()
 
-    cfg.merge_from_file(args.config_file)
+    cfg = load_cfg_from_file(args.config_file, purge=True)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
 
@@ -50,13 +52,7 @@ def main():
     logger.info("Using {} GPUs".format(num_gpus))
     logger.info(args)
 
-    # logger.info("Collecting env info (might take some time)")
-    # logger.info("\n" + collect_env_info())
-
     logger.info("Loaded configuration file {}".format(args.config_file))
-    # with open(args.config_file, "r") as fid:
-    #     config_str = "\n" + fid.read()
-    #     logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
     test(cfg, output_dir)
