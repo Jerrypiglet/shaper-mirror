@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP
 from shaper.nn.init import set_bn
-from shaper.models.metric import Accuracy
+from shaper.models.metric import ClsAccuracy, SegAccuracy
 
 
 class TNet(nn.Module):
@@ -218,6 +218,101 @@ class PointNetClsLoss(nn.Module):
         return loss_dict
 
 
+# -----------------------------------------------------------------------------
+# PointNet for semantic segmentation
+# -----------------------------------------------------------------------------
+class PointNetSeg(nn.Module):
+    """PointNet for semantic segmentation
+
+    Structure: input -> [Stem] -> features -> [SharedMLP] -> local features
+    -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
+
+    """
+
+    def __init__(self,
+                 in_channels, out_channels,
+                 stem_channels=(64, 64),
+                 local_channels=(64, 128, 1024),
+                 global_channels=(512, 256),
+                 seg_net_channels=(512, 256, 128),
+                 dropout_prob=0.5,
+                 with_transform=True):
+        super(PointNetSeg, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
+        self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
+        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
+
+        self.mlp_seg_net = SharedMLP(local_channels[-1] + stem_channels[-1], seg_net_channels)
+        self.mlp_cls_logits = SharedMLP(seg_net_channels[-1], (out_channels, ))
+
+        # set batch normalization to 0.01 as default
+        set_bn(self, momentum=0.01)
+
+    def forward(self, data_batch):
+        x = data_batch["points"]
+
+        # stem
+        x_stem, end_points = self.stem(x)
+
+        # mlp for local features
+        x = self.mlp_local(x_stem)
+        # max pool over points
+        x_global, max_indices = torch.max(x, 2)
+        end_points['key_point_inds'] = max_indices
+        # mlp for global features
+        x = self.mlp_global(x_global)
+
+        # concatenation of local and global features
+        # x_stem size: (B, 64, N), x_global size: (B, 1024), size after concatenation: (B, 1088, N)
+        x = torch.cat([x_stem, x_global.unsqueeze(2).expand(-1, -1, x_stem.shape[2])], 1)
+        # mlp for point features
+        x = self.mlp_seg_net(x)
+        x = self.mlp_cls_logits(x)
+
+        preds = {
+            'seg_logits': x
+        }
+        preds.update(end_points)
+
+        return preds
+
+
+class PointNetSegLoss(nn.Module):
+    """Pointnet segmentation loss with optional regularization loss
+
+    Attributes:
+        reg_weight (float): regularization weight for feature transform matrix
+
+    """
+
+    def __init__(self, reg_weight):
+        super(PointNetSegLoss, self).__init__()
+        self.reg_weight = reg_weight
+
+    def forward(self, preds, labels):
+        seg_logits = preds["seg_logits"]
+        seg_labels = labels["seg_labels"]
+        seg_loss = F.cross_entropy(seg_logits, seg_labels)
+
+        loss_dict = {
+            'seg_loss': seg_loss,
+        }
+
+        # regularization over transform matrix
+        if self.reg_weight > 0.0:
+            trans_feature = preds["trans_feature"]
+            trans_norm = torch.bmm(trans_feature.transpose(2, 1), trans_feature)  # [in, in]
+            I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
+            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
+            loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
+
+        return loss_dict
+
+
 def build_pointnet(cfg):
     if cfg.TASK == "classification":
         net = PointNetCls(
@@ -230,7 +325,21 @@ def build_pointnet(cfg):
             with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
         )
         loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
-        metric_fn = Accuracy()
+        metric_fn = ClsAccuracy()
+    elif cfg.TASK == "segmentation":
+        net = PointNetSeg(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            out_channels=cfg.DATASET.NUM_CLASSES,
+            stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
+            local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
+            global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
+            seg_net_channels=cfg.MODEL.POINTNET.SEG_NET_CHANNELS,
+            dropout_prob=cfg.MODEL.POINTNET.DROPOUT_PROB,
+            with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
+        )
+        loss_fn = PointNetSegLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
+        metric_fn = SegAccuracy()
+        pass
     else:
         raise NotImplementedError()
 

@@ -31,6 +31,7 @@ _C.MODEL.POINTNET = CN()
 _C.MODEL.POINTNET.STEM_CHANNELS = (64, 64)
 _C.MODEL.POINTNET.LOCAL_CHANNELS = (64, 128, 1024)
 _C.MODEL.POINTNET.GLOBAL_CHANNELS = (512, 256)
+_C.MODEL.POINTNET.SEG_NET_CHANNELS = (512, 256, 128)
 
 _C.MODEL.POINTNET.DROPOUT_PROB = 0.5
 _C.MODEL.POINTNET.WITH_TRANSFORM = True
@@ -128,6 +129,9 @@ _C.DATASET.TRAIN = ()
 _C.DATASET.VAL = ()
 # List of the data names for testing
 _C.DATASET.TEST = ()
+
+# Whether to load the segmentation labels
+_C.DATASET.LOAD_SEG = False
 
 # -----------------------------------------------------------------------------
 # DataLoader

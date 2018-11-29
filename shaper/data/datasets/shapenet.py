@@ -39,7 +39,7 @@ class ShapeNet(Dataset):
         self.point_clouds = np.concatenate(self.point_clouds, 0)
         self.class_labels = np.concatenate(self.class_labels, 0).ravel().astype(int)
         if self.load_seg:
-            self.seg_labels = np.concatenate(self.seg_labels, 0)
+            self.seg_labels = np.concatenate(self.seg_labels, 0).astype(int)
 
     def __getitem__(self, index):
         class_label = self.class_labels[index]
@@ -60,7 +60,7 @@ class ShapeNet(Dataset):
                 choice = np.concatenate([choice, pad])
         points = points[choice]
         if self.load_seg:
-            seg_labels = self.seg_labels[choice]
+            seg_labels = seg_labels[choice]
 
         if self.transform is not None:
             points = self.transform(points)
