@@ -339,7 +339,6 @@ def build_pointnet(cfg):
         )
         loss_fn = PointNetSegLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
         metric_fn = SegAccuracy()
-        pass
     else:
         raise NotImplementedError()
 

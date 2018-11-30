@@ -77,3 +77,8 @@ class ShapeNet(Dataset):
 
     def __len__(self):
         return len(self.class_labels)
+
+
+# if __name__ == '__main__':
+#     dataset = ShapeNet("data/shapenet", ("val","train", "test"), load_seg=True)
+#     dataset.point_clouds

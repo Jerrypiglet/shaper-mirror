@@ -13,15 +13,18 @@ from shaper.data import build_dataloader
 from shaper.data.build import build_transform
 from shaper.data.datasets import evaluate_classification
 from shaper.utils.checkpoint import Checkpointer
-from shaper.utils.metric_logger import MetricLogger
+from shaper.utils.metric_logger import MetricLogger, IOULogger, AllMeters
 from shaper.utils.io import mkdir
 from shaper.utils.np_util import np_softmax
+
+from shaper.models.metric import IntersectionAndUnion
 
 
 def test_model(model,
                loss_fn,
                metric_fn,
                data_loader,
+               cfg,
                log_period=1,
                with_label=True):
     """Test model
@@ -34,6 +37,7 @@ def test_model(model,
         loss_fn (nn.Module or Function): loss function
         metric_fn (nn.Module or Function): metric function
         data_loader (torch.utils.data.DataLoader):
+        cfg:
         log_period (int):
         with_label (bool): whether dataloader has labels
 
@@ -42,10 +46,13 @@ def test_model(model,
     """
     logger = logging.getLogger("shaper.test")
     meters = MetricLogger(delimiter="  ")
+    if cfg.TASK == "segmentation":
+        i_and_u = IntersectionAndUnion(cfg.DATASET.NUM_CLASSES)
+        iou_logger = IOULogger(cfg, delimiter="  ")
+
     model.eval()
 
     test_result_dict = defaultdict(list)
-
     with torch.no_grad():
         end = time.time()
         for iteration, data_batch in enumerate(data_loader):
@@ -61,26 +68,32 @@ def test_model(model,
             if with_label:
                 loss_dict = loss_fn(preds, data_batch)
                 metric_dict = metric_fn(preds, data_batch)
-
                 losses = sum(loss_dict.values())
                 meters.update(loss=losses, **loss_dict, **metric_dict)
+                if cfg.TASK == "segmentation":
+                    intersection, union = i_and_u(preds, data_batch)
+                    iou_logger.update(intersection=intersection, union=union)
 
             batch_time = time.time() - end
             end = time.time()
             meters.update(time=batch_time, data=data_time)
 
             if iteration % log_period == 0:
-                logger.info(
-                    meters.delimiter.join(
-                        [
-                            "iter: {iter:4d}",
-                            "{meters}",
-                        ]
-                    ).format(
-                        iter=iteration,
-                        meters=str(meters),
-                    )
+                log_string = meters.delimiter.join(
+                    [
+                        "iter: {iter:4d}",
+                        "{meters}",
+                    ]
+                ).format(
+                    iter=iteration,
+                    meters=str(meters),
                 )
+                if cfg.TASK == "segmentation":
+                    log_string = iou_logger.delimiter.join([log_string, str(iou_logger)])
+                logger.info(log_string)
+
+    if cfg.TASK == "segmentation":
+        meters = AllMeters([meters, iou_logger])
 
     # concatenate
     test_result_dict = {k: np.concatenate(v, axis=0) for k, v in test_result_dict.items()}
@@ -126,6 +139,7 @@ def test(cfg, output_dir=""):
                                                        loss_fn,
                                                        metric_fn,
                                                        test_data_loader,
+                                                       cfg,
                                                        log_period=cfg.TEST.LOG_PERIOD)
 
             test_result_collection.append(test_result_dict)
@@ -138,6 +152,7 @@ def test(cfg, output_dir=""):
                                                    loss_fn,
                                                    metric_fn,
                                                    test_data_loader,
+                                                   cfg,
                                                    log_period=cfg.TEST.LOG_PERIOD)
         test_result_collection.append(test_result_dict)
         test_time = time.time() - start_time
@@ -146,39 +161,40 @@ def test(cfg, output_dir=""):
     # ---------------------------------------------------------------------------- #
     # Ensemble
     # ---------------------------------------------------------------------------- #
-    # For classification, only use 'cls_logits'
-    cls_logits_all = [d["cls_logits"] for d in test_result_collection]
-    # sanity check
-    assert all(len(cls_logits) == len(test_dataset) for cls_logits in cls_logits_all)
-    # remove transform
-    test_dataset.transform = None
+    if cfg.TASK == "classification":
+        # For classification, only use 'cls_logits'
+        cls_logits_all = [d["cls_logits"] for d in test_result_collection]
+        # sanity check
+        assert all(len(cls_logits) == len(test_dataset) for cls_logits in cls_logits_all)
+        # remove transform
+        test_dataset.transform = None
 
-    if cfg.TEST.VOTE.ENABLE:
-        for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
-            if score_heur == "logit":
-                cls_logits_ensemble = np.mean(cls_logits_all, axis=0)
-                pred_labels = np.argmax(cls_logits_ensemble, -1)  # (num_samples,)
-            elif score_heur == "softmax":
-                cls_probs_all = np_softmax(np.asarray(cls_logits_all))
-                cls_probs_ensemble = np.mean(cls_probs_all, axis=0)
-                pred_labels = np.argmax(cls_probs_ensemble, -1)
-            elif score_heur == "label":
-                pred_labels_all = np.argmax(cls_logits_all, -1)
-                pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
-            else:
-                raise ValueError("Unknown score heuristic")
+        if cfg.TEST.VOTE.ENABLE:
+            for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
+                if score_heur == "logit":
+                    cls_logits_ensemble = np.mean(cls_logits_all, axis=0)
+                    pred_labels = np.argmax(cls_logits_ensemble, -1)  # (num_samples,)
+                elif score_heur == "softmax":
+                    cls_probs_all = np_softmax(np.asarray(cls_logits_all))
+                    cls_probs_ensemble = np.mean(cls_probs_all, axis=0)
+                    pred_labels = np.argmax(cls_probs_ensemble, -1)
+                elif score_heur == "label":
+                    pred_labels_all = np.argmax(cls_logits_all, -1)
+                    pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
+                else:
+                    raise ValueError("Unknown score heuristic")
 
-            logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
-                score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
+                logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
+                    score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
+                evaluate_classification(test_dataset, pred_labels,
+                                        output_dir=output_dir,
+                                        vis_dir=vis_dir,
+                                        suffix=score_heur)
+
+        else:
+            pred_labels = np.argmax(cls_logits_all[0], -1)
             evaluate_classification(test_dataset, pred_labels,
+                                    aux_preds=test_result_collection[0],
                                     output_dir=output_dir,
-                                    vis_dir=vis_dir,
-                                    suffix=score_heur)
-
-    else:
-        pred_labels = np.argmax(cls_logits_all[0], -1)
-        evaluate_classification(test_dataset, pred_labels,
-                                aux_preds=test_result_collection[0],
-                                output_dir=output_dir,
-                                vis_dir=vis_dir)
+                                    vis_dir=vis_dir)

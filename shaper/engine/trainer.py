@@ -8,18 +8,24 @@ from shaper.models import build_model
 from shaper.solver import build_optimizer
 from shaper.data import build_dataloader
 from shaper.utils.checkpoint import Checkpointer
-from shaper.utils.metric_logger import MetricLogger
+from shaper.utils.metric_logger import MetricLogger, IOULogger, AllMeters
 from shaper.utils.tensorboard_logger import TensorboardLogger
+
+from shaper.models.metric import IntersectionAndUnion
 
 
 def train_model(model,
                 loss_fn,
                 metric_fn,
                 data_loader,
+                cfg,
                 optimizer,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
+    if cfg.TASK == "segmentation":
+        i_and_u = IntersectionAndUnion(cfg.DATASET.NUM_CLASSES)
+        iou_logger = IOULogger(cfg, delimiter="  ")
     model.train()
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
@@ -34,6 +40,9 @@ def train_model(model,
         metric_dict = metric_fn(preds, data_batch)
         losses = sum(loss_dict.values())
         meters.update(loss=losses, **loss_dict, **metric_dict)
+        if cfg.TASK == "segmentation":
+            intersection, union = i_and_u(preds, data_batch)
+            iou_logger.update(intersection=intersection, union=union)
         losses.backward()
         optimizer.step()
 
@@ -42,21 +51,26 @@ def train_model(model,
         meters.update(time=batch_time, data=data_time)
 
         if iteration % log_period == 0:
-            logger.info(
-                meters.delimiter.join(
-                    [
-                        "iter: {iter:4d}",
-                        "{meters}",
-                        "lr: {lr:.2e}",
-                        "max mem: {memory:.0f}",
-                    ]
-                ).format(
-                    iter=iteration,
-                    meters=str(meters),
-                    lr=optimizer.param_groups[0]["lr"],
-                    memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
-                )
+            log_string = meters.delimiter.join(
+                [
+                    "iter: {iter:4d}",
+                    "{meters}",
+                    "lr: {lr:.2e}",
+                    "max mem: {memory:.0f}",
+                ]
+            ).format(
+                iter=iteration,
+                meters=str(meters),
+                lr=optimizer.param_groups[0]["lr"],
+                memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
             )
+            if cfg.TASK == "segmentation":
+                log_string = iou_logger.delimiter.join([log_string, str(iou_logger)])
+            logger.info(log_string)
+
+    if cfg.TASK == "segmentation":
+        meters = AllMeters([meters, iou_logger])
+
     return meters
 
 
@@ -64,9 +78,13 @@ def validate_model(model,
                    loss_fn,
                    metric_fn,
                    data_loader,
+                   cfg,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
     meters = MetricLogger(delimiter="  ")
+    if cfg.TASK == "segmentation":
+        i_and_u = IntersectionAndUnion(cfg.DATASET.NUM_CLASSES)
+        iou_logger = IOULogger(cfg, delimiter="  ")
     model.eval()
     end = time.time()
     with torch.no_grad():
@@ -81,22 +99,30 @@ def validate_model(model,
             metric_dict = metric_fn(preds, data_batch)
             losses = sum(loss_dict.values())
             meters.update(loss=losses, **loss_dict, **metric_dict)
+            if cfg.TASK == "segmentation":
+                intersection, union = i_and_u(preds, data_batch)
+                iou_logger.update(intersection=intersection, union=union)
             batch_time = time.time() - end
             end = time.time()
             meters.update(time=batch_time, data=data_time)
 
             if iteration % log_period == 0:
-                logger.info(
-                    meters.delimiter.join(
-                        [
-                            "iter: {iter:4d}",
-                            "{meters}",
-                        ]
-                    ).format(
-                        iter=iteration,
-                        meters=str(meters),
-                    )
+                log_string = meters.delimiter.join(
+                    [
+                        "iter: {iter:4d}",
+                        "{meters}",
+                    ]
+                ).format(
+                    iter=iteration,
+                    meters=str(meters),
                 )
+                if cfg.TASK == "segmentation":
+                    log_string = iou_logger.delimiter.join([log_string, str(iou_logger)])
+                logger.info(log_string)
+
+    if cfg.TASK == "segmentation":
+        meters = AllMeters([meters, iou_logger])
+
     return meters
 
 
@@ -147,6 +173,7 @@ def train(cfg, output_dir=""):
                                    loss_fn,
                                    metric_fn,
                                    train_data_loader,
+                                   cfg,
                                    optimizer=optimizer,
                                    log_period=cfg.TRAIN.LOG_PERIOD,
                                    )
@@ -170,6 +197,7 @@ def train(cfg, output_dir=""):
                                         loss_fn,
                                         metric_fn,
                                         val_data_loader,
+                                        cfg,
                                         log_period=cfg.TEST.LOG_PERIOD,
                                         )
             logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
