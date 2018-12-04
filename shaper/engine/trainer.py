@@ -23,7 +23,7 @@ def train_model(model,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
-    if cfg.TASK == "segmentation":
+    if "segmentation" in cfg.TASK:
         i_and_u = IntersectionAndUnion(cfg.DATASET.NUM_CLASSES)
         iou_logger = IOULogger(cfg, delimiter="  ")
     model.train()
@@ -40,7 +40,7 @@ def train_model(model,
         metric_dict = metric_fn(preds, data_batch)
         losses = sum(loss_dict.values())
         meters.update(loss=losses, **loss_dict, **metric_dict)
-        if cfg.TASK == "segmentation":
+        if "segmentation" in cfg.TASK:
             intersection, union = i_and_u(preds, data_batch)
             iou_logger.update(intersection=intersection, union=union)
         losses.backward()
@@ -64,11 +64,11 @@ def train_model(model,
                 lr=optimizer.param_groups[0]["lr"],
                 memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
             )
-            if cfg.TASK == "segmentation":
+            if "segmentation" in cfg.TASK:
                 log_string = iou_logger.delimiter.join([log_string, str(iou_logger)])
             logger.info(log_string)
 
-    if cfg.TASK == "segmentation":
+    if "segmentation" in cfg.TASK:
         meters = AllMeters([meters, iou_logger])
 
     return meters
@@ -82,7 +82,7 @@ def validate_model(model,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
     meters = MetricLogger(delimiter="  ")
-    if cfg.TASK == "segmentation":
+    if "segmentation" in cfg.TASK:
         i_and_u = IntersectionAndUnion(cfg.DATASET.NUM_CLASSES)
         iou_logger = IOULogger(cfg, delimiter="  ")
     model.eval()
@@ -99,7 +99,7 @@ def validate_model(model,
             metric_dict = metric_fn(preds, data_batch)
             losses = sum(loss_dict.values())
             meters.update(loss=losses, **loss_dict, **metric_dict)
-            if cfg.TASK == "segmentation":
+            if "segmentation" in cfg.TASK:
                 intersection, union = i_and_u(preds, data_batch)
                 iou_logger.update(intersection=intersection, union=union)
             batch_time = time.time() - end
@@ -116,11 +116,11 @@ def validate_model(model,
                     iter=iteration,
                     meters=str(meters),
                 )
-                if cfg.TASK == "segmentation":
+                if "segmentation" in cfg.TASK:
                     log_string = iou_logger.delimiter.join([log_string, str(iou_logger)])
                 logger.info(log_string)
 
-    if cfg.TASK == "segmentation":
+    if "segmentation" in cfg.TASK:
         meters = AllMeters([meters, iou_logger])
 
     return meters

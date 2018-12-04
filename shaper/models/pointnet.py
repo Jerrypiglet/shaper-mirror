@@ -52,9 +52,9 @@ class TNet(nn.Module):
             torch.Tensor: (batch_size, out_channels, in_channels)
 
         """
-        x = self.mlp_local(x)  # (batch_size, local_channels[-1], num_points)
+        x, _ = self.mlp_local(x)  # (batch_size, local_channels[-1], num_points)
         x, _ = torch.max(x, 2)  # (batch_size, local_channels[-1])
-        x = self.mlp_global(x)
+        x, _ = self.mlp_global(x)
         x = self.linear(x)
         x = x.view(-1, self.out_channels, self.in_channels)
         I = torch.eye(self.out_channels, self.in_channels, dtype=x.dtype, device=x.device)
@@ -117,7 +117,8 @@ class Stem(nn.Module):
             end_points['trans_input'] = trans_input
 
         # feature
-        x = self.mlp(x)
+        x, end_points_mlp = self.mlp(x)
+        end_points.update(end_points_mlp)
 
         # feature transform
         if self.with_transform:
@@ -166,12 +167,12 @@ class PointNetCls(nn.Module):
         # stem
         x, end_points = self.stem(x)
         # mlp for local features
-        x = self.mlp_local(x)
+        x, _ = self.mlp_local(x)
         # max pool over points
         x, max_indices = torch.max(x, 2)
         end_points['key_point_inds'] = max_indices
         # mlp for global features
-        x = self.mlp_global(x)
+        x, _ = self.mlp_global(x)
         x = self.classifier(x)
 
         preds = {
@@ -222,21 +223,18 @@ class PointNetClsLoss(nn.Module):
 # PointNet for semantic segmentation
 # -----------------------------------------------------------------------------
 class PointNetSeg(nn.Module):
-    """PointNet for semantic segmentation
-
-    Structure: input -> [Stem] -> features -> [SharedMLP] -> local features
-    -> [MaxPool] -> gloal features -> [MLP] -> [Linear] -> logits
-
+    """PointNet for semantic segmentation, based on:
+    https://github.com/charlesq34/pointnet/blob/master/sem_seg/model.py
     """
 
     def __init__(self,
                  in_channels, out_channels,
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
-                 global_channels=(512, 256),
-                 seg_net_channels=(512, 256, 128),
-                 dropout_prob=0.5,
-                 with_transform=True):
+                 global_channels=(256, 128),
+                 mlp_seg_channels=(512, 256),
+                 dropout_prob=0.3,
+                 with_transform=False):
         super(PointNetSeg, self).__init__()
 
         self.in_channels = in_channels
@@ -244,10 +242,12 @@ class PointNetSeg(nn.Module):
 
         self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
         self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
-        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
 
-        self.mlp_seg_net = SharedMLP(local_channels[-1] + stem_channels[-1], seg_net_channels)
-        self.mlp_cls_logits = SharedMLP(seg_net_channels[-1], (out_channels, ))
+        self.mlp_global = MLP(local_channels[-1], global_channels)
+
+        self.mlp_seg = SharedMLP(local_channels[-1] + global_channels[-1], mlp_seg_channels,
+                                 dropout=(None, dropout_prob))
+        self.mlp_seg_logits = SharedMLP(mlp_seg_channels[-1], (out_channels,), relu=False, bn=False)
 
         # set batch normalization to 0.01 as default
         set_bn(self, momentum=0.01)
@@ -256,22 +256,22 @@ class PointNetSeg(nn.Module):
         x = data_batch["points"]
 
         # stem
-        x_stem, end_points = self.stem(x)
+        x, end_points = self.stem(x)
 
-        # mlp for local features
-        x = self.mlp_local(x_stem)
-        # max pool over points
-        x_global, max_indices = torch.max(x, 2)
+        # mlp local
+        x_local, _ = self.mlp_local(x)
+
+        # max pooling and mlp global
+        x, max_indices = torch.max(x_local, 2)
         end_points['key_point_inds'] = max_indices
-        # mlp for global features
-        x = self.mlp_global(x_global)
+        x_global, _ = self.mlp_global(x)
 
-        # concatenation of local and global features
-        # x_stem size: (B, 64, N), x_global size: (B, 1024), size after concatenation: (B, 1088, N)
-        x = torch.cat([x_stem, x_global.unsqueeze(2).expand(-1, -1, x_stem.shape[2])], 1)
+        # concat local and global features
+        x = torch.cat([x_local, x_global.unsqueeze(2).expand(-1, -1, x_local.shape[2])], 1)
+
         # mlp for point features
-        x = self.mlp_seg_net(x)
-        x = self.mlp_cls_logits(x)
+        x, _ = self.mlp_seg(x)
+        x, _ = self.mlp_seg_logits(x)
 
         preds = {
             'seg_logits': x
@@ -313,6 +313,131 @@ class PointNetSegLoss(nn.Module):
         return loss_dict
 
 
+# -----------------------------------------------------------------------------
+# PointNet for part segmentation
+# -----------------------------------------------------------------------------
+class PointNetPartSeg(nn.Module):
+    """PointNet for part segmentation, based on:
+    https://github.com/charlesq34/pointnet/blob/master/part_seg/pointnet_part_seg.py
+    """
+
+    def __init__(self,
+                 in_channels, num_cat, num_part,
+                 stem_channels=(64, 128, 128),
+                 local_channels=(512, 2048),
+                 global_channels=(256, 256),
+                 mlp_seg_channels=(256, 256, 128),
+                 dropout_prob_cls=0.3,
+                 dropout_prob_seg=0.2,
+                 with_transform=True):
+        super(PointNetPartSeg, self).__init__()
+
+        self.in_channels = in_channels
+        self.num_cat = num_cat
+        self.num_part = num_part
+
+        # stem
+        self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
+        self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
+
+        # classification
+        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=(None, dropout_prob_cls))
+        self.classifier = nn.Linear(global_channels[-1], num_cat, bias=True)
+
+        # part segmentation
+        # number of concatenated channels is 4944 in repo, but 3024 in paper. Use number from repo
+        in_channels_seg = local_channels[-1] + num_cat + sum(list(stem_channels)) + sum(list(local_channels))
+        self.one_hot = torch.eye(num_cat).cuda()
+        self.mlp_seg = SharedMLP(in_channels_seg, mlp_seg_channels, dropout=(dropout_prob_seg, dropout_prob_seg, None))
+        self.mlp_seg_logits = SharedMLP(mlp_seg_channels[-1], (num_part,), relu=False, bn=False)
+
+        # set batch normalization to 0.01 as default
+        set_bn(self, momentum=0.01)
+
+    def forward(self, data_batch):
+        x = data_batch["points"]
+
+        # stem
+        x_stem, end_points_stem = self.stem(x)
+
+        end_points = {"trans_input": end_points_stem["trans_input"],
+                      "trans_feature": end_points_stem["trans_feature"]}
+
+        # mlp for local features
+        x, end_points_local = self.mlp_local(x_stem)
+        # max pool over points
+        x_global, max_indices = torch.max(x, 2)
+        end_points['key_point_inds'] = max_indices
+
+        # classification
+        # mlp for global features
+        x, _ = self.mlp_global(x_global)
+        x_cls_logits = self.classifier(x)
+
+        # concatenation of local and global features
+        x_global_expand = x_global.unsqueeze(2).expand(-1, -1, x_stem.shape[2])
+        one_hot = self.one_hot[data_batch["cls_labels"]]
+        one_hot_expand = one_hot.unsqueeze(2).expand(-1, -1, x_stem.shape[2])
+        x = torch.cat([x_global_expand, one_hot_expand,
+                       end_points_stem["out1"], end_points_stem["out2"], end_points_stem["out3"],
+                       end_points_local["out1"], end_points_local["out2"],
+                       ], 1)
+        # mlp for point features
+        x, _ = self.mlp_seg(x)
+        x_seg_logits, _ = self.mlp_seg_logits(x)
+
+        preds = {
+            'cls_logits': x_cls_logits,
+            'seg_logits': x_seg_logits
+        }
+        preds.update(end_points)
+
+        return preds
+
+
+class PointNetPartSegLoss(nn.Module):
+    """Pointnet segmentation loss with optional regularization loss
+
+    Attributes:
+        reg_weight (float): regularization weight for feature transform matrix
+
+    """
+
+    def __init__(self, reg_weight, seg_weight):
+        super(PointNetPartSegLoss, self).__init__()
+        self.reg_weight = reg_weight
+        self.seg_weight = seg_weight
+
+    def forward(self, preds, labels):
+        seg_logits = preds["seg_logits"]
+        seg_labels = labels["seg_labels"]
+        seg_loss = F.cross_entropy(seg_logits, seg_labels)
+        cls_logits = preds["cls_logits"]
+        cls_labels = labels["cls_labels"]
+        cls_loss = F.cross_entropy(cls_logits, cls_labels)
+
+        loss_dict = {
+            "cls_loss": cls_loss,
+            "seg_loss": seg_loss,
+        }
+
+        # regularization over transform matrix
+        if self.reg_weight > 0.0:
+            trans_feature = preds["trans_feature"]
+            trans_norm = torch.bmm(trans_feature.transpose(2, 1), trans_feature)  # [in, in]
+            I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
+            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
+            loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
+
+        weighted_loss_dict = {
+            "seg_loss": self.seg_weight * loss_dict["seg_loss"],
+            "cls_loss": (1 - self.seg_weight) * loss_dict["cls_loss"],
+            "reg_loss": loss_dict["reg_loss"]
+        }
+
+        return weighted_loss_dict
+
+
 def build_pointnet(cfg):
     if cfg.TASK == "classification":
         net = PointNetCls(
@@ -332,12 +457,26 @@ def build_pointnet(cfg):
             out_channels=cfg.DATASET.NUM_CLASSES,
             stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
             local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
-            global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
-            seg_net_channels=cfg.MODEL.POINTNET.SEG_NET_CHANNELS,
-            dropout_prob=cfg.MODEL.POINTNET.DROPOUT_PROB,
+            mlp_seg_channels=cfg.MODEL.POINTNET.MLP_SEG_CHANNELS,
+            dropout_prob=cfg.MODEL.POINTNET.DROPOUT_PROB_SEG,
             with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
         )
         loss_fn = PointNetSegLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
+        metric_fn = SegAccuracy()
+    elif cfg.TASK == "part_segmentation":
+        net = PointNetPartSeg(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            num_cat=cfg.DATASET.NUM_CATEGORIES,
+            num_part=cfg.DATASET.NUM_CLASSES,
+            stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
+            local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
+            global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
+            mlp_seg_channels=cfg.MODEL.POINTNET.MLP_SEG_CHANNELS,
+            dropout_prob_cls=cfg.MODEL.POINTNET.DROPOUT_PROB_CLS,
+            dropout_prob_seg=cfg.MODEL.POINTNET.DROPOUT_PROB_SEG,
+            with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
+        )
+        loss_fn = PointNetPartSegLoss(cfg.MODEL.POINTNET.REG_WEIGHT, cfg.MODEL.POINTNET.SEG_WEIGHT)
         metric_fn = SegAccuracy()
     else:
         raise NotImplementedError()

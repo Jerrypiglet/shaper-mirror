@@ -85,6 +85,9 @@ class IOULogger(object):
                 data = np.array(json.load(f))
             self.ind = np.tile(np.unique(data[:, 0]), [data.shape[0], 1]) == np.expand_dims(data[:, 0], 1)
             self.cat_names = np.loadtxt("data/shapenet/all_object_categories.txt", dtype=str)[:, 0]
+        if self.dataset_type == "Indoor3D":
+            self.cat_names = ["ceiling", "floor", "wall", "beam", "column", "window", "door", "table",
+                              "chair", "sofa", "bookcase", "board", "clutter"]
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -94,12 +97,11 @@ class IOULogger(object):
 
     def compute_iou(self):
         if self.dataset_type == "ShapeNet":
-            per_obj_cat_intersection = (np.expand_dims(self.intersection.numpy(), 1) * self.ind).sum(axis=0)
-            per_obj_cat_union = (np.expand_dims(self.union.numpy(), 1) * self.ind).sum(axis=0)
-            per_obj_cat_iou = per_obj_cat_intersection / (per_obj_cat_union + 1e-10)
-        else:
-            raise NotImplementedError
+            per_part_iou = self.intersection.numpy() / (self.union.numpy() + 1e-10)
+            per_obj_cat_iou = (np.expand_dims(per_part_iou, 1) * self.ind).sum(axis=0) / self.ind.sum(axis=0)
 
+        else:
+            per_obj_cat_iou = self.intersection.numpy() / (self.union.numpy() + 1e-10)
         return per_obj_cat_iou
 
     def __str__(self):

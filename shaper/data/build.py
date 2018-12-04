@@ -47,6 +47,12 @@ def build_dataset(cfg, mode="train"):
                            num_points=cfg.INPUT.NUM_POINTS,
                            transform=transform,
                            load_seg=cfg.DATASET.LOAD_SEG)
+    elif cfg.DATASET.TYPE == "Indoor3D":
+        dataset = Indoor3D(root_dir=cfg.DATASET.ROOT_DIR,
+                           dataset_names=dataset_names,
+                           shuffle_points=is_train,
+                           num_points=cfg.INPUT.NUM_POINTS,
+                           transform=transform)
     elif cfg.DATASET.TYPE == "ModelNet":
         dataset = ModelNet(root_dir=cfg.DATASET.ROOT_DIR,
                            dataset_names=dataset_names,
