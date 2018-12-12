@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.nn.functional import smooth_cross_entropy
-from shaper.models.dgcnn_utils import get_edge_feature
+from shaper.models.dgcnn_utils import get_edge_feature, EdgeConvBlockV2
 from shaper.models.metric import Accuracy
 from shaper.nn.init import set_bn
 
@@ -28,7 +28,7 @@ class TNet(nn.Module):
 
     Args:
         conv_channels (tuple of int): the numbers of channels of edge convolution layers
-        k: k-nn for edge feature extractor
+        k: the number of neareast neighbours for edge feature extractor
 
     """
 
@@ -83,11 +83,13 @@ class TNet(nn.Module):
 class DGCNNFeature(nn.Module):
     """DGCNN for feature extraction"""
 
-    def __init__(self, in_channels,
+    def __init__(self,
+                 in_channels,
                  edge_conv_channels=(64, 64, 64, 128),
                  inter_channels=1024,
                  global_channels=(256, 128),
-                 k=20, dropout_prob=0.5,
+                 k=20,
+                 dropout_prob=0.5,
                  with_transform=False):
         super(DGCNNFeature, self).__init__()
 
@@ -148,12 +150,13 @@ class DGCNNCls(nn.Module):
        Args:
            edge_conv_channels (tuple of int): the numbers of channels of edge convolution layers
            inter_channels (int): the number of channels of intermediate features before MaxPool
-           k (int): k-nn for edge feature extractor
+           k (int): the number of neareast neighbours for edge feature extractor
 
     """
 
     def __init__(self,
-                 in_channels, out_channels,
+                 in_channels,
+                 out_channels,
                  edge_conv_channels=(64, 64, 64, 128),
                  inter_channels=1024,
                  global_channels=(512, 256),
@@ -173,7 +176,8 @@ class DGCNNCls(nn.Module):
 
         self.mlp_edge_conv = nn.ModuleList()
         for out_channels in edge_conv_channels:
-            self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
+            # self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
+            self.mlp_edge_conv.append(EdgeConvBlockV2(in_channels, out_channels, k))
             in_channels = out_channels
         self.mlp_local = Conv1d(sum(edge_conv_channels), inter_channels, 1)
         self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
@@ -194,9 +198,9 @@ class DGCNNCls(nn.Module):
         # EdgeConvMLP
         features = []
         for edge_conv in self.mlp_edge_conv:
-            x = get_edge_feature(x, self.k)
+            # x = get_edge_feature(x, self.k)
             x = edge_conv(x)
-            x, _ = torch.max(x, 3)
+            # x, _ = torch.max(x, 3)
             features.append(x)
 
         x = torch.cat(features, dim=1)
@@ -222,7 +226,7 @@ class DGCNNClsLoss(nn.Module):
     """DGCNN classification loss with optional label smoothing
 
     Attributes:
-        label_smoothing (float):
+        label_smoothing (float): the parameter to smooth labels
     """
 
     def __init__(self, label_smoothing):

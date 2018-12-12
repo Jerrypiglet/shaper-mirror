@@ -131,6 +131,7 @@ class Stem(nn.Module):
 # -----------------------------------------------------------------------------
 # PointNet for classification
 # -----------------------------------------------------------------------------
+
 class PointNetCls(nn.Module):
     """PointNet for classification
 
@@ -140,11 +141,12 @@ class PointNetCls(nn.Module):
     """
 
     def __init__(self,
-                 in_channels, out_channels,
+                 in_channels,
+                 out_channels,
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
-                 dropout_prob=0.5,
+                 dropout_prob=0.3,
                  with_transform=True):
         super(PointNetCls, self).__init__()
 
@@ -212,6 +214,7 @@ class PointNetClsLoss(nn.Module):
             trans_feature = preds["trans_feature"]
             trans_norm = torch.bmm(trans_feature.transpose(2, 1), trans_feature)  # [in, in]
             I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
+            # FIXME: fatal bugs for v0.4 when reduction is "elementwise_mean"
             reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
             loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
 

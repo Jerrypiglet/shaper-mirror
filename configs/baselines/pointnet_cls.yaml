@@ -31,4 +31,3 @@ TEST:
     ENABLE: True
     NUM_VIEW: 12
     SCORE_HEUR: ("logit",)
-#  VIS_DIR: "@/vis_error_key_pts"

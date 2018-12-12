@@ -51,22 +51,24 @@ class EdgeConvBlockV2(nn.Module):
 
         self.bn = nn.BatchNorm2d(out_channels)
 
-    def forward(self, features):
-        batch_size, _, num_points = features.shape
+    def forward(self, feature):
+        batch_size, _, num_points = feature.shape
 
-        local_feature = self.conv1(features)  # (batch_size, out_channels, num_points)
-        edge_feature = self.conv2(features)  # (batch_size, out_channels, num_points)
+        local_feature = self.conv1(feature)  # (batch_size, out_channels, num_points)
+        edge_feature = self.conv2(feature)  # (batch_size, out_channels, num_points)
 
-        # calculate k-nn on raw features
+        # calculate k-nn on raw feature
         with torch.no_grad():
-            distance = pdist(features)  # (batch_size, num_points, num_points)
+            distance = pdist(feature)  # (batch_size, num_points, num_points)
             knn_inds = get_knn_inds(distance, self.k)  # (batch_size, num_points, k)
 
-        # gather
+        # pytorch gather
         # knn_inds_expand = knn_inds.unsqueeze(1).expand(batch_size, self.out_channels, num_points, self.k)
         # edge_feature_expand = edge_feature.unsqueeze(2).expand(batch_size, self.out_channels, num_points, num_points)
         # # (batch_size, out_channels, num_points, k)
         # neighbour_feature = torch.gather(edge_feature_expand, 3, knn_inds_expand)
+
+        # improved gather
         neighbour_feature = gather_knn(edge_feature, knn_inds)
         # (batch_size, out_channels, num_points, k)
         edge_feature = (local_feature + edge_feature).unsqueeze(3) - neighbour_feature

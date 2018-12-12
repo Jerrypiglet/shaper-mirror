@@ -4,13 +4,6 @@ from shaper.models.dgcnn_utils.functions import pdist, \
     construct_edge_feature_index, construct_edge_feature_gather, construct_edge_feature
 
 
-def warmup():
-    a = torch.rand(2, 3)
-    b = torch.rand(2, 3)
-    for _ in range(10):
-        c = a + b
-
-
 def generate_data(batch_size=16, num_points=1024, in_channels=64, k=20):
     with torch.no_grad():
         features_tensor = torch.rand(batch_size, in_channels, num_points).cuda()
