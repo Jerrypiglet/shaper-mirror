@@ -192,6 +192,12 @@ class PointCloudRandomInputDropout(object):
         return points
 
 
+class PointCloudShuffle(object):
+    def __call__(self, points):
+        index = torch.randperm(points.size(0))
+        return points[index, :]
+
+
 def test_rotation_matrix():
     axis = np.array([-0.5, 1., 0.5]).astype(np.float32)
     angle = 1.0

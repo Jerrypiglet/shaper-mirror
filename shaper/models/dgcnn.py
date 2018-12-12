@@ -11,13 +11,12 @@ References:
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
-from shaper.nn.functional import smooth_cross_entropy
 from shaper.models.dgcnn_utils import get_edge_feature, EdgeConvBlockV2
-from shaper.models.metric import Accuracy
 from shaper.nn.init import set_bn
+from shaper.models.loss import ClsLoss
+from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
@@ -222,30 +221,6 @@ class DGCNNCls(nn.Module):
         nn.init.zeros_(self.classifier.bias)
 
 
-class DGCNNClsLoss(nn.Module):
-    """DGCNN classification loss with optional label smoothing
-
-    Attributes:
-        label_smoothing (float): the parameter to smooth labels
-    """
-
-    def __init__(self, label_smoothing):
-        super(DGCNNClsLoss, self).__init__()
-        self.label_smoothing = label_smoothing
-
-    def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        if self.label_smoothing > 0:
-            cls_loss = smooth_cross_entropy(cls_logits, cls_labels, self.label_smoothing)
-        else:
-            cls_loss = F.cross_entropy(cls_logits, cls_labels)
-        loss_dict = {
-            'cls_loss': cls_loss,
-        }
-        return loss_dict
-
-
 def build_dgcnn(cfg):
     if cfg.TASK == "classification":
         net = DGCNNCls(
@@ -257,7 +232,7 @@ def build_dgcnn(cfg):
             k=cfg.MODEL.DGCNN.K,
             dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
         )
-        loss_fn = DGCNNClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
+        loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
         metric_fn = Accuracy()
     else:
         raise NotImplementedError()
