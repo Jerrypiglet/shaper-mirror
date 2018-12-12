@@ -1,12 +1,19 @@
 # Shaper Model Zoo and Baselines
 
-## Introduction
-The common setting for experiments is to train one model and test it with multi-view ensemble 5 times,
+## Environment
+- Ubuntu 18.04.1 LTS
+- NVIDIA 1080Ti
+- CUDA 9.2
+- CUDNN 7.1
+- PyTorch 0.41
+
+## Classification Baselines
+Without specification, the experiment setting is to train one model for 250 epochs,
+and test it with multi-view(12) ensemble 5 times,
 which might alleviate the randomness caused by the size of dataset.
 By default, only one gpu is used for comparision.
 
-## Classification Baselines
-| model | batch_size | lr | gpus | epoch | train time (s/iter) | train memory (GB) | accuracy | comments |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| PointNet | 32 | 0.001 (Adam) | 1 | 250 | 0.0387 | 1354 | 88.78 (0.21) | 12 views ensemble |
-| DGCNN | 32 | 0.001 (Adam) | 1 | 250 | 0.2587| 4795 | 91.51 (0.41) | 12 views ensemble |
+| model | batch_size | lr | train time (s/iter) | train memory (GB) | test time (s/iter) | accuracy | comments |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| PointNet | 32 | 0.001 (Adam) | 0.0387 | 1354 | 0.0135 | 88.78 (0.21) | |
+| DGCNN | 32 | 0.001 (Adam) | 0.2310 | 3995 | 0.1210 | 91.66 (0.16) | |
