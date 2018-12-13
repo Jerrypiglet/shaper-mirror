@@ -44,6 +44,10 @@ class PointNet2MSGCls(nn.Module):
                  use_xyz=True):
         super(PointNet2MSGCls, self).__init__()
 
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.use_xyz = use_xyz
+
         # sanity check
         num_layers = len(num_centroids)
         assert len(radius_list) == num_layers
@@ -62,6 +66,8 @@ class PointNet2MSGCls(nn.Module):
             self.sa_modules.append(sa_module)
             feature_channels = sa_module.out_channels
 
+        if use_xyz:
+            feature_channels += 3
         self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
         self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
@@ -75,14 +81,18 @@ class PointNet2MSGCls(nn.Module):
         # torch.Tensor.narrow; share same memory
         xyz = point.narrow(1, 0, 3)
         if point.size(1) > 3:
-            features = point.narrow(1, 3, point.size(1) - 3)
+            feature = point.narrow(1, 3, point.size(1) - 3)
         else:
-            features = None
+            feature = None
 
         for sa_module in self.sa_modules:
-            xyz, features = sa_module(xyz, features)
+            xyz, feature = sa_module(xyz, feature)
 
-        x = self.mlp_local(features)
+        if self.use_xyz:
+            x = torch.cat([xyz, feature], dim=1)
+        else:
+            x = feature
+        x = self.mlp_local(x)
         x, max_indices = torch.max(x, 2)
         x = self.mlp_global(x)
 

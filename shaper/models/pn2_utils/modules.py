@@ -77,13 +77,13 @@ class PointNetSAModule(nn.Module):
         self.sampler = FarthestPointSampler(num_centroids)
         self.grouper = QueryGrouper(radius, num_neighbours, use_xyz=use_xyz)
 
-    def forward(self, xyz, features=None):
+    def forward(self, xyz, feature=None):
         """
 
         Args:
             xyz (torch.Tensor): (batch_size, 3, num_points)
-                xyz coordinates of the features
-            features (torch.Tensor or None): (batch_size, in_channels, num_points)
+                xyz coordinates of feature
+            feature (torch.Tensor or None): (batch_size, in_channels, num_points)
 
         Returns:
             new_xyz (torch.Tensor): (batch_size, 3, num_centroids)
@@ -96,7 +96,7 @@ class PointNetSAModule(nn.Module):
         new_xyz = _F.gather_points(xyz, index)
 
         # (batch_size, in_channels, num_centroids, num_neighbours)
-        new_feature = self.grouper(new_xyz, xyz, features)
+        new_feature = self.grouper(new_xyz, xyz, feature)
 
         new_feature = self.mlp(new_feature)
         new_feature, _ = torch.max(new_feature, 3)
@@ -134,13 +134,13 @@ class PointNetSAModuleMSG(nn.Module):
             self.mlp.append(SharedMLP(in_channels, mlp_channels_list[ind], ndim=2, bn=True))
             self.grouper.append(QueryGrouper(radius_list[ind], num_neighbours_list[ind], use_xyz=use_xyz))
 
-    def forward(self, xyz, features=None):
+    def forward(self, xyz, feature=None):
         """
 
         Args:
             xyz (torch.Tensor): (batch_size, 3, num_points)
-                xyz coordinates of the features
-            features (torch.Tensor or None): (batch_size, in_channels, num_points)
+                xyz coordinates of feature
+            feature (torch.Tensor or None): (batch_size, in_channels, num_points)
 
         Returns:
             new_xyz (torch.Tensor): (batch_size, 3, num_centroids)
@@ -148,15 +148,15 @@ class PointNetSAModuleMSG(nn.Module):
 
         """
         # sample new points
-        sample_indices = self.sampler(xyz)
+        index = self.sampler(xyz)
         # (batch_size, 3, num_centroids)
-        new_xyz = _F.gather_points(xyz, sample_indices)
+        new_xyz = _F.gather_points(xyz, index)
 
         # multi-scale
         new_feature_list = []
         for mlp, grouper in zip(self.mlp, self.grouper):
             # (batch_size, in_channels, num_centroids, num_neighbours)
-            new_feature = grouper(new_xyz, xyz, features)
+            new_feature = grouper(new_xyz, xyz, feature)
             new_feature = mlp(new_feature)
             new_feature, _ = torch.max(new_feature, 3)
             new_feature_list.append(new_feature)
