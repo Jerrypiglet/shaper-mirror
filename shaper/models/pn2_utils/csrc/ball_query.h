@@ -2,12 +2,12 @@
 #define _BALL_QUERY
 
 #include <vector>
-#include <torch/torch.h>
+#include <torch/extension.h>
 
 std::vector<at::Tensor> BallQuery(
-    at::Tensor point,
-    at::Tensor centroid,
-    float radius,
-    int64_t num_neighbours);
+    const at::Tensor point,
+    const at::Tensor centroid,
+    const float radius,
+    const int64_t num_neighbours);
 
 #endif

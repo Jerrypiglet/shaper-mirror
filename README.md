@@ -15,6 +15,8 @@ Shaper includes implementations of the following point cloud algorithms:
 Please check [Model Zoo](MODEL_ZOO.md) for benchmark results.
 
 ## Installation
+Pytorch 1.0 with CUDA 9.0 and CUDNN 7.4.1 is the framework used.
+
 It is recommended to use (mini)conda to manage the environment.
 [setuptools](https://setuptools.readthedocs.io/en/latest/) is used to set up the python environment, 
 so that the package is visible in PYTHONPATH.

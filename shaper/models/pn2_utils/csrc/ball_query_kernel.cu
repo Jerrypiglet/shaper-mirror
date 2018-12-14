@@ -12,8 +12,8 @@
 #define CHECK_CUDA(x) AT_CHECK(x.type().is_cuda(), #x " must be a CUDA tensor")
 #define CHECK_CONTIGUOUS(x) AT_CHECK(x.is_contiguous(), #x " must be contiguous")
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
-#define CHECK_EQ(x, y) AT_CHECK(x == y, #x " does not equal to " #y)
-#define CHECK_GT(x, y) AT_CHECK(x > y, #x " is not greater than " #y)
+// #define CHECK_EQ(x, y) AT_CHECK(x == y, #x " does not equal to " #y)
+// #define CHECK_GT(x, y) AT_CHECK(x > y, #x " is not greater than " #y)
 
 #define MAX_THREADS uint64_t(512)
 

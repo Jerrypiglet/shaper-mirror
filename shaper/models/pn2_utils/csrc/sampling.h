@@ -1,11 +1,11 @@
 #ifndef _SAMPLING
 #define _SAMPLING
 
-#include <torch/torch.h>
+#include <torch/extension.h>
 
 // CUDA declarations
 at::Tensor FarthestPointSample(
-    at::Tensor point,
-    int64_t num_centroids);
+    const at::Tensor point,
+    const int64_t num_centroids);
 
 #endif

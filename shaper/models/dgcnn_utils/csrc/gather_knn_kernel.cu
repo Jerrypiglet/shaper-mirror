@@ -7,11 +7,11 @@
 #include <ATen/cuda/detail/TensorInfo.cuh>
 #include <ATen/cuda/detail/IndexUtils.cuh>
 
-// NOTE: AT_ASSERT has become AT_CHECK on master after 0.4.
 #define CHECK_CUDA(x) AT_CHECK(x.type().is_cuda(), #x " must be a CUDA tensor")
 #define CHECK_CONTIGUOUS(x) AT_CHECK(x.is_contiguous(), #x " must be contiguous")
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
-#define CHECK_EQ(x, y) AT_CHECK(x == y, #x " does not equal to " #y)
+// #define CHECK_EQ(x, y) AT_CHECK(x == y, #x " does not equal to " #y)
+// CHECK_EQ is defined at torch/lib/include/c10/util/logging_is_not_google_glog.h
 
 using at::cuda::detail::TensorInfo;
 using at::cuda::detail::getTensorInfo;
@@ -120,7 +120,7 @@ at::Tensor GatherKNNBackward(
   const auto totalElements = grad_output.numel();
   const dim3 block = at::cuda::getApplyBlock();
   dim3 grid;
-  const int curDevice = at::current_device();
+  const int curDevice = at::cuda::current_device();
   // getApplyGrid: aten/src/ATen/cuda/CUDAApplyUtils.cuh
   THArgCheck(at::cuda::getApplyGrid(totalElements, grid, curDevice), 1, "Too many elements to calculate");
   // printf("Grid: %d, %d, %d\n", grid.x, grid.y, grid.z);

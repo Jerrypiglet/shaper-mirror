@@ -1,15 +1,15 @@
 #ifndef _GATHER_KNN
 #define _GATHER_KNN
 
-#include <torch/torch.h>
+#include <torch/extension.h>
 
 // CUDA declarations
 at::Tensor GatherKNNForward(
-    at::Tensor input,
-    at::Tensor index);
+    const at::Tensor input,
+    const at::Tensor index);
 
 at::Tensor GatherKNNBackward(
-    at::Tensor grad_output,
-    at::Tensor index);
+    const at::Tensor grad_output,
+    const at::Tensor index);
 
 #endif

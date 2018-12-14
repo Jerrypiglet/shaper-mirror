@@ -38,7 +38,6 @@ class MLP(nn.ModuleList):
         for module in self:
             x = module(x)
             if self.dropout:
-                # FIXME: Pytorch 1.0 Raise Error
                 x = F.dropout(x, self.dropout, self.training, inplace=False)
         return x
 

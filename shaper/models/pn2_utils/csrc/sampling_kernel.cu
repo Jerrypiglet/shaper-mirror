@@ -10,8 +10,8 @@
 // NOTE: AT_ASSERT has become AT_CHECK on master after 0.4.
 #define CHECK_CUDA(x) AT_CHECK(x.type().is_cuda(), #x " must be a CUDA tensor")
 #define CHECK_CONTIGUOUS(x) AT_CHECK(x.is_contiguous(), #x " must be contiguous")
-#define CHECK_EQ(x, y) AT_CHECK(x == y, #x " does not equal to " #y)
-#define CHECK_GT(x, y) AT_CHECK(x > y, #x " is not greater than " #y)
+// #define CHECK_EQ(x, y) AT_CHECK(x == y, #x " does not equal to " #y)
+// #define CHECK_GT(x, y) AT_CHECK(x > y, #x " is not greater than " #y)
   
 #define CASE_RUN(BLOCK) \
   case BLOCK: \
@@ -123,8 +123,8 @@ Output:
   index: (B, N2)
 */
 at::Tensor FarthestPointSample(
-	  at::Tensor point,
-    int64_t num_centroids) {
+	  const at::Tensor point,
+    const int64_t num_centroids) {
 
 	const auto batch_size = point.size(0);
 	const auto num_points = point.size(2);

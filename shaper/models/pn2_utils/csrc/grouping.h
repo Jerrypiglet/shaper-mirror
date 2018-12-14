@@ -1,16 +1,16 @@
 #ifndef _GROUP_POINTS
 #define _GROUP_POINTS
 
-#include <torch/torch.h>
+#include <torch/extension.h>
 
 // CUDA declarations
 at::Tensor GroupPointsForward(
-    at::Tensor input,
-    at::Tensor index);
+    const at::Tensor input,
+    const at::Tensor index);
 
 at::Tensor GroupPointsBackward(
-    at::Tensor grad_output,
-    at::Tensor index,
-    int64_t num_points);
+    const at::Tensor grad_output,
+    const at::Tensor index,
+    const int64_t num_points);
 
 #endif
