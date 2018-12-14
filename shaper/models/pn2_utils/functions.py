@@ -6,28 +6,29 @@ except ImportError:
     print("Please compile source files before using pointnet2 cuda extension.")
 
 
-def gather_points(xyz, indices):
+def gather_points(point, index):
     """Gather xyz of centroids according to indices
 
     Args:
-        xyz: (batch_size, 3, num_points)
-        indices: (batch_size, num_centroids)
+        point: (batch_size, channels, num_points)
+        index: (batch_size, num_centroids)
 
     Returns:
-        new_xyz (torch.Tensor): (batch_size, 3, num_centroids)
+        new_xyz (torch.Tensor): (batch_size, channels, num_centroids)
 
     """
-    batch_size = xyz.size(0)
-    num_centroids = indices.size(1)
-    indices_expand = indices.unsqueeze(1).expand(batch_size, 3, num_centroids)
-    return xyz.gather(2, indices_expand)
+    batch_size = point.size(0)
+    channels = point.size(1)
+    num_centroids = index.size(1)
+    index_expand = index.unsqueeze(1).expand(batch_size, channels, num_centroids)
+    return point.gather(2, index_expand)
 
 
 class FarthestPointSample(torch.autograd.Function):
     @staticmethod
     def forward(ctx, point, num_centroids):
-        sample_indices = pn2_ext.farthest_point_sample(point, num_centroids)
-        return sample_indices
+        index = pn2_ext.farthest_point_sample(point, num_centroids)
+        return index
 
     @staticmethod
     def backward(ctx, *grad_outputs):

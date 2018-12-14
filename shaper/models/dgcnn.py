@@ -231,6 +231,7 @@ def build_dgcnn(cfg):
             global_channels=cfg.MODEL.DGCNN.GLOBAL_CHANNELS,
             k=cfg.MODEL.DGCNN.K,
             dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
+            with_transform=cfg.MODEL.DGCNN.WITH_TRANSFORM,
         )
         loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
         metric_fn = Accuracy()

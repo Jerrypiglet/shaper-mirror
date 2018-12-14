@@ -83,6 +83,7 @@ class PointNet2SSGCls(nn.Module):
 
     def forward(self, data_batch):
         point = data_batch["points"]
+        end_points = {}
 
         # torch.Tensor.narrow; share same memory
         xyz = point.narrow(1, 0, 3)
@@ -100,6 +101,7 @@ class PointNet2SSGCls(nn.Module):
             x = feature
         x = self.mlp_local(x)
         x, max_indices = torch.max(x, 2)
+        end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
 
         cls_logits = self.classifier(x)
@@ -107,6 +109,7 @@ class PointNet2SSGCls(nn.Module):
         preds = {
             'cls_logits': cls_logits
         }
+        preds.update(end_points)
 
         return preds
 

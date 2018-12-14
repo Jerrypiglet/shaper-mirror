@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.nn.functional import smooth_cross_entropy
-from shaper.models.pn2_modules.pointnet2_modules import PointnetSAModuleMSG
+from shaper.models.pn2_utils.modules import PointnetSAModuleMSG
 from shaper.models.dgcnn import TNet
 from shaper.models.dgcnn import DGCNNFeature
 from shaper.models.metric import Accuracy

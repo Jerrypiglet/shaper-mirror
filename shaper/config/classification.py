@@ -31,6 +31,8 @@ _C.MODEL.DGCNN.GLOBAL_CHANNELS = (512, 256)
 _C.MODEL.DGCNN.DROPOUT_PROB = 0.5
 _C.MODEL.DGCNN.LABEL_SMOOTHING = 0.2
 
+_C.MODEL.DGCNN.WITH_TRANSFORM = True
+
 # -----------------------------------------------------------------------------
 # PN2SSG options
 # -----------------------------------------------------------------------------
@@ -69,25 +71,3 @@ _C.MODEL.S2CNN = CN()
 _C.MODEL.S2CNN.BAND_WIDTH_IN = 30
 _C.MODEL.S2CNN.FEATURE_CHANNELS = (100, 100)
 _C.MODEL.S2CNN.BAND_WIDTH_LIST = (16, 10)
-
-# -----------------------------------------------------------------------------
-# DGPN2 options
-# -----------------------------------------------------------------------------
-_C.MODEL.DGPN2 = CN()
-
-# Local pointnet paras
-_C.MODEL.DGPN2.NUM_POINTS = 256
-_C.MODEL.DGPN2.RADIUS = (0.2)
-_C.MODEL.DGPN2.NUM_SAMPLES = (16, 32, 128)
-_C.MODEL.DGPN2.GROUP_MLPS = ((32, 32, 64), (64, 64, 128), (64, 96, 128))
-
-# Dynamic graph paras
-_C.MODEL.DGPN2.EDGE_CONV_CHANNELS = (128, 256, 512)
-_C.MODEL.DGPN2.INTER_CHANNELS = 128
-_C.MODEL.DGPN2.GLOBAL_CHANNELS = (512, 256)
-_C.MODEL.DGPN2.K = 20
-_C.MODEL.DGPN2.TRANSFORM_XYZ = True
-_C.MODEL.DGPN2.DROP_PROB = 0.5
-
-_C.MODEL.DGPN2.LABEL_SMOOTH = 0.0
-_C.MODEL.DGPN2.TRANS_REG_WEIGHT = 0.0
