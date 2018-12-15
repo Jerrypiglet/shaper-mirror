@@ -23,6 +23,8 @@ TRAIN:
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 16
+  # Important to shuffle points during test
+  AUGMENTATION: ("PointCloudShuffle",)
   VOTE:
     ENABLE: True
     NUM_VIEW: 12

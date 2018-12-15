@@ -18,11 +18,13 @@ SOLVER:
   STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
 TRAIN:
   BATCH_SIZE: 16
-  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter", "PointCloudShuffle")
   LOG_PERIOD: 50
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 16
+  # Important to shuffle points during test
+  AUGMENTATION: ("PointCloudShuffle",)
   VOTE:
     ENABLE: True
     NUM_VIEW: 12

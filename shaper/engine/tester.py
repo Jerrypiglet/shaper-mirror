@@ -120,7 +120,9 @@ def test(cfg, output_dir=""):
             tmp_cfg = cfg.clone()
             tmp_cfg.defrost()
             angle = 2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VIEW
-            tmp_cfg.TEST.AUGMENTATION = (("PointCloudRotateByAngle", cfg.TEST.VOTE.AXIS, angle),)
+            test_aug = list(tmp_cfg.TEST.AUGMENTATION)
+            test_aug.insert(0, ("PointCloudRotateByAngle", cfg.TEST.VOTE.AXIS, angle))
+            tmp_cfg.TEST.AUGMENTATION = tuple(test_aug)
             test_data_loader.dataset.transform = build_transform(tmp_cfg, False)
             test_meters, test_result_dict = test_model(model,
                                                        loss_fn,

@@ -25,16 +25,16 @@ class PointNet2SSGCls(nn.Module):
     Structure: input -> [PointNetSA]s -> [MLP]s -> [MaxPooling] -> [MLP]s -> [Linear] -> logits
 
     Args:
-        in_channels (int): The number of input channels
-        out_channels (int): The number of semantics classes to predict over
-        num_centroids (tuple of int): The numbers of centroids to sample in each set abstraction module
-        radius (tuple of float): A tuple of radius to query neighbours in each set abstraction module
-        num_neighbours(tuple of int): The numbers of neighbours to query for each centroid
-        sa_channels (tuple of tuple of int): The numbers of channels to within each set abstraction module
-        local_channels (tuple of int): The numbers of channels to extract local features after set abstraction
-        global_channels (tuple of int): The numbers of channels to extract global features
-        dropout_prob (float): The probability to dropout input features
-        use_xyz (bool): Whether or not to use the xyz position of a point as a feature
+        in_channels (int): the number of input channels
+        out_channels (int): the number of semantics classes to predict over
+        num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
+        radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
+        num_neighbours(tuple of int): the numbers of neighbours to query for each centroid
+        sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
+        local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
+        global_channels (tuple of int): the numbers of channels to extract global features
+        dropout_prob (float): the probability to dropout input features
+        use_xyz (bool): whether or not to use the xyz position of a point as a feature
     """
 
     def __init__(self,
