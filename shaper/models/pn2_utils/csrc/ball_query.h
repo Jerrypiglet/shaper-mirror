@@ -5,8 +5,8 @@
 #include <torch/extension.h>
 
 std::vector<at::Tensor> BallQuery(
-    const at::Tensor point,
-    const at::Tensor centroid,
+    const at::Tensor points,
+    const at::Tensor centroids,
     const float radius,
     const int64_t num_neighbours);
 

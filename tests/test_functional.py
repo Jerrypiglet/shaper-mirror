@@ -13,21 +13,21 @@ def test_pdist():
     num_points = 1024
     channels = 64
 
-    features = np.random.rand(batch_size, channels, num_points)
-    features_tensor = torch.from_numpy(features)
+    feature = np.random.rand(batch_size, channels, num_points)
+    feature_tensor = torch.from_numpy(feature)
     if torch.cuda.is_available():
-        features_tensor = features_tensor.cuda()
+        feature_tensor = feature_tensor.cuda()
 
     # check pairwise distance
-    distance = np.stack([sdist.squareform(np.square(sdist.pdist(feat.T))) for feat in features])
+    distance = np.stack([sdist.squareform(np.square(sdist.pdist(feat.T))) for feat in feature])
 
-    distance_tensor = pdist(features_tensor)  # warm up
+    distance_tensor = pdist(feature_tensor)  # warm up
     assert np.allclose(distance, distance_tensor.cpu().numpy())
 
     with torch.no_grad():
         end = time.time()
         for _ in range(10):
-            pdist(features_tensor)
+            pdist(feature_tensor)
         print("pdist benchmark:")
         print("Time: {:.6f}s".format((time.time() - end) / 50),
               "Memory: {}MB".format(torch.cuda.memory_allocated() / 1024 ** 2))

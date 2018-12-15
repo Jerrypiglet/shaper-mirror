@@ -15,11 +15,11 @@
   
 #define CASE_RUN(BLOCK) \
   case BLOCK: \
-    AT_DISPATCH_FLOATING_TYPES(point.type(), "FarthestPointSample", ([&] { \
+    AT_DISPATCH_FLOATING_TYPES(points.type(), "FarthestPointSample", ([&] { \
       FarthestPointSampleKernel<BLOCK, scalar_t, int64_t> \
         <<<batch_size, BLOCK>>>( \
         index.data<int64_t>(), \
-        point_trans.data<scalar_t>(), \
+        points_trans.data<scalar_t>(), \
         temp.data<scalar_t>(), \
         num_points, \
         num_centroids); \
@@ -39,14 +39,14 @@ inline uint64_t get_block(int64_t x) {
 }
 
 /*
-point: (B, N1, 3)
+points: (B, N1, 3)
 temp: (B, N1)
 index: (B, N2)
 */
 template <unsigned int block_size, typename scalar_t, typename index_t>
 __global__ void FarthestPointSampleKernel(
     index_t* __restrict__ index,
-    const scalar_t* __restrict__ point,
+    const scalar_t* __restrict__ points,
     scalar_t* __restrict__ temp,
     const int64_t num_points,
     const int64_t num_centroids) {
@@ -57,7 +57,7 @@ __global__ void FarthestPointSampleKernel(
 
   const int batch_index = blockIdx.x;
   int32_t cur_ind = 0;
-  const scalar_t* point_offset = point + batch_index * num_points * 3;
+  const scalar_t* points_offset = points + batch_index * num_points * 3;
   scalar_t* temp_offset = temp + batch_index * num_points;
   index_t* index_offset = index + batch_index * num_centroids;
   // explicitly choose the first point as a centroid
@@ -68,15 +68,15 @@ __global__ void FarthestPointSampleKernel(
     int32_t max_ind = cur_ind;
     
     int32_t offset1 = cur_ind * 3;
-    scalar_t x1 = point_offset[offset1 + 0];
-    scalar_t y1 = point_offset[offset1 + 1];
-    scalar_t z1 = point_offset[offset1 + 2];
+    scalar_t x1 = points_offset[offset1 + 0];
+    scalar_t y1 = points_offset[offset1 + 1];
+    scalar_t z1 = points_offset[offset1 + 2];
 
     for (int j = threadIdx.x; j < num_points; j += block_size) {
       int32_t offset2 = j * 3;
-      scalar_t x2 = point_offset[offset2 + 0];
-      scalar_t y2 = point_offset[offset2 + 1];
-      scalar_t z2 = point_offset[offset2 + 2];
+      scalar_t x2 = points_offset[offset2 + 0];
+      scalar_t y2 = points_offset[offset2 + 1];
+      scalar_t z2 = points_offset[offset2 + 2];
 
       scalar_t dist = (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1);
       scalar_t last_dist = temp_offset[j];
@@ -118,26 +118,26 @@ __global__ void FarthestPointSampleKernel(
 /*
 Only forward is required.
 Input:
-  point: (B, 3, N1)
+  points: (B, 3, N1)
 Output:
   index: (B, N2)
 */
 at::Tensor FarthestPointSample(
-	  const at::Tensor point,
+	  const at::Tensor points,
     const int64_t num_centroids) {
 
-	const auto batch_size = point.size(0);
-	const auto num_points = point.size(2);
+	const auto batch_size = points.size(0);
+	const auto num_points = points.size(2);
 
 	// Sanity check
-	CHECK_CUDA(point);
-	CHECK_EQ(point.size(1), 3);
+	CHECK_CUDA(points);
+	CHECK_EQ(points.size(1), 3);
 	CHECK_GT(num_centroids, 0);
 	
-  auto point_trans = point.transpose(1, 2).contiguous();  // (B, N1, 3)
-  auto index = at::zeros({batch_size, num_centroids}, point.type().toScalarType(at::kLong));
+  auto points_trans = points.transpose(1, 2).contiguous();  // (B, N1, 3)
+  auto index = at::zeros({batch_size, num_centroids}, points.type().toScalarType(at::kLong));
   // In original implementation, it only allocates memory with the size of grid instead of batch size.
-  auto temp = at::neg(at::ones({batch_size, num_points}, point.type()));
+  auto temp = at::neg(at::ones({batch_size, num_points}, points.type()));
 
 	// In order to make full use of shared memory and threads,
   // it is recommended to set num_centroids to be power of 2.
@@ -151,11 +151,11 @@ at::Tensor FarthestPointSample(
     CASE_RUN(32)
     CASE_RUN(16)
     default:
-      AT_DISPATCH_FLOATING_TYPES(point.type(), "FarthestPointSample", ([&] {
+      AT_DISPATCH_FLOATING_TYPES(points.type(), "FarthestPointSample", ([&] {
       FarthestPointSampleKernel<16, scalar_t, int64_t>
         <<<batch_size, 16>>>(
         index.data<int64_t>(),
-        point_trans.data<scalar_t>(),
+        points_trans.data<scalar_t>(),
         temp.data<scalar_t>(),
         num_points,
         num_centroids);

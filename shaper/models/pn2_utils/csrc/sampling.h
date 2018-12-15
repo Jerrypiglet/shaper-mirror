@@ -5,7 +5,7 @@
 
 // CUDA declarations
 at::Tensor FarthestPointSample(
-    const at::Tensor point,
+    const at::Tensor points,
     const int64_t num_centroids);
 
 #endif

@@ -26,37 +26,37 @@ def get_knn_inds(pdist, k=20, remove=False):
         return knn_inds
 
 
-def construct_edge_feature_index(features, knn_inds):
+def construct_edge_feature_index(feature, knn_inds):
     """Construct edge feature for each point (or regarded as a node)
     using advanced indexing
 
     Args:
-        features (torch.Tensor): point features, (batch_size, channels, num_nodes),
+        feature (torch.Tensor): point features, (batch_size, channels, num_nodes),
         knn_inds (torch.Tensor): indices of k-nearest neighbour, (batch_size, num_nodes, k)
 
     Returns:
         edge_feature: (batch_size, 2*channels, num_nodes, k)
 
     """
-    batch_size, channels, num_nodes = features.shape
+    batch_size, channels, num_nodes = feature.shape
     k = knn_inds.size(-1)
 
-    feature_central = features.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
+    feature_central = feature.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
     batch_idx = torch.arange(batch_size).view(-1, 1, 1, 1)
     feature_idx = torch.arange(channels).view(1, -1, 1, 1)
     # (batch_size, channels, num_nodes, k)
-    feature_neighbour = features[batch_idx, feature_idx, knn_inds.unsqueeze(1)]
+    feature_neighbour = feature[batch_idx, feature_idx, knn_inds.unsqueeze(1)]
     edge_feature = torch.cat((feature_central, feature_neighbour - feature_central), 1)
 
     return edge_feature
 
 
-def construct_edge_feature_gather(features, knn_inds):
+def construct_edge_feature_gather(feature, knn_inds):
     """Construct edge feature for each point (or regarded as a node)
     using torch.gather
 
     Args:
-        features (torch.Tensor): point features, (batch_size, channels, num_nodes),
+        feature (torch.Tensor): point features, (batch_size, channels, num_nodes),
         knn_inds (torch.Tensor): indices of k-nearest neighbour, (batch_size, num_nodes, k)
 
     Returns:
@@ -67,12 +67,12 @@ def construct_edge_feature_gather(features, knn_inds):
         It is because it will allocate a tensor as large as expanded features during backward.
 
     """
-    batch_size, channels, num_nodes = features.shape
+    batch_size, channels, num_nodes = feature.shape
     k = knn_inds.size(-1)
 
     # CAUTION: torch.expand
-    feature_central = features.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
-    feature_expand = features.unsqueeze(2).expand(batch_size, channels, num_nodes, num_nodes)
+    feature_central = feature.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
+    feature_expand = feature.unsqueeze(2).expand(batch_size, channels, num_nodes, num_nodes)
     knn_inds_expand = knn_inds.unsqueeze(1).expand(batch_size, channels, num_nodes, k)
     feature_neighbour = torch.gather(feature_expand, 3, knn_inds_expand)
     # (batch_size, 2 * channels, num_nodes, k)
@@ -81,35 +81,35 @@ def construct_edge_feature_gather(features, knn_inds):
     return edge_feature
 
 
-def construct_edge_feature(features, knn_inds):
+def construct_edge_feature(feature, knn_inds):
     """Construct edge feature for each point (or regarded as a node)
     using gather_knn
 
     Args:
-        features (torch.Tensor): point features, (batch_size, channels, num_nodes),
+        feature (torch.Tensor): point features, (batch_size, channels, num_nodes),
         knn_inds (torch.Tensor): indices of k-nearest neighbour, (batch_size, num_nodes, k)
 
     Returns:
         edge_feature: (batch_size, 2*channels, num_nodes, k)
 
     """
-    batch_size, channels, num_nodes = features.shape
+    batch_size, channels, num_nodes = feature.shape
     k = knn_inds.size(-1)
 
     # CAUTION: torch.expand
-    feature_central = features.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
-    feature_neighbour = gather_knn(features, knn_inds)
+    feature_central = feature.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
+    feature_neighbour = gather_knn(feature, knn_inds)
     # (batch_size, 2 * channels, num_nodes, k)
     edge_feature = torch.cat((feature_central, feature_neighbour - feature_central), 1)
 
     return edge_feature
 
 
-def get_edge_feature(features, k):
+def get_edge_feature(feature, k):
     """Get edge feature for point features
 
     Args:
-        features (torch.Tensor): (batch_size, channels, num_nodes)
+        feature (torch.Tensor): (batch_size, channels, num_nodes)
         k (int): the number of nearest neighbours
 
     Returns:
@@ -117,13 +117,13 @@ def get_edge_feature(features, k):
 
     """
     with torch.no_grad():
-        distance = pdist(features)
+        distance = pdist(feature)
         knn_inds = get_knn_inds(distance, k)
-        # knn_inds = torch.ones(features.size(0), features.size(2), k, dtype=torch.int64, device=features.device)
+        # knn_inds = torch.ones(feature.size(0), feature.size(2), k, dtype=torch.int64, device=feature.device)
 
-    edge_feature = construct_edge_feature(features, knn_inds)
-    # edge_feature = construct_edge_feature_gather(features, knn_inds)
-    # edge_feature = construct_edge_feature_index(features, knn_inds)
+    edge_feature = construct_edge_feature(feature, knn_inds)
+    # edge_feature = construct_edge_feature_gather(feature, knn_inds)
+    # edge_feature = construct_edge_feature_index(feature, knn_inds)
 
-    # edge_feature = torch.ones(features.size(0), 2*features.size(1), features.size(2), k, device=features.device)
+    # edge_feature = torch.ones(feature.size(0), 2*feature.size(1), feature.size(2), k, device=feature.device)
     return edge_feature

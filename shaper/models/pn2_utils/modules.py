@@ -16,8 +16,8 @@ class FarthestPointSampler(nn.Module):
         super(FarthestPointSampler, self).__init__()
         self.num_centroids = num_centroids
 
-    def forward(self, point):
-        index = _F.farthest_point_sample(point, self.num_centroids)
+    def forward(self, points):
+        index = _F.farthest_point_sample(points, self.num_centroids)
         return index
 
     def extra_repr(self):

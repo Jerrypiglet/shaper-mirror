@@ -93,6 +93,17 @@ pytest -s test_functional.py
 - Use setup.py to build python packages and pytorch (cuda) extension.
 - Create a new branch and a new folder for a new project.
 
+### Style guide
+- Name a tensor
+    - Singular form in general, e.g. ``input, index, feature``.
+    - Plural form sometimes, e.g. ``points, centroids``. 
+    An alternative is ``point_cloud, centroid_set``.
+- Name the number of elements, e.g. ``num_points, num_scales``
+- Name the module
+    - Singular form for nn.Module or implicit nn.ModuleList(e.g. SharedMLP)
+    - Plural form for explicit nn.ModuleList
+- https://google.github.io/styleguide/pyguide.html
+
 ## CUDA extension
 
 ``shaper/models/dgcnn_utils`` could be a good tutorial about how to write CUDA extension.
