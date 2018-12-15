@@ -1,0 +1,32 @@
+TASK:
+  "classification"
+INPUT:
+  NUM_POINTS: 1024
+MODEL:
+  TYPE: "PointNet"
+  POINTNET:
+    DROPOUT_PROB: 0.0
+DATASET:
+  ROOT_DIR: "data/modelnet40/modelnet40_fewshot"
+  TYPE: "ModelNetCompare"
+  NUM_CLASSES: 30
+  TRAIN: ("train",)
+  VAL: ("target",)
+  TEST: ("target",)
+  COMPARE:
+    NUM_PER_CLASS: 1
+    CROSS_NUM: 0
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 250
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+TRAIN:
+  AUGMENTATION: ("PointCloudRotate", ("PointCloudRotatePerturbation",0.06, 0.18), "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 50
+  VAL_PERIOD: 1
+TEST:
+  BATCH_SIZE: 32
+  LOG_PERIOD: 100
+

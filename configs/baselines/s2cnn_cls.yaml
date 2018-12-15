@@ -1,0 +1,36 @@
+TASK:
+  "classification"
+INPUT:
+  NUM_POINTS: 1024
+MODEL:
+  TYPE: "S2CNN"
+  S2CNN:
+    FEATURE_CHANNELS: (32, 32, 64, 64, 128, 128)
+    BAND_WIDTH_LIST: (32, 32, 16, 16, 8, 8)
+DATASET:
+  ROOT_DIR: "data/modelnet40"
+  TYPE: "ModelNet"
+  NUM_CLASSES: 40
+  TRAIN: ("train",)
+  VAL: ("test",)
+  TEST: ("test",)
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 300
+  GAMMA: 0.2
+  STEPS: (100, 200,)
+DATALOADER:
+  NUM_WORKERS: 1
+TRAIN:
+  BATCH_SIZE: 8
+  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 1
+  VAL_PERIOD: 1
+TEST:
+  BATCH_SIZE: 16
+  VOTE:
+    ENABLE: True
+    NUM_VIEW: 12
+    SCORE_HEUR: ("logit",)
+OUTPUT_DIR: "@_deep"

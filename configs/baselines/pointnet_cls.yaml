@@ -1,12 +1,12 @@
 TASK:
   "classification"
+INPUT:
+  NUM_POINTS: 1024
 MODEL:
-  TYPE: "POINTNET"
+  TYPE: "PointNet"
   POINTNET:
     DROPOUT_PROB: 0.3
     REG_WEIGHT: 0.032
-INPUT:
-  NUM_POINTS: 1024
 DATASET:
   ROOT_DIR: "data/modelnet40"
   TYPE: "ModelNet"
@@ -23,6 +23,7 @@ TRAIN:
   BATCH_SIZE: 32
   AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)
   LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
@@ -30,3 +31,4 @@ TEST:
     ENABLE: True
     NUM_VIEW: 12
     SCORE_HEUR: ("logit",)
+  VIS_DIR: "@/vis_error_key_pts"

@@ -32,3 +32,6 @@ dist/
 /data
 /models
 /outputs
+/trials
+
+cache

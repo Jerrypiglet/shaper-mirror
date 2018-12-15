@@ -1,0 +1,32 @@
+TASK:
+  "classification"
+MODEL:
+  TYPE: "DGCNN"
+  DGCNN:
+    LABEL_SMOOTHING: 0.2
+    K: 32
+    EDGE_CONV_CHANNELS: (64, 64, 64,128)
+    INTER_CHANNELS: 1024
+    GLOBAL_CHANNELS: (512, 256)
+INPUT:
+  NUM_POINTS: 1024
+DATASET:
+  ROOT_DIR: "data/modelnet40"
+  TYPE: "ModelNet"
+  NUM_CLASSES: 40
+  TRAIN: ("train",)
+  VAL: ("test",)
+  TEST: ("test",)
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 250
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220)
+TRAIN:
+  BATCH_SIZE: 32
+  AUGMENTATION: ("PointCloudRotate", "PointCloudJitter", "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
+  VAL_PERIOD: 1
+TEST:
+  BATCH_SIZE: 32
+DEVICE_IDS: (0,)
+OUTPUT_DIR: "@/origin_code"

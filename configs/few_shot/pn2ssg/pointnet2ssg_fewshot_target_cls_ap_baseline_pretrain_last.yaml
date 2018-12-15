@@ -1,0 +1,37 @@
+TASK:
+  "classification"
+INPUT:
+  NUM_POINTS: 1024
+MODEL:
+  TYPE: "PN2SSGFewShot"
+  PN2SSG:
+    NUM_POINTS: (1024,)
+    RADIUS: (0.3,)
+    NUM_SAMPLE: (48,)
+    GROUP_MLPS: ((64,64,128,128,256,256),)
+  WEIGHT: "/home/rayc/Projects/shaper/outputs/few_shot/pn2ssg/pointnet2ssg_fewshot_cls_ap/model_251.pth"
+DATASET:
+  ROOT_DIR: "data/modelnet40/modelnet40_fewshot"
+  TYPE: "ModelNetFewShot"
+  NUM_CLASSES: 10
+  TRAIN: ("support_all",)
+  VAL: ("target",)
+  TEST: ("target",)
+  FEW_SHOT:
+    NUM_PER_CLASS: 1
+    CROSS_NUM: 0
+SOLVER:
+  BASE_LR: 0.0005
+  MAX_EPOCH: 150
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140)
+TRAIN:
+  LOAD_PRETRAIN: True
+  BATCH_SIZE: 5
+  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 50
+  VAL_PERIOD: 5
+TEST:
+  BATCH_SIZE: 10
+  LOG_PERIOD: 50

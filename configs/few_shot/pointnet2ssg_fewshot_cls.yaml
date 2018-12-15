@@ -1,0 +1,26 @@
+TASK:
+  "classification"
+INPUT:
+  NUM_POINTS: 1024
+MODEL:
+  TYPE: "PN2SSG"
+DATASET:
+  ROOT_DIR: "data/modelnet40/modelnet40_fewshot"
+  TYPE: "ModelNetFewShot"
+  NUM_CLASSES: 30
+  TRAIN: ("train",)
+  VAL: ("valid",)
+  TEST: ("valid",)
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 251
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+TRAIN:
+  BATCH_SIZE: 12
+  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 50
+  VAL_PERIOD: 1
+TEST:
+  BATCH_SIZE: 12

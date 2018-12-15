@@ -120,7 +120,8 @@ def train(cfg, output_dir=""):
     checkpointer = Checkpointer(model,
                                 optimizer=optimizer,
                                 scheduler=scheduler,
-                                save_dir=output_dir)
+                                save_dir=output_dir,
+                                logger=logger)
 
     checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME)
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD

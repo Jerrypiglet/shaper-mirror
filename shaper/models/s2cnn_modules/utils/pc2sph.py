@@ -9,7 +9,7 @@ import torch.nn as nn
 import lie_learn.spaces.S2 as S2
 
 
-def cal_sph_weight(xyz, grid):
+def cal_sph_weight(xyz, grid, epsilon=1):
     """
     Function to calculate the projection weight of each grid
     Args:
@@ -26,16 +26,14 @@ def cal_sph_weight(xyz, grid):
     vec_product = torch.mm(xyz, torch.transpose(grid, 0, 1))  # [n_pc, n_grid]
     quotient = torch.clamp(vec_product.div(norm_pc), min=-1.0, max=1.0)
     angle = torch.acos(quotient)
-    sph_weight = torch.exp(-angle)
+    sph_weight = torch.exp(-epsilon * angle)
 
     return sph_weight.type(torch.float32)
 
 
-def get_projection_grid(b, grid_type="Driscoll-Healy"):
+def get_projection_grid(b, grid_type="SOFT"):
     """
-    returns the spherical grid in euclidean
-    coordinates, where the sphere's center is moved
-    to (0, 0, 1)
+    returns the spherical grid in euclidean coordinates
     """
     theta, phi = S2.meshgrid(b=b, grid_type=grid_type)
     grid = S2.change_coordinates(np.c_[theta[..., None], phi[..., None]], p_from='S', p_to='C')
@@ -95,7 +93,8 @@ class PointCloudProjector(nn.Module):
 
         # generate unique mask
         pts_cnt = pts_cnt.view(-1, 1).repeat(1, num_samples).type(torch.float32)  # [b*np, ns]
-        nsrange = torch.arange(num_samples, dtype=torch.float32).unsqueeze(0).repeat(batch_size * num_points, 1).to(x.device)
+        nsrange = torch.arange(num_samples, dtype=torch.float32).unsqueeze(0).repeat(batch_size * num_points, 1).to(
+            x.device)
         ones = torch.ones_like(nsrange, dtype=torch.float32).to(x.device)
         zeros = torch.zeros_like(nsrange, dtype=torch.float32).to(x.device)
         unique_mask = torch.where(nsrange < pts_cnt, ones, zeros).to(x.device)
@@ -105,7 +104,7 @@ class PointCloudProjector(nn.Module):
         # print('xyz shape at pos1: ', list(xyz.size()))
         xyz = torch.transpose(xyz, 1, 2).contiguous()
         # print('xyz shape at pos2: ', list(xyz.size()))
-        xyz = xyz.view(batch_size*num_points, 3, num_samples)  # [b*np, 3, ns]
+        xyz = xyz.view(batch_size * num_points, 3, num_samples)  # [b*np, 3, ns]
         # print('xyz shape at pos3: ', list(xyz.size()))
         xyz_flat = torch.transpose(xyz, 1, 2).contiguous().view(-1, 3)
         weight_sph = cal_sph_weight(xyz_flat, grid)  # [b*np*ns, ng]
@@ -128,10 +127,10 @@ class PointCloudProjector(nn.Module):
 
         # project normals onto sphere grid
         if use_normal:
-            normal = torch.transpose(normal, 1, 2).contiguous()\
+            normal = torch.transpose(normal, 1, 2).contiguous() \
                 .view(-1, 3, num_samples).type(torch.float32)  # [b*np, 3, ns]
             normal = torch.mul(normal, unique_mask_weighted.unsqueeze(1).repeat(1, 3, 1))
-            normal_flat = torch.transpose(normal, 1, 2).contiguous()\
+            normal_flat = torch.transpose(normal, 1, 2).contiguous() \
                 .view(-1, 3)  # [b*np*ns, 3]
             normal_grid_product = torch.mm(normal_flat, gridT)  # [b*np*ns, ng]
 
@@ -158,12 +157,19 @@ if __name__ == "__main__":
     print(grid.shape)
 
     pc_projector = PointCloudProjector(bandwidth=16)
-    pc = np.random.rand(4, 3, 20, 10)
+    print('grid: ', pc_projector.grid.shape)
+    # print(pc_projector.grid)
+    np.savetxt('/home/rayc/Projects/shaper/trials/grid.txt', pc_projector.grid, fmt="%.4f")
+    pc = np.random.randn(2, 3, 2)
     pc = torch.as_tensor(pc).type(torch.float32)
     grid_val = pc_projector(pc)
-    print('pc grid shape: ', grid_val.shape)
+    print('pc projection shape: ', grid_val.shape)
 
-    pcn = np.random.rand(4, 6, 20, 10)
+    np.savetxt('/home/rayc/Projects/shaper/trials/pc.txt', np.transpose(np.squeeze(pc[0, ...])), fmt="%.4f")
+    grid_pc = np.concatenate((pc_projector.grid, np.reshape(grid_val[0, 0, ...], (-1, 1))), axis=-1)
+    np.savetxt('/home/rayc/Projects/shaper/trials/pc_grid.txt', grid_pc, fmt="%.4f")
+
+    pcn = np.random.rand(4, 6, 20)
     pcn = torch.as_tensor(pcn).type(torch.float32)
     grid_val_pcn = pc_projector(pcn)
-    print('pcn grid shape: ', grid_val_pcn[0].shape, grid_val_pcn[1].shape)
+    print('pcn projection shape: ', grid_val_pcn[0].shape, grid_val_pcn[1].shape)

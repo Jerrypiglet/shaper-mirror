@@ -44,8 +44,8 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
             num_points = len(points)
 
             # three views
-            img = point_cloud_three_views(points)
-            imageio.imwrite(fname + '.jpg', img)
+            # img = point_cloud_three_views(points)
+            # imageio.imwrite(fname + '.jpg', img)
 
             # point clouds
             if aux_preds is not None and "key_point_inds" in aux_preds:
@@ -76,3 +76,5 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
             table.add_row([class_name, 0, 0, 0])
     logger.info("average class accuracy={:.2f}%.\n{}".format(
         100.0 * np.mean(acc_per_class), table))
+
+    return overall_acc, np.mean(acc_per_class)

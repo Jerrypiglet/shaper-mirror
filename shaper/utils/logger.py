@@ -24,3 +24,9 @@ def setup_logger(name, save_dir, prefix="", timestamp=True):
         logger.addHandler(fh)
 
     return logger
+
+
+def shutdown_logger(logger):
+    # for hdlr in logger.handlers:
+    #     logger.removeHandler(hdlr)
+    logger.handlers = []

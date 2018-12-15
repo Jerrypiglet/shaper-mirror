@@ -95,3 +95,9 @@ class ShapeNet(Dataset):
 
     def __len__(self):
         return len(self.meta_data)
+
+
+if __name__ == "__main__":
+    root_dir = "../../../data/shapenetcore"
+    shapenet = ShapeNet(root_dir, ['val'])
+    print('total data num: ', shapenet.__len__())
