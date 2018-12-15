@@ -177,7 +177,7 @@ class PointNetCls(nn.Module):
         x = self.classifier(x)
 
         preds = {
-            'cls_logits': x
+            'cls_logit': x
         }
         preds.update(end_points)
 
@@ -201,9 +201,9 @@ class PointNetClsLoss(nn.Module):
         self.reg_weight = reg_weight
 
     def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        cls_loss = F.cross_entropy(cls_logits, cls_labels)
+        cls_logit = preds["cls_logit"]
+        cls_label = labels["cls_label"]
+        cls_loss = F.cross_entropy(cls_logit, cls_label)
 
         loss_dict = {
             'cls_loss': cls_loss,

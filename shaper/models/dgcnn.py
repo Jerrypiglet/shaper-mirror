@@ -79,61 +79,6 @@ class TNet(nn.Module):
         nn.init.zeros_(self.linear.bias)
 
 
-class DGCNNFeature(nn.Module):
-    """DGCNN for feature extraction"""
-
-    def __init__(self,
-                 in_channels,
-                 edge_conv_channels=(64, 64, 64, 128),
-                 inter_channels=1024,
-                 global_channels=(256, 128),
-                 k=20,
-                 dropout_prob=0.5,
-                 with_transform=False):
-        super(DGCNNFeature, self).__init__()
-
-        self.in_channels = in_channels
-        self.out_channels = global_channels[-1]
-        self.k = k
-        self.with_transform = with_transform
-
-        # input transform
-        if self.with_transform:
-            self.transform_input = TNet(in_channels, in_channels, k=k)
-
-        self.mlp_edge_conv = nn.ModuleList()
-        for out_channels in edge_conv_channels:
-            self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
-            in_channels = out_channels
-        self.mlp_local = Conv1d(sum(edge_conv_channels), inter_channels, 1)
-        self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
-
-    def forward(self, x, end_points):
-
-        # input transform
-        if self.with_transform:
-            trans_input = self.transform_input(x)
-            x = torch.bmm(trans_input, x)
-            end_points['trans_input'] = trans_input
-
-        # EdgeConvMLP
-        features = []
-        for edge_conv in self.mlp_edge_conv:
-            x = get_edge_feature(x, self.k)
-            x = edge_conv(x)
-            x, _ = torch.max(x, 3)
-            features.append(x)
-
-        x = torch.cat(features, dim=1)
-
-        x = self.mlp_local(x)
-        x, max_indices = torch.max(x, 2)
-        end_points['key_point_inds'] = max_indices
-        x = self.mlp_global(x)
-
-        return x, end_points
-
-
 # -----------------------------------------------------------------------------
 # DGCNN for classification
 # -----------------------------------------------------------------------------
@@ -210,7 +155,7 @@ class DGCNNCls(nn.Module):
         x = self.mlp_global(x)
         x = self.classifier(x)
         preds = {
-            'cls_logits': x
+            'cls_logit': x
         }
         preds.update(end_points)
 

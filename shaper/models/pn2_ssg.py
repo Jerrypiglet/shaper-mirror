@@ -34,7 +34,7 @@ class PointNet2SSGCls(nn.Module):
         local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
         global_channels (tuple of int): the numbers of channels to extract global features
         dropout_prob (float): the probability to dropout input features
-        use_xyz (bool): whether or not to use the xyz position of a point as a feature
+        use_xyz (bool): whether or not to use the xyz position of a points as a feature
     """
 
     def __init__(self,
@@ -104,10 +104,10 @@ class PointNet2SSGCls(nn.Module):
         end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
 
-        cls_logits = self.classifier(x)
+        cls_logit = self.classifier(x)
 
         preds = {
-            'cls_logits': cls_logits
+            'cls_logit': cls_logit
         }
         preds.update(end_points)
 

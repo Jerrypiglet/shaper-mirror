@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 
-from .datasets import *
+from . import datasets as D
 from . import transform as T
 
 
@@ -40,18 +40,18 @@ def build_dataset(cfg, mode="train"):
     is_train = mode == "train"
     transform = build_transform(cfg, is_train)
 
-    if cfg.DATASET.TYPE == "ShapeNet":
-        dataset = ShapeNet(root_dir=cfg.DATASET.ROOT_DIR,
-                           dataset_names=dataset_names,
-                           shuffle_points=is_train,
-                           num_points=cfg.INPUT.NUM_POINTS,
-                           transform=transform)
-    elif cfg.DATASET.TYPE == "ModelNet":
-        dataset = ModelNet(root_dir=cfg.DATASET.ROOT_DIR,
-                           dataset_names=dataset_names,
-                           shuffle_points=False,
-                           num_points=cfg.INPUT.NUM_POINTS,
-                           transform=transform)
+    if cfg.DATASET.TYPE == "ModelNetH5":
+        dataset = D.ModelNetH5(root_dir=cfg.DATASET.ROOT_DIR,
+                               dataset_names=dataset_names,
+                               shuffle_points=False,
+                               num_points=cfg.INPUT.NUM_POINTS,
+                               transform=transform)
+    elif cfg.DATASET.TYPE == "ShapeNetH5":
+        dataset = D.ShapeNetH5(root_dir=cfg.DATASET.ROOT_DIR,
+                               dataset_names=dataset_names,
+                               shuffle_points=False,
+                               num_points=cfg.INPUT.NUM_POINTS,
+                               transform=transform)
     else:
         raise NotImplementedError()
 

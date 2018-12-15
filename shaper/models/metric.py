@@ -3,10 +3,10 @@ from torch import nn
 
 class Accuracy(nn.Module):
     def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        pred_labels = cls_logits.argmax(1)
+        cls_logit = preds["cls_logit"]
+        cls_label = labels["cls_label"]
+        pred_label = cls_logit.argmax(1)
 
-        acc = pred_labels.eq(cls_labels).float()
+        acc = pred_label.eq(cls_label).float()
 
         return {"acc": acc}

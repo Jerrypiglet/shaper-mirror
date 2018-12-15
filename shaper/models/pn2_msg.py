@@ -98,10 +98,10 @@ class PointNet2MSGCls(nn.Module):
         end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
 
-        cls_logits = self.classifier(x)
+        cls_logit = self.classifier(x)
 
         preds = {
-            'cls_logits': cls_logits
+            'cls_logit': cls_logit
         }
         preds.update(end_points)
 

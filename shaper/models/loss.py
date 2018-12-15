@@ -16,12 +16,12 @@ class ClsLoss(nn.Module):
         self.label_smoothing = label_smoothing
 
     def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
+        cls_logit = preds["cls_logit"]
+        cls_label = labels["cls_label"]
         if self.label_smoothing > 0:
-            cls_loss = smooth_cross_entropy(cls_logits, cls_labels, self.label_smoothing)
+            cls_loss = smooth_cross_entropy(cls_logit, cls_label, self.label_smoothing)
         else:
-            cls_loss = F.cross_entropy(cls_logits, cls_labels)
+            cls_loss = F.cross_entropy(cls_logit, cls_label)
         loss_dict = {
             'cls_loss': cls_loss,
         }
