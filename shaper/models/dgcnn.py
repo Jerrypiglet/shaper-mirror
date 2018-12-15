@@ -247,12 +247,9 @@ if __name__ == "__main__":
     num_points = 1024
     num_classes = 40
 
-    data = torch.rand(batch_size, in_channels, num_points)
-    transform = TNet()
-    out = transform(data)
-    print('TNet: ', out.size())
+    data = torch.rand(batch_size, in_channels, num_points).cuda()
 
-    dgcnn = DGCNNCls(in_channels, num_classes, with_transform=False)
+    dgcnn = DGCNNCls(in_channels, num_classes, with_transform=False).cuda()
     out_dict = dgcnn({"points": data})
     for k, v in out_dict.items():
         print('DGCNN:', k, v.shape)

@@ -2,17 +2,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from shaper.models.dgcnn import DGCNNCls, DGCNNClsLoss
+from shaper.models.dgcnn import DGCNNCls, ClsLoss
 from shaper.nn import FC
 from shaper.nn.init import set_bn
 from shaper.models.metric import Accuracy
-from shaper.models.dgcnn_modules.dgcnn_utils import get_edge_feature
+
+
+# from shaper.models.dgcnn_utils import get_edge_feature
 
 
 class DGCNNFewShotCls(DGCNNCls):
 
     def __init__(self,
-                 in_channels, out_channels,
+                 in_channels,
+                 out_channels,
                  edge_conv_channels=(64, 64, 64, 128),
                  inter_channels=1024,
                  global_channels=(512, 256),
@@ -32,8 +35,12 @@ class DGCNNFewShotCls(DGCNNCls):
             with_transform=with_transform)
 
         self.dropout_prob = dropout_prob
-        self.before_classifier = FC(global_channels[-1], before_classifier_channels)
-        self.classifier = nn.Linear(before_classifier_channels, out_channels, bias=True)
+        self.before_classifier_channels = before_classifier_channels
+        if self.before_classifier_channels > 0:
+            self.before_classifier = FC(global_channels[-1], before_classifier_channels)
+            self.classifier = nn.Linear(before_classifier_channels, out_channels, bias=True)
+        else:
+            self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
         # set batch normalization to 0.01 as default
@@ -51,9 +58,9 @@ class DGCNNFewShotCls(DGCNNCls):
         # EdgeConvMLP
         features = []
         for edge_conv in self.mlp_edge_conv:
-            x = get_edge_feature(x, self.k)
+            # x = get_edge_feature(x, self.k)
             x = edge_conv(x)
-            x, _ = torch.max(x, 3)
+            # x, _ = torch.max(x, 3)
             features.append(x)
 
         x = torch.cat(features, dim=1)
@@ -62,9 +69,12 @@ class DGCNNFewShotCls(DGCNNCls):
         x, max_indices = torch.max(x, 2)
         end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
-        x = self.before_classifier(x)
-        x = F.dropout(x, self.dropout_prob, self.training, inplace=False)
-        x = self.classifier(x)
+        if self.before_classifier_channels > 0:
+            x = self.before_classifier(x)
+            x = F.dropout(x, self.dropout_prob, self.training, inplace=False)
+            x = self.classifier(x)
+        else:
+            x = self.classifier(x)
         preds = {
             'cls_logits': x
         }
@@ -85,7 +95,7 @@ def build_dgcnn_fewshot(cfg):
             dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
             before_classifier_channels=cfg.MODEL.DGCNN.BEFORE_CHANNELS
         )
-        loss_fn = DGCNNClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
+        loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
         metric_fn = Accuracy()
     else:
         raise NotImplementedError()
@@ -101,7 +111,7 @@ if __name__ == "__main__":
 
     data = torch.rand(batch_size, in_channels, num_points).cuda()
 
-    dgcnn = DGCNNFewShotCls(in_channels, num_classes, with_transform=True).cuda()
+    dgcnn = DGCNNFewShotCls(in_channels, num_classes, with_transform=False).cuda()
     out_dict = dgcnn({"points": data})
     for k, v in out_dict.items():
         print('DGCNN:', k, v.shape)

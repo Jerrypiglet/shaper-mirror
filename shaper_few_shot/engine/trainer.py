@@ -7,7 +7,6 @@ from torch import nn
 from shaper_few_shot.models import build_model
 from shaper.solver import build_optimizer
 from shaper_few_shot.data import build_dataloader
-from shaper.utils.torch_util import set_random_seed
 from shaper_few_shot.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
@@ -163,7 +162,7 @@ def train(cfg, output_dir=""):
     # train
     best_metric_name = "best_{}".format(cfg.TRAIN.VAL_METRIC)
     max_epoch = cfg.SOLVER.MAX_EPOCH
-    if "FewShot" in cfg.DATASET.TYPE and not resume_success:
+    if "FEWSHOT" in cfg.DATASET.TYPE and not resume_success:
         start_epoch = 0
         best_metric = None
     else:

@@ -4,15 +4,15 @@ INPUT:
   NUM_POINTS: 1024
 MODEL:
   TYPE: "PN2SSGFewShot"
-  WEIGHT: "/home/rayc/Projects/shaper/outputs/few_shot/pointnet2ssg_fewshot_cls/model_last_target.pth"
+  WEIGHT: "/home/rayc/Projects/shaper/outputs/few_shot/pn2ssg/pointnet2ssg_fewshot_cls_test/model_251.pth"
 DATASET:
   ROOT_DIR: "data/modelnet40/modelnet40_fewshot"
-  TYPE: "ModelNetFewShot"
+  TYPE: "MODELNET_FEWSHOT"
   NUM_CLASSES: 10
   TRAIN: ("support",)
   VAL: ("target",)
   TEST: ("target",)
-  FEW_SHOT:
+  MODELNET_FEWSHOT:
     NUM_PER_CLASS: 1
     CROSS_NUM: 0
 SOLVER:
@@ -22,7 +22,6 @@ SOLVER:
   STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
 TRAIN:
   LOAD_PRETRAIN: True
-  FREEZE_PARAMS: ()
   BATCH_SIZE: 10
   AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
   LOG_PERIOD: 50
@@ -31,4 +30,4 @@ TRAIN:
 TEST:
   BATCH_SIZE: 10
   LOG_PERIOD: 50
-OUTPUT_DIR: "@/cross1"
+OUTPUT_DIR: "@_test"

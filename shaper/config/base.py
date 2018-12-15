@@ -29,6 +29,7 @@ _C.INPUT = CN()
 
 _C.INPUT.IN_CHANNELS = 3
 _C.INPUT.NUM_POINTS = -1
+_C.INPUT.USE_NORMAL = False
 
 # -----------------------------------------------------------------------------
 # Dataset
@@ -54,7 +55,7 @@ _C.DATALOADER = CN()
 _C.DATALOADER.NUM_WORKERS = 1
 # Whether to drop last
 _C.DATALOADER.DROP_LAST = True
-
+_C.DATALOADER.RNG_SEED = 1
 # ---------------------------------------------------------------------------- #
 # Solver (optimizer, learning schedule)
 # ---------------------------------------------------------------------------- #

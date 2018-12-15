@@ -3,6 +3,7 @@ import os.path as osp
 
 import torch
 
+from shaper.config.utils import purge_cfg
 from shaper_few_shot.config import cfg
 from shaper_few_shot.engine.trainer import train
 from shaper_few_shot.engine.tester import test
@@ -42,6 +43,7 @@ def main():
     num_gpus = torch.cuda.device_count()
 
     cfg.merge_from_file(args.config_file)
+    # purge_cfg(cfg)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
 

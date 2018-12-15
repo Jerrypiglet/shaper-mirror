@@ -11,7 +11,8 @@ from shaper.models.metric import Accuracy
 class PointNetFewShotCls(PointNetCls):
 
     def __init__(self,
-                 in_channels, out_channels,
+                 in_channels,
+                 out_channels,
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
