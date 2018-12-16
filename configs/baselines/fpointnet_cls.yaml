@@ -1,15 +1,16 @@
 TASK:
   "classification"
 MODEL:
-  TYPE: "FPOINTNET"
+  TYPE: "POINTNET"
   POINTNET:
     DROPOUT_PROB: 0.3
     REG_WEIGHT: 0.032
 INPUT:
   NUM_POINTS: 1024
+  IN_CHANNELS: 3
 DATASET:
   ROOT_DIR: "data/kitti"
-  TYPE: "FPOINTNET"
+  TYPE: "KITTI"
   NUM_CLASSES: 8
   TRAIN: ("train",)
   VAL: ("val",)

@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 
 from torch.utils.data import Dataset
+from shaper.data.datasets.utils import crop_or_pad_points
 
 NUM_HEADING_BIN = 12
 g_type2class = {'Car': 0, 'Van': 1, 'Truck': 2, 'Pedestrian': 3,
@@ -108,7 +109,7 @@ class KITTI(Dataset):
 
     def __init__(self, root_dir, dataset_names, transform=None,
                  num_points=-1, shuffle_points=False,
-                 random_flip=False, random_shift=False, rotate_to_center=False, ):
+                 random_flip=False, random_shift=False, rotate_to_center=False):
         """
 
         :param root_dir: the root directory of the dataset. In our case, it is data/kitti
@@ -177,19 +178,10 @@ class KITTI(Dataset):
         else:
             point_set = self.input_list[index]
 
-        if self.shuffle_points:
-            choice = np.random.permutation(len(point_set))
-        else:
-            choice = np.arange(len(point_set))
-        if self.num_points > 0:
-            if len(point_set) >= self.num_points:
-                choice = choice[:self.num_points]
-            else:
-                num_pad = self.num_points - len(point_set)
-                pad = np.random.permutation(choice)[:num_pad]
-                choice = np.concatenate([choice, pad])
-        # Resample
-        point_set = point_set[choice, :]
+        point_set, choice = crop_or_pad_points(point_set, self.num_points, self.shuffle_points)
+        point_set = point_set[:, :3]    # Drop the intensity information for the time being, transform is not ready yet.
+        if self.transform is not None:
+            point_set = self.transform(point_set)
 
         # ------------------------------ LABELS ----------------------------
         # Ignore the segmentation for the time being.
@@ -229,7 +221,7 @@ class KITTI(Dataset):
 
         return {
             "points": point_set,
-            "cls_labels": class_ind,
+            "cls_label": class_ind,
             "box3d_center": box3d_center,
             "angle_class": angle_class,
             "angle_residual": angle_residual,
@@ -272,69 +264,15 @@ class KITTI(Dataset):
 
 if __name__ == "__main__":
     root_dir = "../../../data/kitti"
-    kitti_dataset = KITTI(root_dir, ['train'])
+    kitti_dataset = KITTI(root_dir, ['train'], num_points=1024)
     print('total data num: ', kitti_dataset.__len__())
-    print(kitti_dataset[0])
-    # Visualizer.visualize_pts
+    data = kitti_dataset[5]
+    points = data["points"]
+    cls_label = data["cls_label"]
+    print(points.shape, points.dtype)
+    print(points[42].shape, points.dtype)
+    print(cls_label, g_class2type[cls_label])
 
-    # print(modelnet[0][0].size(), modelnet[0][0].type())
-    # print(modelnet[0])
-    # Visualizer.visualize_pts(modelnet[0][0])
+    from shaper.utils.open3d_visualize import Visualizer
 
-
-
-
-
-
-
-
-
-
-
-        # index = self.id_list[index]
-        # box2d = self.box2d_list[index]
-        # box3d = self.box3d_list[index]
-        # points = self.input_list[index]
-        # label = self.label_list[index]
-        # type = self.type_list[index]
-        # heading = self.heading_list[index]
-        # size = self.size_list[index]
-        # frustum_angle = self.frustum_angle_list[index]
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        # meta_data = self.meta_data[index]
-        # class_name = meta_data["class"]
-        # class_ind = self.classes_to_ind_map[class_name]
-        # points = self._load_pts(meta_data["pts_path"])
-        #
-        # if self.shuffle_points:
-        #     choice = np.random.permutation(len(points))
-        # else:
-        #     choice = np.arange(len(points))
-        # if self.num_points > 0:
-        #     if len(points) >= self.num_points:
-        #         choice = choice[:self.num_points]
-        #     else:
-        #         num_pad = self.num_points - len(points)
-        #         pad = np.random.permutation(choice)[:num_pad]
-        #         choice = np.concatenate([choice, pad])
-        # points = points[choice]
-        #
-        # if self.transform is not None:
-        #     points = self.transform(points)
-
-
-
-
-
-        # Return everything in the Frustum Pointnet
-
-
-
-
+    Visualizer.visualize_points(points[:, :3])
