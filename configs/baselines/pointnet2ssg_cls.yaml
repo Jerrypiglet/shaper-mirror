@@ -1,5 +1,6 @@
 TASK:
   "classification"
+AUTO_RESUME: False 
 INPUT:
   NUM_POINTS: 1024
 MODEL:
