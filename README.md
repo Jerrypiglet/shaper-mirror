@@ -18,7 +18,7 @@ Please check [Model Zoo](MODEL_ZOO.md) for benchmark results.
 It is recommended to use (mini)conda to manage the environment.
 ```
 bash install.sh  # create anaconda environment
-python setup.py install develop
+python setup.py install develop (--user)
 ```
 
 ## Getting Started
