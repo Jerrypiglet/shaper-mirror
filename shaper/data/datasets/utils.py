@@ -23,7 +23,7 @@ def crop_or_pad_points(points, num_points=-1, shuffle=False):
             choice = choice[:num_points]
         else:
             num_pad = num_points - len(points)
-            pad = np.random.permutation(choice)[:num_pad]
+            pad = np.random.choice(choice, num_pad, replace=True)
             choice = np.concatenate([choice, pad])
     points = points[choice]
     return points, choice
