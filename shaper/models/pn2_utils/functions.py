@@ -1,4 +1,5 @@
 import torch
+from shaper.nn.functional import pdist
 
 try:
     from shaper.models.pn2_utils import pn2_ext
@@ -27,7 +28,9 @@ def gather_points(point, index):
 class FarthestPointSample(torch.autograd.Function):
     @staticmethod
     def forward(ctx, point, num_centroids):
-        index = pn2_ext.farthest_point_sample(point, num_centroids)
+        distance = pdist(point)
+        mdist, pos = distance.max(2)[0].max(1)   
+        index = pn2_ext.farthest_point_sample(mdist, pos, distance, point, num_centroids)
         return index
 
     @staticmethod

@@ -21,6 +21,9 @@
         index.data<int64_t>(), \
         point_trans.data<scalar_t>(), \
         temp.data<scalar_t>(), \
+        distance.data<scalar_t>(), \
+        mdist.data<scalar_t>(), \
+        pos.data<int64_t>(), \
         num_points, \
         num_centroids); \
     })); \
@@ -48,6 +51,9 @@ __global__ void FarthestPointSampleKernel(
     index_t* __restrict__ index,
     const scalar_t* __restrict__ point,
     scalar_t* __restrict__ temp,
+    const scalar_t* __restrict__ distance,
+    const scalar_t* __restrict__ mdist,
+    const index_t* __restrict__ pos,
     const int64_t num_points,
     const int64_t num_centroids) {
   // alocated shared memory
@@ -56,9 +62,10 @@ __global__ void FarthestPointSampleKernel(
   __shared__ int32_t smem_ind[block_size];
 
   const int batch_index = blockIdx.x;
-  int32_t cur_ind = 0;
+  int32_t cur_ind = pos[batch_index];
   const scalar_t* point_offset = point + batch_index * num_points * 3;
   scalar_t* temp_offset = temp + batch_index * num_points;
+  const scalar_t* dist_offset = distance + batch_index * num_points * num_points;
   index_t* index_offset = index + batch_index * num_centroids;
   // explicitly choose the first point as a centroid
   if (threadIdx.x == 0) index_offset[0] = cur_ind;
@@ -68,9 +75,9 @@ __global__ void FarthestPointSampleKernel(
     int32_t max_ind = cur_ind;
     
     int32_t offset1 = cur_ind * 3;
-    scalar_t x1 = point_offset[offset1 + 0];
-    scalar_t y1 = point_offset[offset1 + 1];
-    scalar_t z1 = point_offset[offset1 + 2];
+      scalar_t x1 = point_offset[offset1 + 0];
+      scalar_t y1 = point_offset[offset1 + 1];
+      scalar_t z1 = point_offset[offset1 + 2];
 
     for (int j = threadIdx.x; j < num_points; j += block_size) {
       int32_t offset2 = j * 3;
@@ -78,7 +85,10 @@ __global__ void FarthestPointSampleKernel(
       scalar_t y2 = point_offset[offset2 + 1];
       scalar_t z2 = point_offset[offset2 + 2];
 
-      scalar_t dist = (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1);
+      scalar_t dist1 = (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1);
+      scalar_t dist = dist_offset[cur_ind*num_points+j];
+      dist = dist > 0 ? dist : 0;
+      assert(std::abs(dist-dist1) < 0.001);
       scalar_t last_dist = temp_offset[j];
       if (last_dist > dist || last_dist < 0) {
         temp_offset[j] = dist;
@@ -123,6 +133,9 @@ Output:
   index: (B, N2)
 */
 at::Tensor FarthestPointSample(
+          const at::Tensor mdist,
+          const at::Tensor pos,
+          const at::Tensor distance,
 	  const at::Tensor point,
     const int64_t num_centroids) {
 
@@ -157,6 +170,9 @@ at::Tensor FarthestPointSample(
         index.data<int64_t>(),
         point_trans.data<scalar_t>(),
         temp.data<scalar_t>(),
+        distance.data<scalar_t>(),
+        mdist.data<scalar_t>(),
+        pos.data<int64_t>(),
         num_points,
         num_centroids);
     }));
