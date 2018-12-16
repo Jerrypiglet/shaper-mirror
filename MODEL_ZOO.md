@@ -15,7 +15,6 @@ By default, only one gpu is used for comparision.
 
 | model | batch_size | lr | train time (s/iter) | train memory (GB) | test time (s/iter) | accuracy | comments |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| PointNet | 32 | 0.001 (Adam) | 0.0387 | 1354 | 0.0135 | 88.78 (0.21) | |
-| PointNet++ (ssg) | 16 | 0.001 (Adam) | 0.0465 | 1638 | 0.0149 | 89.75 (0.30) | |
-| DGCNN | 32 | 0.001 (Adam) | 0.2310 | 3995 | 0.1210 | 91.66 (0.16) | |
-| DGCNN (plain) | 32 | 0.001 (Adam) | 0.1733 | 2543 | 0.0949 | 90.92 | w/o TNET, 1 trial |
+| PointNet | 32 | 0.001 (Adam) | 0.0378 | 1265 | 0.0135 | 89.04 (0.13) | |
+| PointNet++ (ssg) | 16 | 0.001 (Adam) | 0.0479 | 1383 | 0.0155 | 90.18 (0.17) | |
+| DGCNN | 32 | 0.001 (Adam) | 0.2287 | 3683 | 0.1223 | 91.61 (0.24) | |
