@@ -1,4 +1,4 @@
-"""PointNet
+"""PointNet for classification
 
 References:
     @article{qi2016pointnet,
@@ -15,7 +15,6 @@ import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP
 from shaper.nn.init import set_bn
-from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
@@ -114,7 +113,7 @@ class Stem(nn.Module):
         if self.with_transform:
             trans_input = self.transform_input(x)
             x = torch.bmm(trans_input, x)
-            end_points['trans_input'] = trans_input
+            end_points["trans_input"] = trans_input
 
         # feature
         x = self.mlp(x)
@@ -123,14 +122,10 @@ class Stem(nn.Module):
         if self.with_transform:
             trans_feature = self.transform_feature(x)
             x = torch.bmm(trans_feature, x)
-            end_points['trans_feature'] = trans_feature
+            end_points["trans_feature"] = trans_feature
 
         return x, end_points
 
-
-# -----------------------------------------------------------------------------
-# PointNet for classification
-# -----------------------------------------------------------------------------
 
 class PointNetCls(nn.Module):
     """PointNet for classification
@@ -148,6 +143,17 @@ class PointNetCls(nn.Module):
                  global_channels=(512, 256),
                  dropout_prob=0.3,
                  with_transform=True):
+        """
+
+        Args:
+            in_channels (int): the number of input channels
+            out_channels (int): the number of output channels
+            stem_channels (tuple of int): the numbers of channels in stem feature extractor
+            local_channels (tuple of int): the numbers of channels in local mlp
+            global_channels (tuple of int): the numbers of channels in global mlp
+            dropout_prob (float): the probability to dropout
+            with_transform (bool): whether to use TNet to transform features.
+        """
         super(PointNetCls, self).__init__()
 
         self.in_channels = in_channels
@@ -171,13 +177,13 @@ class PointNetCls(nn.Module):
         x = self.mlp_local(x)
         # max pool over points
         x, max_indices = torch.max(x, 2)
-        end_points['key_point_inds'] = max_indices
+        end_points["key_point_inds"] = max_indices
         # mlp for global features
         x = self.mlp_global(x)
         x = self.classifier(x)
 
         preds = {
-            'cls_logit': x
+            "cls_logit": x
         }
         preds.update(end_points)
 
@@ -220,37 +226,18 @@ class PointNetClsLoss(nn.Module):
         return loss_dict
 
 
-def build_pointnet(cfg):
-    if cfg.TASK == "classification":
-        net = PointNetCls(
-            in_channels=cfg.INPUT.IN_CHANNELS,
-            out_channels=cfg.DATASET.NUM_CLASSES,
-            stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
-            local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
-            global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
-            dropout_prob=cfg.MODEL.POINTNET.DROPOUT_PROB,
-            with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
-        )
-        loss_fn = PointNetClsLoss(cfg.MODEL.POINTNET.REG_WEIGHT)
-        metric_fn = Accuracy()
-    else:
-        raise NotImplementedError()
-
-    return net, loss_fn, metric_fn
-
-
 if __name__ == '__main__':
     batch_size = 32
     in_channels = 3
     num_points = 1024
     num_classes = 40
 
-    data = torch.rand(batch_size, in_channels, num_points)
+    points = torch.rand(batch_size, in_channels, num_points)
     transform = TNet()
-    out = transform(data)
+    out = transform(points)
     print('TNet', out.shape)
 
     pointnet = PointNetCls(in_channels, num_classes)
-    out_dict = pointnet({"points": data})
+    out_dict = pointnet({"points": points})
     for k, v in out_dict.items():
         print('PointNet:', k, v.shape)

@@ -51,7 +51,8 @@ def build_dataset(cfg, mode="train"):
                                dataset_names=dataset_names,
                                shuffle_points=False,
                                num_points=cfg.INPUT.NUM_POINTS,
-                               transform=transform)
+                               transform=transform,
+                               load_seg=(cfg.TASK == "part_segmentation"))
     else:
         raise NotImplementedError()
 

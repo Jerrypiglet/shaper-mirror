@@ -94,7 +94,8 @@ _C.TRAIN.LOG_PERIOD = 10
 
 # Validation
 _C.TRAIN.VAL_PERIOD = 1
-_C.TRAIN.VAL_METRIC = "acc"
+# The metric for best validation performance
+_C.TRAIN.VAL_METRIC = ""
 
 # Data augmentation. The format is "method" or ("method", *args)
 # For example, ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2))

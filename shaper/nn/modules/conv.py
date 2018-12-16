@@ -11,7 +11,7 @@ class Conv1d(nn.Module):
     Attributes:
         conv (nn.Module): convolution module
         bn (nn.Module): batch normalization module
-        relu (bool): whether to activate by relu
+        relu (nn.Module, optional): relu activation module
 
     """
 
@@ -22,7 +22,7 @@ class Conv1d(nn.Module):
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size,
                               bias=(not bn), **kwargs)
         self.bn = nn.BatchNorm1d(out_channels, momentum=bn_momentum) if bn else None
-        self.relu = relu
+        self.relu = nn.ReLU(inplace=True) if relu else None
 
         self.init_weights()
 
@@ -30,7 +30,7 @@ class Conv1d(nn.Module):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
-        if self.relu:
+        if self.relu is not None:
             x = F.relu(x, inplace=True)
         return x
 
@@ -48,7 +48,7 @@ class Conv2d(nn.Module):
     Attributes:
         conv (nn.Module): convolution module
         bn (nn.Module): batch normalization module
-        relu (bool): whether to activate by relu
+        relu (nn.Module, optional): relu activation module
 
     Notes:
         Default momentum for batch normalization is set to be 0.01,
@@ -62,7 +62,7 @@ class Conv2d(nn.Module):
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
                               bias=(not bn), **kwargs)
         self.bn = nn.BatchNorm2d(out_channels, momentum=bn_momentum) if bn else None
-        self.relu = relu
+        self.relu = nn.ReLU(inplace=True) if relu else None
 
         self.init_weights()
 
@@ -70,7 +70,7 @@ class Conv2d(nn.Module):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
-        if self.relu:
+        if self.relu is not None:
             x = F.relu(x, inplace=True)
         return x
 

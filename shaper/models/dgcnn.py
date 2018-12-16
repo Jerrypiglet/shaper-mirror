@@ -16,7 +16,7 @@ from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.models.dgcnn_utils import get_edge_feature, EdgeConvBlockV2
 from shaper.nn.init import set_bn
 from shaper.models.loss import ClsLoss
-from shaper.models.metric import Accuracy
+from shaper.models.metric import ClsAccuracy
 
 
 class TNet(nn.Module):
@@ -179,7 +179,7 @@ def build_dgcnn(cfg):
             with_transform=cfg.MODEL.DGCNN.WITH_TRANSFORM,
         )
         loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
-        metric_fn = Accuracy()
+        metric_fn = ClsAccuracy()
     else:
         raise NotImplementedError()
 

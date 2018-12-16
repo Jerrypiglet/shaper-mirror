@@ -16,7 +16,7 @@ from shaper.nn import MLP, SharedMLP
 from shaper.models.pn2_utils import PointNetSAModule
 from shaper.nn.init import set_bn
 from shaper.models.loss import ClsLoss
-from shaper.models.metric import Accuracy
+from shaper.models.metric import ClsAccuracy
 
 
 class PointNet2SSGCls(nn.Module):
@@ -133,7 +133,7 @@ def build_pointnet2ssg(cfg):
             use_xyz=cfg.MODEL.PN2SSG.USE_XYZ
         )
         loss_fn = ClsLoss()
-        metric_fn = Accuracy()
+        metric_fn = ClsAccuracy()
     else:
         raise NotImplementedError
 

@@ -83,7 +83,7 @@ class PointNetSAModule(nn.Module):
         Args:
             xyz (torch.Tensor): (batch_size, 3, num_points)
                 xyz coordinates of feature
-            feature (torch.Tensor or None): (batch_size, in_channels, num_points)
+            feature (torch.Tensor, optional): (batch_size, in_channels, num_points)
 
         Returns:
             new_xyz (torch.Tensor): (batch_size, 3, num_centroids)
@@ -140,7 +140,7 @@ class PointNetSAModuleMSG(nn.Module):
         Args:
             xyz (torch.Tensor): (batch_size, 3, num_points)
                 xyz coordinates of feature
-            feature (torch.Tensor or None): (batch_size, in_channels, num_points)
+            feature (torch.Tensor, optional): (batch_size, in_channels, num_points)
 
         Returns:
             new_xyz (torch.Tensor): (batch_size, 3, num_centroids)

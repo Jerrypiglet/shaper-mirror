@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from shaper.models.metric import Accuracy
+from shaper.models.metric import ClsAccuracy
 from shaper.models.s2cnn_modules import S2Convolution, SO3Convolution
 from shaper.models.s2cnn_modules import s2_equatorial_grid, so3_equatorial_grid, so3_integrate
 from shaper.models.s2cnn_modules.utils.pc2sph import PointCloudProjector
@@ -219,7 +219,7 @@ def build_s2cnn(cfg):
             band_width_list=cfg.MODEL.S2CNN.BAND_WIDTH_LIST,
         )
         loss_fn = S2CNNClsLoss()
-        metric_fn = Accuracy()
+        metric_fn = ClsAccuracy()
     else:
         raise NotImplementedError()
 

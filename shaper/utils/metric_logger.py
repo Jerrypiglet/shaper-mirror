@@ -52,7 +52,7 @@ class MetricLogger(object):
     def __getattr__(self, attr):
         if attr in self.meters:
             return self.meters[attr]
-        return object.__getattr__(self, attr)
+        return getattr(self, attr)
 
     def __str__(self):
         metric_str = []
