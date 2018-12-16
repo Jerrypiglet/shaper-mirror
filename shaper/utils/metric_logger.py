@@ -70,3 +70,72 @@ class MetricLogger(object):
                 "{}: {:.4f}".format(name, meter.global_avg)
             )
         return self.delimiter.join(metric_str)
+
+
+class AverageMeterV2(object):
+    """Track a series of values and provide access to smoothed values over a
+    window or the global series average. Support non-scalar values.
+    """
+
+    def __init__(self, window_size=20):
+        self.values = deque(maxlen=window_size)
+        self.counts = deque(maxlen=window_size)
+        self.sum = None
+        self.count = None
+
+    def update(self, value, count=1):
+        self.values.append(value)
+        self.counts.append(count)
+        if self.sum is None:
+            self.sum = value
+        else:
+            self.sum += value
+        if self.count is None:
+            self.count = count
+        else:
+            self.count += count
+
+    @property
+    def avg(self):
+        avg_all = np.sum(self.values, axis=0) / np.maximum(np.sum(self.counts, axis=0), 1.0)
+        return np.mean(avg_all)
+
+    @property
+    def global_avg(self):
+        return np.mean(self.sum / np.maximum(self.count, 1.0))
+
+
+class MetricLoggerV2(MetricLogger):
+    """Support non-scalar metrics"""
+
+    def __init__(self, delimiter="\t"):
+        self.meters = dict()
+        self.delimiter = delimiter
+
+    def update(self, **kwargs):
+        for k, arg in kwargs.items():
+            if isinstance(arg, tuple):
+                if k not in self.meters:
+                    self.meters[k] = AverageMeterV2()
+                value, count = arg
+                value = value.cpu().numpy()
+                count = count.cpu().numpy()
+            else:
+                if k not in self.meters:
+                    self.meters[k] = AverageMeter()
+                if isinstance(arg, torch.Tensor):
+                    if arg.numel() == 1:
+                        value = arg.item()
+                        count = 1
+                    else:
+                        value = arg.sum().item()
+                        count = arg.numel()
+                    if k not in self.meters:
+                        self.meters[k] = AverageMeter()
+                    self.meters[k].update(value, count)
+                else:
+                    assert isinstance(arg, (float, int))
+                    value = arg
+                    count = 1
+
+            self.meters[k].update(value, count)

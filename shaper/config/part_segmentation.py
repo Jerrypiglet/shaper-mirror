@@ -4,7 +4,7 @@ from .base import CN, _C
 
 _C.TASK = "part_segmentation"
 
-_C.TRAIN.VAL_METRIC = "seg_acc"
+_C.TRAIN.VAL_METRIC = "mIOU"
 
 # -----------------------------------------------------------------------------
 # Dataset

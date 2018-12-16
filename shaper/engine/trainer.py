@@ -8,7 +8,7 @@ from shaper.models import build_model
 from shaper.solver import build_optimizer
 from shaper.data import build_dataloader
 from shaper.utils.checkpoint import Checkpointer
-from shaper.utils.metric_logger import MetricLogger
+from shaper.utils.metric_logger import MetricLogger, MetricLoggerV2
 from shaper.utils.tensorboard_logger import TensorboardLogger
 
 
@@ -21,6 +21,7 @@ def train_model(model,
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
     model.train()
+    metric_fn.train()
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
         data_time = time.time() - end
@@ -66,8 +67,9 @@ def validate_model(model,
                    data_loader,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
-    meters = MetricLogger(delimiter="  ")
+    meters = MetricLoggerV2(delimiter="  ")
     model.eval()
+    metric_fn.eval()
     end = time.time()
     with torch.no_grad():
         for iteration, data_batch in enumerate(data_loader):

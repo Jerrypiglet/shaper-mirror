@@ -1,6 +1,6 @@
 from .pointnet_cls import PointNetCls, PointNetClsLoss
 from .pointnet_part_seg import PointNetPartSeg, PointNetPartSegLoss
-from ..metric import ClsAccuracy, SegAccuracy, PartSegAccuracy
+from ..metric import ClsAccuracy, SegAccuracy, PartSegMetric, MetricList
 
 
 def build_pointnet(cfg):
@@ -32,10 +32,9 @@ def build_pointnet(cfg):
         loss_fn = PointNetPartSegLoss(cfg.MODEL.POINTNET.REG_WEIGHT,
                                       cfg.MODEL.POINTNET.CLS_LOSS_WEIGHT,
                                       cfg.MODEL.POINTNET.SEG_LOSS_WEIGHT)
+        metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
         if cfg.MODEL.POINTNET.CLS_LOSS_WEIGHT > 0.0:
-            metric_fn = PartSegAccuracy()
-        else:
-            metric_fn = SegAccuracy()
+            metric_fn = MetricList([metric_fn, ClsAccuracy()])
     else:
         raise NotImplementedError()
 

@@ -13,7 +13,7 @@ from shaper.data import build_dataloader
 from shaper.data.build import build_transform
 from shaper.data.datasets import evaluate_classification
 from shaper.utils.checkpoint import Checkpointer
-from shaper.utils.metric_logger import MetricLogger
+from shaper.utils.metric_logger import MetricLoggerV2
 from shaper.utils.io import mkdir
 from shaper.utils.np_util import np_softmax
 
@@ -41,8 +41,9 @@ def test_model(model,
 
     """
     logger = logging.getLogger("shaper.test")
-    meters = MetricLogger(delimiter="  ")
+    meters = MetricLoggerV2(delimiter="  ")
     model.eval()
+    metric_fn.eval()
 
     test_result_dict = defaultdict(list)
 
@@ -145,42 +146,43 @@ def test(cfg, output_dir=""):
         test_time = time.time() - start_time
         logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
 
-    # ---------------------------------------------------------------------------- #
-    # Ensemble
-    # ---------------------------------------------------------------------------- #
-    # For classification, only use 'cls_logit'
-    cls_logit_collection = [d["cls_logit"] for d in test_result_collection]
-    # sanity check
-    assert all(len(cls_logit) == len(test_dataset) for cls_logit in cls_logit_collection)
-    # remove transform
-    test_dataset.transform = None
+    if cfg.TASK == "classification":
+        # ---------------------------------------------------------------------------- #
+        # Ensemble
+        # ---------------------------------------------------------------------------- #
+        # For classification, only use 'cls_logit'
+        cls_logit_collection = [d["cls_logit"] for d in test_result_collection]
+        # sanity check
+        assert all(len(cls_logit) == len(test_dataset) for cls_logit in cls_logit_collection)
+        # remove transform
+        test_dataset.transform = None
 
-    if cfg.TEST.VOTE.ENABLE:
-        for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
-            if score_heur == "logit":
-                cls_logit_ensemble = np.mean(cls_logit_collection, axis=0)
-                pred_labels = np.argmax(cls_logit_ensemble, -1)  # (num_samples,)
-            elif score_heur == "softmax":
-                cls_prob_collection = np_softmax(np.asarray(cls_logit_collection))
-                cls_prob_ensemble = np.mean(cls_prob_collection, axis=0)
-                pred_labels = np.argmax(cls_prob_ensemble, -1)
-            elif score_heur == "label":
-                pred_label_collection = np.argmax(cls_logit_collection, -1)
-                pred_labels = stats.mode(pred_label_collection, axis=0)[0].squeeze(0)
-            else:
-                raise ValueError("Unknown score heuristic")
+        if cfg.TEST.VOTE.ENABLE:
+            for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
+                if score_heur == "logit":
+                    cls_logit_ensemble = np.mean(cls_logit_collection, axis=0)
+                    pred_labels = np.argmax(cls_logit_ensemble, -1)  # (num_samples,)
+                elif score_heur == "softmax":
+                    cls_prob_collection = np_softmax(np.asarray(cls_logit_collection))
+                    cls_prob_ensemble = np.mean(cls_prob_collection, axis=0)
+                    pred_labels = np.argmax(cls_prob_ensemble, -1)
+                elif score_heur == "label":
+                    pred_label_collection = np.argmax(cls_logit_collection, -1)
+                    pred_labels = stats.mode(pred_label_collection, axis=0)[0].squeeze(0)
+                else:
+                    raise ValueError("Unknown score heuristic")
 
-            logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
-                score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
+                logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
+                    score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
+                evaluate_classification(test_dataset, pred_labels,
+                                        output_dir=output_dir,
+                                        vis_dir=vis_dir,
+                                        suffix=score_heur)
+
+        else:
+            pred_labels = np.argmax(cls_logit_collection[0], -1)
             evaluate_classification(test_dataset, pred_labels,
+                                    aux_preds=test_result_collection[0],
                                     output_dir=output_dir,
-                                    vis_dir=vis_dir,
-                                    suffix=score_heur)
-
-    else:
-        pred_labels = np.argmax(cls_logit_collection[0], -1)
-        evaluate_classification(test_dataset, pred_labels,
-                                aux_preds=test_result_collection[0],
-                                output_dir=output_dir,
-                                vis_dir=vis_dir)
+                                    vis_dir=vis_dir)

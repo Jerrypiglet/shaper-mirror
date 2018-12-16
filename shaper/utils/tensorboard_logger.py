@@ -1,10 +1,9 @@
 import os.path as osp
 
-from .metric_logger import AverageMeter
+from .metric_logger import AverageMeter, AverageMeterV2
 from tensorboardX import SummaryWriter
 
-
-_KEYWORDS = ("loss", "acc")
+_KEYWORDS = ("loss", "acc", "IOU")
 
 
 class TensorboardLogger(object):
@@ -17,7 +16,7 @@ class TensorboardLogger(object):
         for k, meter in meters.items():
             for keyword in _KEYWORDS:
                 if keyword in k:
-                    if isinstance(meter, AverageMeter):
+                    if isinstance(meter, (AverageMeter, AverageMeterV2)):
                         v = meter.global_avg
                     elif isinstance(meter, (int, float)):
                         v = meter
