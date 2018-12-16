@@ -5,12 +5,12 @@ def crop_or_pad_points(points, num_points=-1, shuffle=False):
     """Crop or pad point cloud to a fixed number
 
     Args:
-        points (np.ndarray): points cloud. (n, d)
+        points (np.ndarray): point cloud. (n, d)
         num_points (int): the number of output points
         shuffle (bool): whether to shuffle the order
 
     Returns:
-        np.ndarray: output points cloud
+        np.ndarray: output point cloud
         np.ndarray: index to choose input points
 
     """
@@ -36,7 +36,7 @@ def normalize_points(points):
         points (np.ndarray): (n, 3)
 
     Returns:
-        np.ndarray
+        np.ndarray: normalized points
 
     """
     assert points.ndim == 2 and points.shape[1] == 3

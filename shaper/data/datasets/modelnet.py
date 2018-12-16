@@ -10,17 +10,15 @@ from shaper.data.datasets.utils import crop_or_pad_points
 class ModelNetH5(Dataset):
     """ModelNet HDF5 dataset
 
-    Args:
+    Attributes:
         root_dir (str): the root directory of data.
         dataset_names (list of str): the names of dataset, e.g. ["train", "test"]
-        transform: methods to transform inputs.
+        transform (object): methods to transform inputs.
         num_points (int): the number of input points. -1 means using all.
         shuffle_points (bool): whether to shuffle input points.
-
-    Attributes:
         classes (list): the names of classes
+        classes_to_ind_map (dict): mapping from class names to class indices
         meta_data (list of dict): meta information of data
-        data_x (list): data of certain types
 
     """
     URL = " https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip"
@@ -34,7 +32,7 @@ class ModelNetH5(Dataset):
     def __init__(self, root_dir, dataset_names, transform=None,
                  num_points=-1, shuffle_points=False):
         self.root_dir = root_dir
-        self.datasets_names = dataset_names
+        self.dataset_names = dataset_names
         self.num_points = num_points
         self.shuffle_points = shuffle_points
         self.transform = transform
@@ -42,13 +40,14 @@ class ModelNetH5(Dataset):
         self.classes = self._load_cat_file()
         self.classes_to_ind_map = {c: i for i, c in enumerate(self.classes)}
 
-        # load data
+        # load meta data and cache
         self.meta_data = []
         self.cache_points = []
         self.cache_normal = []
         self.cache_label = []
         for dataset_name in dataset_names:
             self._load_dataset(dataset_name)
+
         self.cache_points = np.concatenate(self.cache_points, axis=0)
         self.cache_label = np.concatenate(self.cache_label, axis=0)
         self.cache_normal = np.concatenate(self.cache_normal, axis=0)

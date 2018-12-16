@@ -14,16 +14,16 @@ class ShapeNet(Dataset):
 
     Each class of ShapeNetCore is assigned a catid/offset, like "02691156".
     Each part is associated with one class.
+    - 16 object categories (airplane, chair, motorbike)
+    - 50 part classes (each object category has 2-6 part classes)
 
-    Args:
+    Attributes:
         root_dir (str): the root directory of data.
         dataset_names (list of str): the names of dataset, e.g. ["train", "test"]
         transform: methods to transform inputs.
         num_points (int): the number of input points. -1 means using all.
         shuffle_points (bool): whether to shuffle input points.
         load_seg (bool): whether to load segmentation labels
-
-    Attributes:
         classes (list): the names of classes
         meta_data (list of dict): meta information of data
 
@@ -42,7 +42,7 @@ class ShapeNet(Dataset):
                  num_points=-1, shuffle_points=False,
                  load_seg=False):
         self.root_dir = root_dir
-        self.datasets_names = dataset_names
+        self.dataset_names = dataset_names
         self.num_points = num_points
         self.shuffle_points = shuffle_points
         self.transform = transform
@@ -116,7 +116,7 @@ class ShapeNet(Dataset):
         }
 
         if self.load_seg:
-            # TODO: change to normal dataset or add category offset
+            # TODO: add category offset
             out_dict["seg_label"] = seg_label
 
         return out_dict
@@ -128,19 +128,15 @@ class ShapeNet(Dataset):
 class ShapeNetH5(Dataset):
     """ShapeNetCore HDF5 dataset
 
-    Each class of ShapeNetCore is assigned a catid/offset, like "02691156".
-    Each part is associated with one class.
     HDF5 data has already converted catid_partid to a global seg_id.
 
-    Args:
+    Attributes:
         root_dir (str): the root directory of data.
         dataset_names (list of str): the names of dataset, e.g. ["train", "test"]
         transform: methods to transform inputs.
         num_points (int): the number of input points. -1 means using all.
         shuffle_points (bool): whether to shuffle input points.
         load_seg (bool): whether to load segmentation labels
-
-    Attributes:
         classes (list): the names of classes
         meta_data (list of dict): meta information of data
         data_x (list): data of certain types
@@ -150,7 +146,7 @@ class ShapeNetH5(Dataset):
         Support tranforms related to seg_labels
 
     """
-    URL = ""
+    URL = "https://shapenet.cs.stanford.edu/media/shapenet_part_seg_hdf5_data.zip"
     ROOT_DIR = "../../../data/shapenet_hdf5"
     cat_file = "all_object_categories.txt"
     seg_file = "overallid_to_catid_partid.json"
@@ -164,6 +160,7 @@ class ShapeNetH5(Dataset):
                  num_points=-1, shuffle_points=False,
                  load_seg=False):
         self.root_dir = root_dir
+        self.dataset_names = dataset_names
         self.num_points = num_points
         self.shuffle_points = shuffle_points
         self.transform = transform
