@@ -131,6 +131,7 @@ class Stem(nn.Module):
 # -----------------------------------------------------------------------------
 # PointNet for classification
 # -----------------------------------------------------------------------------
+
 class PointNetCls(nn.Module):
     """PointNet for classification
 
@@ -140,11 +141,12 @@ class PointNetCls(nn.Module):
     """
 
     def __init__(self,
-                 in_channels, out_channels,
+                 in_channels,
+                 out_channels,
                  stem_channels=(64, 64),
                  local_channels=(64, 128, 1024),
                  global_channels=(512, 256),
-                 dropout_prob=0.5,
+                 dropout_prob=0.3,
                  with_transform=True):
         super(PointNetCls, self).__init__()
 
@@ -175,7 +177,7 @@ class PointNetCls(nn.Module):
         x = self.classifier(x)
 
         preds = {
-            'cls_logits': x
+            'cls_logit': x
         }
         preds.update(end_points)
 
@@ -199,9 +201,9 @@ class PointNetClsLoss(nn.Module):
         self.reg_weight = reg_weight
 
     def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        cls_loss = F.cross_entropy(cls_logits, cls_labels)
+        cls_logit = preds["cls_logit"]
+        cls_label = labels["cls_label"]
+        cls_loss = F.cross_entropy(cls_logit, cls_label)
 
         loss_dict = {
             'cls_loss': cls_loss,

@@ -1,57 +1,40 @@
-import os
+"""Open3D visualization tools
+
+References:
+    @article{Zhou2018,
+        author    = {Qian-Yi Zhou and Jaesik Park and Vladlen Koltun},
+        title     = {{Open3D}: {A} Modern Library for {3D} Data Processing},
+        journal   = {arXiv:1801.09847},
+        year      = {2018},
+    }
+
+See Also:
+    https://github.com/IntelVCL/Open3D
+    https://github.com/IntelVCL/Open3D-PointNet/blob/master/open3d_visualilze.py
+
+"""
+
 import numpy as np
+import matplotlib.pyplot as plt
 import open3d
 
 
-# TODO: add more visualization methods
-class Visualizer:
-    map_label_to_rgb = {
-        1: [0, 255, 0],
-        2: [0, 0, 255],
-        3: [255, 0, 0],
-        4: [255, 0, 255],  # purple
-        5: [0, 255, 255],  # cyan
-        6: [255, 255, 0],  # yellow
-    }
-
-    def __init__(self, dataset_path):
-        self.dataset_path = dataset_path
-
-    def visualize(self, obj_category, obj_id):
-        # Concat paths
-        pts_path = os.path.join(self.dataset_path, obj_category,
-                                'points', obj_id + '.pts')
-        label_path = os.path.join(self.dataset_path, obj_category,
-                                  'points_label', obj_id + '.seg')
-
-        # Read point cloud
-        point_cloud = open3d.read_point_cloud(pts_path, format='xyz')
-        print(point_cloud)
-
-        # Read label and map to color
-        labels = np.loadtxt(label_path)
-        colors = np.array(
-            [Visualizer.map_label_to_rgb[label] for label in labels])
-        point_cloud.colors = open3d.Vector3dVector(colors)
+class Visualizer(object):
+    @staticmethod
+    def visualize_points(points):
+        point_cloud = open3d.PointCloud()
+        point_cloud.points = open3d.Vector3dVector(points)
         open3d.draw_geometries([point_cloud])
 
     @staticmethod
-    def visualize_pts_with_color(pts, color=np.array([[0, 0, 0]])):
-        assert (color.shape[0] == 1 or color.shape[0] == pts.shape[0])
-        # print('pts shape: ', pts.shape)
-        # print('color shape: ', color.shape)
-        if color.shape[0] == 1:
-            color = np.tile(color, [pts.shape[0], 1])
-        # print('color shape: ', color.shape)
+    def visualize_points_with_labels(points, labels, cmap=None, lut=6):
+        if cmap is None:
+            cmap = plt.get_cmap("hsv", lut)
+            cmap = np.asarray([cmap(i) for i in range(lut)])[:, :3]
         point_cloud = open3d.PointCloud()
-        point_cloud.points = open3d.Vector3dVector(pts)
-        point_cloud.colors = open3d.Vector3dVector(color)
-        open3d.draw_geometries([point_cloud])
-
-    @staticmethod
-    def visualize_pts(pts):
-        point_cloud = open3d.PointCloud()
-        point_cloud.points = open3d.Vector3dVector(pts)
+        point_cloud.points = open3d.Vector3dVector(points)
+        assert len(labels) == len(points)
+        point_cloud.colors = open3d.Vector3dVector(cmap[labels])
         open3d.draw_geometries([point_cloud])
 
 

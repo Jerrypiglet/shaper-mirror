@@ -185,11 +185,26 @@ class PointCloudRandomInputDropout(object):
         self.max_dropout_ratio = max_dropout_ratio
 
     def __call__(self, points):
-        dropout_ratio = torch.rand() * self.max_dropout_ratio
-        dropout_indices = torch.nonzero(torch.rand(points.size(0)) <= dropout_ratio)[0]
+        dropout_ratio = torch.rand(1) * self.max_dropout_ratio
+        dropout_indices = torch.nonzero(torch.rand(points.size(0)) <= dropout_ratio)[:, 0]
         if dropout_indices.numel() > 0:
             points[dropout_indices] = points[0]  # set to the first point
         return points
+
+
+class PointCloudShuffle(object):
+    def __call__(self, points):
+        index = torch.randperm(points.size(0))
+        return points[index, :]
+
+
+class PointCloudGenerate(object):
+    def __init__(self, num_points, channels=3):
+        self.num_points = num_points
+        self.channels = channels
+
+    def __call__(self, *args, **kwargs):
+        return torch.rand(self.num_points, self.channels)
 
 
 def test_rotation_matrix():
@@ -200,7 +215,3 @@ def test_rotation_matrix():
         angle=torch.tensor(angle).float(),
         axis=torch.tensor(axis))
     print(np.allclose(rotation_matrix_np, rotation_matrix_tensor))
-
-
-if __name__ == '__main__':
-    test_rotation_matrix()

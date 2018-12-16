@@ -120,7 +120,9 @@ def test(cfg, output_dir=""):
             tmp_cfg = cfg.clone()
             tmp_cfg.defrost()
             angle = 2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VIEW
-            tmp_cfg.TEST.AUGMENTATION = (("PointCloudRotateByAngle", cfg.TEST.VOTE.AXIS, angle),)
+            test_aug = list(tmp_cfg.TEST.AUGMENTATION)
+            test_aug.insert(0, ("PointCloudRotateByAngle", cfg.TEST.VOTE.AXIS, angle))
+            tmp_cfg.TEST.AUGMENTATION = tuple(test_aug)
             test_data_loader.dataset.transform = build_transform(tmp_cfg, False)
             test_meters, test_result_dict = test_model(model,
                                                        loss_fn,
@@ -146,25 +148,25 @@ def test(cfg, output_dir=""):
     # ---------------------------------------------------------------------------- #
     # Ensemble
     # ---------------------------------------------------------------------------- #
-    # For classification, only use 'cls_logits'
-    cls_logits_all = [d["cls_logits"] for d in test_result_collection]
+    # For classification, only use 'cls_logit'
+    cls_logit_collection = [d["cls_logit"] for d in test_result_collection]
     # sanity check
-    assert all(len(cls_logits) == len(test_dataset) for cls_logits in cls_logits_all)
+    assert all(len(cls_logit) == len(test_dataset) for cls_logit in cls_logit_collection)
     # remove transform
     test_dataset.transform = None
 
     if cfg.TEST.VOTE.ENABLE:
         for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
             if score_heur == "logit":
-                cls_logits_ensemble = np.mean(cls_logits_all, axis=0)
-                pred_labels = np.argmax(cls_logits_ensemble, -1)  # (num_samples,)
+                cls_logit_ensemble = np.mean(cls_logit_collection, axis=0)
+                pred_labels = np.argmax(cls_logit_ensemble, -1)  # (num_samples,)
             elif score_heur == "softmax":
-                cls_probs_all = np_softmax(np.asarray(cls_logits_all))
-                cls_probs_ensemble = np.mean(cls_probs_all, axis=0)
-                pred_labels = np.argmax(cls_probs_ensemble, -1)
+                cls_prob_collection = np_softmax(np.asarray(cls_logit_collection))
+                cls_prob_ensemble = np.mean(cls_prob_collection, axis=0)
+                pred_labels = np.argmax(cls_prob_ensemble, -1)
             elif score_heur == "label":
-                pred_labels_all = np.argmax(cls_logits_all, -1)
-                pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
+                pred_label_collection = np.argmax(cls_logit_collection, -1)
+                pred_labels = stats.mode(pred_label_collection, axis=0)[0].squeeze(0)
             else:
                 raise ValueError("Unknown score heuristic")
 
@@ -177,7 +179,7 @@ def test(cfg, output_dir=""):
                                     suffix=score_heur)
 
     else:
-        pred_labels = np.argmax(cls_logits_all[0], -1)
+        pred_labels = np.argmax(cls_logit_collection[0], -1)
         evaluate_classification(test_dataset, pred_labels,
                                 aux_preds=test_result_collection[0],
                                 output_dir=output_dir,

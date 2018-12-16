@@ -11,13 +11,12 @@ References:
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
-from shaper.nn.functional import smooth_cross_entropy
-from shaper.models.dgcnn_modules.dgcnn_utils import get_edge_feature
-from shaper.models.metric import Accuracy
+from shaper.models.dgcnn_utils import get_edge_feature, EdgeConvBlockV2
 from shaper.nn.init import set_bn
+from shaper.models.loss import ClsLoss
+from shaper.models.metric import Accuracy
 
 
 class TNet(nn.Module):
@@ -28,7 +27,7 @@ class TNet(nn.Module):
 
     Args:
         conv_channels (tuple of int): the numbers of channels of edge convolution layers
-        k: k-nn for edge feature extractor
+        k: the number of neareast neighbours for edge feature extractor
 
     """
 
@@ -80,59 +79,6 @@ class TNet(nn.Module):
         nn.init.zeros_(self.linear.bias)
 
 
-class DGCNNFeature(nn.Module):
-    """DGCNN for feature extraction"""
-
-    def __init__(self, in_channels,
-                 edge_conv_channels=(64, 64, 64, 128),
-                 inter_channels=1024,
-                 global_channels=(256, 128),
-                 k=20, dropout_prob=0.5,
-                 with_transform=False):
-        super(DGCNNFeature, self).__init__()
-
-        self.in_channels = in_channels
-        self.out_channels = global_channels[-1]
-        self.k = k
-        self.with_transform = with_transform
-
-        # input transform
-        if self.with_transform:
-            self.transform_input = TNet(in_channels, in_channels, k=k)
-
-        self.mlp_edge_conv = nn.ModuleList()
-        for out_channels in edge_conv_channels:
-            self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
-            in_channels = out_channels
-        self.mlp_local = Conv1d(sum(edge_conv_channels), inter_channels, 1)
-        self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
-
-    def forward(self, x, end_points):
-
-        # input transform
-        if self.with_transform:
-            trans_input = self.transform_input(x)
-            x = torch.bmm(trans_input, x)
-            end_points['trans_input'] = trans_input
-
-        # EdgeConvMLP
-        features = []
-        for edge_conv in self.mlp_edge_conv:
-            x = get_edge_feature(x, self.k)
-            x = edge_conv(x)
-            x, _ = torch.max(x, 3)
-            features.append(x)
-
-        x = torch.cat(features, dim=1)
-
-        x = self.mlp_local(x)
-        x, max_indices = torch.max(x, 2)
-        end_points['key_point_inds'] = max_indices
-        x = self.mlp_global(x)
-
-        return x, end_points
-
-
 # -----------------------------------------------------------------------------
 # DGCNN for classification
 # -----------------------------------------------------------------------------
@@ -148,12 +94,13 @@ class DGCNNCls(nn.Module):
        Args:
            edge_conv_channels (tuple of int): the numbers of channels of edge convolution layers
            inter_channels (int): the number of channels of intermediate features before MaxPool
-           k (int): k-nn for edge feature extractor
+           k (int): the number of neareast neighbours for edge feature extractor
 
     """
 
     def __init__(self,
-                 in_channels, out_channels,
+                 in_channels,
+                 out_channels,
                  edge_conv_channels=(64, 64, 64, 128),
                  inter_channels=1024,
                  global_channels=(512, 256),
@@ -173,7 +120,8 @@ class DGCNNCls(nn.Module):
 
         self.mlp_edge_conv = nn.ModuleList()
         for out_channels in edge_conv_channels:
-            self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
+            # self.mlp_edge_conv.append(Conv2d(2 * in_channels, out_channels, 1))
+            self.mlp_edge_conv.append(EdgeConvBlockV2(in_channels, out_channels, k))
             in_channels = out_channels
         self.mlp_local = Conv1d(sum(edge_conv_channels), inter_channels, 1)
         self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
@@ -194,9 +142,9 @@ class DGCNNCls(nn.Module):
         # EdgeConvMLP
         features = []
         for edge_conv in self.mlp_edge_conv:
-            x = get_edge_feature(x, self.k)
+            # x = get_edge_feature(x, self.k)
             x = edge_conv(x)
-            x, _ = torch.max(x, 3)
+            # x, _ = torch.max(x, 3)
             features.append(x)
 
         x = torch.cat(features, dim=1)
@@ -207,7 +155,7 @@ class DGCNNCls(nn.Module):
         x = self.mlp_global(x)
         x = self.classifier(x)
         preds = {
-            'cls_logits': x
+            'cls_logit': x
         }
         preds.update(end_points)
 
@@ -216,30 +164,6 @@ class DGCNNCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
-
-
-class DGCNNClsLoss(nn.Module):
-    """DGCNN classification loss with optional label smoothing
-
-    Attributes:
-        label_smoothing (float):
-    """
-
-    def __init__(self, label_smoothing):
-        super(DGCNNClsLoss, self).__init__()
-        self.label_smoothing = label_smoothing
-
-    def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        if self.label_smoothing > 0:
-            cls_loss = smooth_cross_entropy(cls_logits, cls_labels, self.label_smoothing)
-        else:
-            cls_loss = F.cross_entropy(cls_logits, cls_labels)
-        loss_dict = {
-            'cls_loss': cls_loss,
-        }
-        return loss_dict
 
 
 def build_dgcnn(cfg):
@@ -252,8 +176,9 @@ def build_dgcnn(cfg):
             global_channels=cfg.MODEL.DGCNN.GLOBAL_CHANNELS,
             k=cfg.MODEL.DGCNN.K,
             dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
+            with_transform=cfg.MODEL.DGCNN.WITH_TRANSFORM,
         )
-        loss_fn = DGCNNClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
+        loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
         metric_fn = Accuracy()
     else:
         raise NotImplementedError()

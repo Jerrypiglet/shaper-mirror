@@ -15,10 +15,24 @@ Shaper includes implementations of the following point cloud algorithms:
 Please check [Model Zoo](MODEL_ZOO.md) for benchmark results.
 
 ## Installation
+Pytorch 1.0 with CUDA 9.0 and CUDNN 7.4.1 is the framework used.
+
 It is recommended to use (mini)conda to manage the environment.
+[setuptools](https://setuptools.readthedocs.io/en/latest/) is used to set up the python environment, 
+so that the package is visible in PYTHONPATH.
 ```
-bash install.sh  # create anaconda environment
-python setup.py install develop (--user)
+# create anaconda environment
+bash install.sh
+# Remember to add develop so that all the modifications of python files could take effects.
+python setup.py build develop
+```
+CUDA extensions are written to speed up calculations.
+There are some [resources](#cuda-extension) to learn how to write cuda extensions for pytorch.
+To run models including PointNet++, DGCNN, etc., source files should be compiled.
+```
+# take DGCNN for example
+cd shaper/models/dgcnn_utils
+python setup.py build_ext --inplace
 ```
 
 ## Getting Started
@@ -27,13 +41,15 @@ python setup.py install develop (--user)
 Shaper currently supports several datasets, like ModelNet40 and ShapeNet.
 Scripts to download data are provided in ``shaper``.
 ```
+# take ModelNet40 for example
 mkdir data
 cd data
 bash ../scripts/download_modelnet.sh
 ```
 
 ### Configuration
-[YACS](https://pypi.org/project/yacs/), a simple experiment configuration system for research, is used to configure both training and testing.
+[YACS](https://pypi.org/project/yacs/), a simple experiment configuration system for research, 
+is used to configure both training and testing.
 It is a library developed by Facebook Research and used in projects like Detectron.
 
 ### Train model
@@ -59,11 +75,51 @@ pytest -s
 pytest -s test_functional.py
 ```
 
-## Best Practice
-- Reuse the codes.
+## Contributing
+
+### Pipeline
+- Create a new branch for new features, bug fixes, or new projects.
+- Add unittest for new codes
+    - Add test for new models in-place
+    - Add test for new operators or multiple functions in ``tests/``
+- Pull request to master if the change is useful in general.
+
+### Best practice
+- Reuse the codes as much as possible.
     - Modular design
     - Inherit from existing classes
-    - Add options instead of making a copy (if there are not too many options) 
+    - Add options instead of making a copy (if there are not too many options)
 - Write unittest(pytest) for your codes in ``tests``.
 - Use setup.py to build python packages and pytorch (cuda) extension.
 - Create a new branch and a new folder for a new project.
+
+### Style guide
+- Name a tensor
+    - Singular form in general, e.g. ``input, index, feature``.
+    - Plural form sometimes, e.g. ``points, centroids``. 
+    An alternative is ``point_cloud, centroid_set``.
+- Name the number of elements, e.g. ``num_points, num_scales``
+- Name the module
+    - Singular form for nn.Module or implicit nn.ModuleList(e.g. SharedMLP)
+    - Plural form for explicit nn.ModuleList
+- https://google.github.io/styleguide/pyguide.html
+
+## CUDA extension
+
+``shaper/models/dgcnn_utils`` could be a good tutorial about how to write CUDA extension.
+In general, ``setup.py`` will build extensions by compiling source files(".cpp", ".cu") within ``csrc``.
+
+### Tutorials
+- https://pytorch.org/tutorials/advanced/cpp_extension.html
+- https://pytorch.org/cppdocs
+- https://github.com/pytorch/extension-cpp
+- https://devblogs.nvidia.com/even-easier-introduction-cuda
+- https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html
+
+## Troubleshooting
+
+### Failure to setup ``shaper``
+Run ``python setup.py build develop`` instead of ``python setup.py install develop``.
+
+### Failure to find dynamic library(.so) after compiling source files.
+There exist some errors in your source codes. For example, some functions are only declared.

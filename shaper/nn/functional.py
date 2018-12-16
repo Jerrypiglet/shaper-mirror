@@ -6,11 +6,11 @@ import torch.nn.functional as F
 # Distance
 # -----------------------------------------------------------------------------
 
-def pdist(features):
+def pdist(feature):
     """Compute pairwise distances of features.
 
     Args:
-        features (torch.Tensor): (batch_size, channels, num_features)
+        feature (torch.Tensor): (batch_size, channels, num_features)
 
     Returns:
         distance (torch.Tensor): (batch_size, num_features, num_features)
@@ -20,9 +20,9 @@ def pdist(features):
         Sqaure sum is more efficient than gather diagonal from inner product.
 
     """
-    square_sum = torch.sum(features ** 2, 1, keepdim=True)
+    square_sum = torch.sum(feature ** 2, 1, keepdim=True)
     square_sum = square_sum + square_sum.transpose(1, 2)
-    distance = torch.baddbmm(square_sum, features.transpose(1, 2), features, alpha=-2.0)
+    distance = torch.baddbmm(square_sum, feature.transpose(1, 2), feature, alpha=-2.0)
     return distance
 
 

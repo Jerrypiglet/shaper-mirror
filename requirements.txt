@@ -12,6 +12,6 @@ plyfile
 open3d-python
 matplotlib
 # s2cnn
-cupy
-requests
-pynvrtc
+# cupy
+# requests
+# pynvrtc

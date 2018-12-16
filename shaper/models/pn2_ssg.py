@@ -8,92 +8,108 @@ References:
       year={2017}
     }
 """
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from shaper.models.pn2_modules.pointnet2_modules import PointnetSAModule
-from shaper.nn import MLP
+from shaper.nn import MLP, SharedMLP
+from shaper.models.pn2_utils import PointNetSAModule
 from shaper.nn.init import set_bn
+from shaper.models.loss import ClsLoss
 from shaper.models.metric import Accuracy
 
 
-class PointNet2SSG_Cls(nn.Module):
+class PointNet2SSGCls(nn.Module):
     """PointNet2 with single-scale grouping for classfication
 
-    Structure: input -> [PointNetSA] -> [MLP] -> [Linear] -> logits
+    Structure: input -> [PointNetSA]s -> [MLP]s -> [MaxPooling] -> [MLP]s -> [Linear] -> logits
 
     Args:
-        in_channels: int = 3
-            Number of input channels
-        out_channels: int
-            Number of semantics classes to predict over -- size of softmax classifier
-        use_xyz: bool = True
-            Whether or not to use the xyz position of a point as a feature
+        in_channels (int): the number of input channels
+        out_channels (int): the number of semantics classes to predict over
+        num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
+        radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
+        num_neighbours(tuple of int): the numbers of neighbours to query for each centroid
+        sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
+        local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
+        global_channels (tuple of int): the numbers of channels to extract global features
+        dropout_prob (float): the probability to dropout input features
+        use_xyz (bool): whether or not to use the xyz position of a points as a feature
     """
 
-    def __init__(self, in_channels, out_channels,
-                 num_points_list=(512, 128), radius_list=(0.2, 0.4),
-                 nsamples_list=(32, 64), group_mlps=((64, 64, 128), (128, 128, 256)),
-                 global_mlps=(256, 512, 1024), fc_channels=(512, 256),
-                 drop_prob=0.5, use_xyz=True):
-        super().__init__()
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 num_centroids=(512, 128),
+                 radius=(0.2, 0.4),
+                 num_neighbours=(32, 64),
+                 sa_channels=((64, 64, 128), (128, 128, 256)),
+                 local_channels=(256, 512, 1024),
+                 global_channels=(512, 256),
+                 dropout_prob=0.5,
+                 use_xyz=True):
+        super(PointNet2SSGCls, self).__init__()
 
-        ssg_layer_num = len(num_points_list)
-        assert len(radius_list) == ssg_layer_num
-        assert len(nsamples_list) == ssg_layer_num
-        assert len(group_mlps) == ssg_layer_num
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.use_xyz = use_xyz
+
+        # sanity check
+        num_layers = len(num_centroids)
+        assert len(radius) == num_layers
+        assert len(num_neighbours) == num_layers
+        assert len(sa_channels) == num_layers
 
         feature_channels = in_channels - 3
-        self.SA_modules = nn.ModuleList()
-        for i, (num_points, radius, nsamples, group_mlps) in enumerate(
-                zip(num_points_list, radius_list, nsamples_list, group_mlps)):
-            group_mlps = list(group_mlps)
-            group_mlps.insert(0, feature_channels)
-            self.SA_modules.append(
-                PointnetSAModule(npoint=num_points,
-                                 radius=radius,
-                                 nsample=nsamples,
-                                 mlp=group_mlps, use_xyz=use_xyz))
-            feature_channels = group_mlps[-1]
+        self.sa_modules = nn.ModuleList()
+        for ind in range(num_layers):
+            sa_module = PointNetSAModule(in_channels=feature_channels,
+                                         mlp_channels=sa_channels[ind],
+                                         num_centroids=num_centroids[ind],
+                                         radius=radius[ind],
+                                         num_neighbours=num_neighbours[ind],
+                                         use_xyz=use_xyz)
+            self.sa_modules.append(sa_module)
+            feature_channels = sa_channels[ind][-1]
 
-        global_mlps = list(global_mlps)
-        global_mlps.insert(0, feature_channels)
-        self.SA_modules.append(
-            PointnetSAModule(mlp=global_mlps, use_xyz=use_xyz))
-
-        fc_in_channels = global_mlps[-1]
-        self.mlp_global = MLP(fc_in_channels, fc_channels, dropout=drop_prob)
-        self.classifier = nn.Linear(fc_channels[-1], out_channels, bias=True)
+        if use_xyz:
+            feature_channels += 3
+        self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
+        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
+        self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
         set_bn(self, momentum=0.01)
 
-
-    def _break_up_pc(self, pc):
-        xyz = pc[..., 0:3].contiguous()
-        features = (
-            pc[..., 3:].transpose(1, 2).contiguous()
-            if pc.size(-1) > 3 else None
-        )
-
-        return xyz, features
-
     def forward(self, data_batch):
-        pointcloud = data_batch["points"]
-        pointcloud = pointcloud.transpose(1, 2)
-        xyz, features = self._break_up_pc(pointcloud)
+        point = data_batch["points"]
+        end_points = {}
 
-        for module in self.SA_modules:
-            xyz, features = module(xyz, features)
-            # if xyz is not None:
-            #     print('xyz: ', list(xyz.size()))
-            # print('features: ', list(features.size()))
-        x = self.mlp_global(features.squeeze(-1))
-        cls_logits = self.classifier(x)
+        # torch.Tensor.narrow; share same memory
+        xyz = point.narrow(1, 0, 3)
+        if point.size(1) > 3:
+            feature = point.narrow(1, 3, point.size(1) - 3)
+        else:
+            feature = None
+
+        for sa_module in self.sa_modules:
+            xyz, feature = sa_module(xyz, feature)
+
+        if self.use_xyz:
+            x = torch.cat([xyz, feature], dim=1)
+        else:
+            x = feature
+        x = self.mlp_local(x)
+        x, max_indices = torch.max(x, 2)
+        end_points['key_point_inds'] = max_indices
+        x = self.mlp_global(x)
+
+        cls_logit = self.classifier(x)
+
         preds = {
-            'cls_logits': cls_logits
+            'cls_logit': cls_logit
         }
+        preds.update(end_points)
 
         return preds
 
@@ -102,35 +118,21 @@ class PointNet2SSG_Cls(nn.Module):
         nn.init.zeros_(self.classifier.bias)
 
 
-class PointNet2SSG_ClsLoss(nn.Module):
-    def __init__(self):
-        super(PointNet2SSG_ClsLoss, self).__init__()
-
-    def forward(self, preds, labels):
-        cls_logits = preds["cls_logits"]
-        cls_labels = labels["cls_labels"]
-        cls_loss = F.cross_entropy(cls_logits, cls_labels)
-        loss_dict = {
-            'cls_loss': cls_loss,
-        }
-        return loss_dict
-
-
 def build_pointnet2ssg(cfg):
     if cfg.TASK == "classification":
-        net = PointNet2SSG_Cls(
+        net = PointNet2SSGCls(
             in_channels=cfg.INPUT.IN_CHANNELS,
             out_channels=cfg.DATASET.NUM_CLASSES,
-            num_points_list=cfg.MODEL.PN2SSG.NUM_POINTS,
-            radius_list=cfg.MODEL.PN2SSG.RADIUS,
-            nsamples_list=cfg.MODEL.PN2SSG.NUM_SAMPLE,
-            group_mlps=cfg.MODEL.PN2SSG.GROUP_MLPS,
-            global_mlps=cfg.MODEL.PN2SSG.GLOBAL_MLPS,
-            fc_channels=cfg.MODEL.PN2SSG.FC_CHANNELS,
-            drop_prob=cfg.MODEL.PN2SSG.DROP_PROB,
+            num_centroids=cfg.MODEL.PN2SSG.NUM_CENTROIDS,
+            radius=cfg.MODEL.PN2SSG.RADIUS,
+            num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
+            sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
+            local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
+            global_channels=cfg.MODEL.PN2SSG.GLOBAL_CHANNELS,
+            dropout_prob=cfg.MODEL.PN2SSG.DROPOUT_PROB,
             use_xyz=cfg.MODEL.PN2SSG.USE_XYZ
         )
-        loss_fn = PointNet2SSG_ClsLoss()
+        loss_fn = ClsLoss()
         metric_fn = Accuracy()
     else:
         raise NotImplementedError
@@ -147,9 +149,8 @@ if __name__ == '__main__':
     data = torch.rand(batch_size, in_channels, num_points)
     data = data.cuda()
 
-    pn2ssg = PointNet2SSG_Cls(in_channels, num_classes, num_points_list=(128, 64),
-                              nsamples_list=(128, 128))
+    pn2ssg = PointNet2SSGCls(in_channels, num_classes)
     pn2ssg.cuda()
     out_dict = pn2ssg({"points": data})
     for k, v in out_dict.items():
-        print('pointnet:', k, v.shape)
+        print('PointNet2SSG:', k, v.shape)

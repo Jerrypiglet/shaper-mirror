@@ -36,7 +36,6 @@ _C.INPUT.NUM_POINTS = -1
 _C.DATASET = CN()
 _C.DATASET.TYPE = ""
 _C.DATASET.NUM_CLASSES = 0
-_C.DATASET.SHAPE_NAME_PATH = ""
 
 # Root directory of dataset
 _C.DATASET.ROOT_DIR = ""
@@ -53,6 +52,8 @@ _C.DATASET.TEST = ()
 _C.DATALOADER = CN()
 # Number of data loading threads
 _C.DATALOADER.NUM_WORKERS = 1
+# Whether to drop last
+_C.DATALOADER.DROP_LAST = True
 
 # ---------------------------------------------------------------------------- #
 # Solver (optimizer, learning schedule)

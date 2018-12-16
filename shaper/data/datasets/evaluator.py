@@ -28,7 +28,7 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
 
     for ind in tqdm(range(num_samples)):
         data = dataset[ind]
-        gt_label = int(data["cls_labels"])
+        gt_label = int(data["cls_label"])
         pred_label = int(pred_labels[ind])
 
         # Guarantee that seen classes are keys
@@ -50,8 +50,8 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
             # point clouds
             if aux_preds is not None and "key_point_inds" in aux_preds:
                 point_colors = np.ones([num_points, 3], dtype=points.dtype)
-                curr_keypoint_inds = aux_preds["key_point_inds"][ind, ...]
-                point_colors[curr_keypoint_inds, ...] = [1, 0, 0]
+                cur_keypoint_inds = aux_preds["key_point_inds"][ind, ...]
+                point_colors[cur_keypoint_inds, ...] = [1, 0, 0]
                 points = np.concatenate((points, point_colors), -1)
 
             np.savetxt(fname + '.xyz', points, fmt="%.4f")

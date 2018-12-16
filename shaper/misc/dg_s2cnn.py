@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.nn.functional import smooth_cross_entropy
-from shaper.models.pn2_modules import pointnet2_utils
+from shaper.models.pn2_utils import functions
 from shaper.models.dgcnn import TNet
 from shaper.models.dgcnn import DGCNNFeature
 from shaper.models.s2cnn import S2CNNFeature
@@ -55,7 +55,7 @@ class DGS2CNNCls(nn.Module):
             radius = radius_list[i]
             nsample = num_samples_list[i]
             self.groupers.append(
-                pointnet2_utils.QueryAndGroup(radius, nsample, use_xyz=True))
+                functions.QueryAndGroup(radius, nsample, use_xyz=True))
 
         # local s2cnn
         self.band_width_in_list = band_width_in_list
@@ -99,9 +99,9 @@ class DGS2CNNCls(nn.Module):
         pointcloud = pointcloud.transpose(1, 2)
         xyz, features = self._break_up_pc(pointcloud)
         xyz_flipped = xyz.transpose(1, 2).contiguous()
-        new_xyz = pointnet2_utils.gather_operation(
+        new_xyz = functions.gather_operation(
             xyz_flipped,
-            pointnet2_utils.furthest_point_sample(xyz, self.npoint)
+            functions.furthest_point_sample(xyz, self.npoint)
         ).transpose(1, 2).contiguous()
         new_xyz_flipped = new_xyz.transpose(1, 2).contiguous()
 

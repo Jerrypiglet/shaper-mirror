@@ -1,34 +1,27 @@
 import torch
 
-from shaper.models.dgcnn_modules.dgcnn_utils import pdist, \
+from shaper.models.dgcnn_utils.functions import pdist, \
     construct_edge_feature_index, construct_edge_feature_gather, construct_edge_feature
-
-
-def warmup():
-    a = torch.rand(2, 3)
-    b = torch.rand(2, 3)
-    for _ in range(10):
-        c = a + b
 
 
 def generate_data(batch_size=16, num_points=1024, in_channels=64, k=20):
     with torch.no_grad():
-        features_tensor = torch.rand(batch_size, in_channels, num_points).cuda()
-        distance = pdist(features_tensor)
+        feature_tensor = torch.rand(batch_size, in_channels, num_points).cuda()
+        distance = pdist(feature_tensor)
         _, knn_inds = torch.topk(distance, k, largest=False)
-        return features_tensor, knn_inds
+        return feature_tensor, knn_inds
 
 
 def test_construct_edge_feature():
-    features_tensor, knn_inds = generate_data()
+    feature_tensor, knn_inds = generate_data()
 
     def forward_backward(fn):
         torch.cuda.empty_cache()
-        features = torch.zeros_like(features_tensor).copy_(features_tensor)
-        features.requires_grad = True
-        edge_feature = fn(features, knn_inds)
+        feature = torch.zeros_like(feature_tensor).copy_(feature_tensor)
+        feature.requires_grad = True
+        edge_feature = fn(feature, knn_inds)
         edge_feature.backward(torch.ones_like(edge_feature), retain_graph=True, create_graph=False)
-        return edge_feature.cpu(), features.grad.cpu()
+        return edge_feature.cpu(), feature.grad.cpu()
 
     o_index, g_index = forward_backward(construct_edge_feature_index)
     o_gather, g_gather = forward_backward(construct_edge_feature_gather)
