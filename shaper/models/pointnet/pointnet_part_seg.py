@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from shaper.nn import MLP, SharedMLP
+from shaper.nn import MLP, SharedMLP, Conv1d
 from shaper.nn.init import set_bn
 from shaper.models.pointnet.pointnet_cls import TNet
 
@@ -128,6 +128,7 @@ class PointNetPartSeg(nn.Module):
         self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
 
         # classification
+        # Notice that we apply dropout to each classification mlp.
         self.mlp_cls = MLP(local_channels[-1], cls_channels, dropout=dropout_prob_cls)
         self.cls_logit = nn.Linear(cls_channels[-1], num_classes, bias=True)
 
@@ -136,7 +137,8 @@ class PointNetPartSeg(nn.Module):
         # stem features and local features. However, the paper does not use last local feature.
         # Here, we follow the released repo.
         in_channels_seg = local_channels[-1] + num_classes + sum(stem_channels) + sum(local_channels)
-        self.mlp_seg = SharedMLP(in_channels_seg, seg_channels, dropout=dropout_prob_seg)
+        self.mlp_seg = SharedMLP(in_channels_seg, seg_channels[:-1], dropout=dropout_prob_seg)
+        self.conv_seg = Conv1d(seg_channels[-2], seg_channels[-1], 1)
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
         self.init_weights()
@@ -180,6 +182,7 @@ class PointNetPartSeg(nn.Module):
 
         x = torch.cat(stem_features + local_features + [global_feature_expand, one_hot_expand], dim=1)
         x = self.mlp_seg(x)
+        x = self.conv_seg(x)
         seg_logit = self.seg_logit(x)
 
         preds = {
