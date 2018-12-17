@@ -11,12 +11,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="/media/rayc/Data/datasets/3D_datasets/ShapeNetCorev2/04004475",
+        default="/media/rayc/Data/datasets/3D_datasets/ShapeNetCorev2/",
         type=str,
     )
     parser.add_argument(
         "--out_dir",
-        default="data/shapenet55_h5/",
+        default="/home/rayc/Projects/shaper/data/shapenet55_h5/",
         type=str,
     )
     parser.add_argument(
@@ -101,16 +101,22 @@ class ShapeNet55(object):
         assert (len(xyz_file_list) == len(obj_file_list)), "XYZ file number and OBJ file number should match."
 
         for xyz_file in xyz_file_list:
-            xyz_norm_id = np.loadtxt(xyz_file)
-            xyz = xyz_norm_id[:, :3]
-            norm = xyz_norm_id[:, 3:6]
-            assert (xyz.shape[0] == self.num_pts and norm.shape[0] == self.num_pts), \
-                "Number of points in file not match."
+            # xyz_norm_id = np.loadtxt(xyz_file)
+            # xyz = xyz_norm_id[:, :3]
+            # norm = xyz_norm_id[:, 3:6]
+            # assert (xyz_norm_id.shape[0] == self.num_pts), \
+            #     "Number of points in file {} not match.".format(xyz_file)
+            found = False
             for off in self.offset_to_ind_map.keys():
-                if off in xyz_file:
+                if off in xyz_file.split("/"):
                     class_name = self.offset_to_class_map[off]
-                    data_per_class[class_name].append({"pt": xyz, "norm": norm})
+                    data_per_class[class_name].append(xyz_file)
+                    found = True
                     break
+            assert found, "Not defined class: {}".format(xyz_file)
+
+        for k, v in data_per_class.items():
+            print(k, ": ", len(v))
 
         return data_per_class
 
@@ -127,24 +133,30 @@ class ShapeNet55(object):
     def _generate_h5_files(self, data, suffix):
         file_list = []
 
-        pts = []
-        norms = []
+        paths = []
         labels = []
         for class_name, class_data in data.items():
-            for xyz_norm in class_data:
-                pts.append([xyz_norm["pt"]])
-                norms.append([xyz_norm["norm"]])
+            for file_path in class_data:
+                paths.append(file_path)
                 labels.append([self.classes_to_ind_map[class_name]])
 
-        data_length = len(pts)
+        data_length = len(paths)
         num_files = data_length // self.num_per_file + 1
         for file_ind in range(num_files):
             begin_idx = file_ind * self.num_per_file
             end_idx = (file_ind + 1) * self.num_per_file
             if end_idx > data_length:
                 end_idx = data_length
-            curr_pts = np.concatenate(pts[begin_idx:end_idx])
-            curr_norms = np.concatenate(norms[begin_idx:end_idx])
+            pts = []
+            norms = []
+            for i in range(begin_idx, end_idx):
+                xyz_norm_id = np.loadtxt(paths[i])
+                assert (xyz_norm_id.shape[0] == self.num_pts), \
+                    "Number of points in file {} not match.".format(paths[i])
+                pts.append([xyz_norm_id[:, :3]])
+                norms.append([xyz_norm_id[:, 3:6]])
+            curr_pts = np.concatenate(pts)
+            curr_norms = np.concatenate(norms)
             curr_labels = np.concatenate(labels[begin_idx:end_idx])
 
             file_path = osp.join(self.out_dir, suffix + "_{}.h5".format(file_ind))

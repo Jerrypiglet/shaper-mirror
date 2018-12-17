@@ -52,6 +52,12 @@ def build_dataset(cfg, mode="train"):
                            shuffle_points=False,
                            num_points=cfg.INPUT.NUM_POINTS,
                            transform=transform)
+    elif cfg.DATASET.TYPE == "ShapeNet55":
+        dataset = ShapeNet55(root_dir=cfg.DATASET.ROOT_DIR,
+                             dataset_names=dataset_names,
+                             shuffle_points=False,
+                             num_points=cfg.INPUT.NUM_POINTS,
+                             transform=transform)
     else:
         raise NotImplementedError()
 
