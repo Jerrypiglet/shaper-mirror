@@ -53,6 +53,14 @@ def build_dataset(cfg, mode="train"):
                                num_points=cfg.INPUT.NUM_POINTS,
                                transform=transform,
                                load_seg=(cfg.TASK == "part_segmentation"))
+    elif cfg.DATASET.TYPE == "ShapeNet":
+        dataset = D.ShapeNet(root_dir=cfg.DATASET.ROOT_DIR,
+                             dataset_names=dataset_names,
+                             shuffle_points=False,
+                             num_points=cfg.INPUT.NUM_POINTS,
+                             transform=transform,
+                             normalize=True,
+                             load_seg=(cfg.TASK == "part_segmentation"))
     else:
         raise NotImplementedError()
 

@@ -11,9 +11,9 @@ from torch import nn
 from shaper.models import build_model
 from shaper.data import build_dataloader
 from shaper.data.build import build_transform
-from shaper.data.datasets import evaluate_classification
+from shaper.data.datasets import evaluate_classification, evaluate_part_segmentation
 from shaper.utils.checkpoint import Checkpointer
-from shaper.utils.metric_logger import MetricLoggerV2
+from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.io import mkdir
 from shaper.utils.np_util import np_softmax
 
@@ -41,7 +41,7 @@ def test_model(model,
 
     """
     logger = logging.getLogger("shaper.test")
-    meters = MetricLoggerV2(delimiter="  ")
+    meters = MetricLogger(delimiter="  ")
     model.eval()
     metric_fn.eval()
 
@@ -154,8 +154,6 @@ def test(cfg, output_dir=""):
         cls_logit_collection = [d["cls_logit"] for d in test_result_collection]
         # sanity check
         assert all(len(cls_logit) == len(test_dataset) for cls_logit in cls_logit_collection)
-        # remove transform
-        test_dataset.transform = None
 
         if cfg.TEST.VOTE.ENABLE:
             for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
@@ -186,3 +184,13 @@ def test(cfg, output_dir=""):
                                     aux_preds=test_result_collection[0],
                                     output_dir=output_dir,
                                     vis_dir=vis_dir)
+    elif cfg.TASK == "part_segmentation":
+        seg_logit_collection = [d["seg_logit"] for d in test_result_collection]
+        if cfg.TEST.VOTE.ENABLE:
+            raise NotImplementedError()
+        else:
+            seg_logit_all = seg_logit_collection[0]
+            evaluate_part_segmentation(test_dataset, seg_logit_all,
+                                       aux_preds=test_result_collection[0],
+                                       output_dir=output_dir,
+                                       vis_dir=vis_dir)

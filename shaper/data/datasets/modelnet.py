@@ -17,7 +17,7 @@ class ModelNetH5(Dataset):
         num_points (int): the number of input points. -1 means using all.
         shuffle_points (bool): whether to shuffle input points.
         classes (list): the names of classes
-        classes_to_ind_map (dict): mapping from class names to class indices
+        class_to_ind_map (dict): mapping from class names to class indices
         meta_data (list of dict): meta information of data
 
     """
@@ -38,7 +38,7 @@ class ModelNetH5(Dataset):
         self.transform = transform
 
         self.classes = self._load_cat_file()
-        self.classes_to_ind_map = {c: i for i, c in enumerate(self.classes)}
+        self.class_to_ind_map = {c: i for i, c in enumerate(self.classes)}
 
         # load meta data and cache
         self.meta_data = []
@@ -51,6 +51,8 @@ class ModelNetH5(Dataset):
         self.cache_points = np.concatenate(self.cache_points, axis=0)
         self.cache_label = np.concatenate(self.cache_label, axis=0)
         self.cache_normal = np.concatenate(self.cache_normal, axis=0)
+
+        print("{} classes with {} models".format(len(self.classes), len(self.meta_data)))
 
     def _load_cat_file(self):
         with open(osp.join(self.root_dir, self.cat_file), 'r') as fid:

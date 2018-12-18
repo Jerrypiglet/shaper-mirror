@@ -8,7 +8,7 @@ from shaper.models import build_model
 from shaper.solver import build_optimizer
 from shaper.data import build_dataloader
 from shaper.utils.checkpoint import Checkpointer
-from shaper.utils.metric_logger import MetricLogger, MetricLoggerV2
+from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
 
 
@@ -67,7 +67,7 @@ def validate_model(model,
                    data_loader,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
-    meters = MetricLoggerV2(delimiter="  ")
+    meters = MetricLogger(delimiter="  ")
     model.eval()
     metric_fn.eval()
     end = time.time()

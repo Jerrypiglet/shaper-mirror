@@ -36,12 +36,27 @@ class ClsAccuracy(nn.Module):
 
 
 class SegAccuracy(nn.Module):
+    def __init__(self, reduction="mean"):
+        """Segmentation accuracy
+
+        Args:
+            reduction (str): specifies the reduction to apply to the output
+                - "none": no reduction will be applied
+                - "mean": accuracy per instance
+
+        """
+        super(SegAccuracy, self).__init__()
+        self.reduction = reduction
+
     def forward(self, preds, labels):
         seg_logit = preds["seg_logit"]
         seg_label = labels["seg_label"]
         pred_label = seg_logit.argmax(1)
 
+        # (batch_size, num_points)
         seg_acc = pred_label.eq(seg_label).float()
+        if self.reduction == "mean":
+            seg_acc = seg_acc.mean(1)
 
         return {"seg_acc": seg_acc}
 
@@ -71,8 +86,8 @@ class IntersectionAndUnion(nn.Module):
     So:
     union = TP + FP + FN = total number of predictions + total number of labels - TP
 
-    In this module, we only compute the class-wise intersection and union. The final IOU
-    must be computed in the end over all the data.
+    In this module, we compute the class-wise intersection over union over a batch.
+    It is an estimation of per-instance IOU.
 
     References: https://github.com/CSAILVision/semantic-segmentation-pytorch/blob/master/utils.py
 
@@ -82,17 +97,20 @@ class IntersectionAndUnion(nn.Module):
         - 50 part classes (each object category has 2-6 part classes)
     """
 
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, reduction="mean"):
         super(IntersectionAndUnion, self).__init__()
         self.num_classes = num_classes
+        self.reduction = reduction
 
     def forward(self, preds, labels):
+        # (batch_size, num_seg_classes, num_points)
         seg_logit = preds["seg_logit"].cpu()
         seg_label = labels["seg_label"].cpu()
         pred_label = seg_logit.argmax(1)
 
         # intersection
         intersection = pred_label[(pred_label == seg_label)]
+        # (num_seg_classes,)
         intersection = torch.histc(intersection.float(), bins=self.num_classes, min=0, max=self.num_classes - 1)
 
         # union
@@ -100,4 +118,7 @@ class IntersectionAndUnion(nn.Module):
         total_num_label = torch.histc(seg_label.float(), bins=self.num_classes, min=0, max=self.num_classes - 1)
         union = total_num_pred + total_num_label - intersection
 
-        return {"mIOU": (intersection, union)}
+        iou = intersection.float() / torch.clamp(union, min=1).float()
+        if self.reduction == "mean":
+            iou = torch.masked_select(iou, union > 0).mean()
+        return {"IOU": iou}
