@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from shaper.models.pn2_utils.functions import farthest_point_sample, group_points, ball_query
+from shaper.models.pointnet2.functions import farthest_point_sample, group_points, ball_query
 
 
 def farthest_point_sample_np(points, num_centroids):

@@ -13,10 +13,8 @@ import torch
 import torch.nn as nn
 
 from shaper.nn import MLP, SharedMLP
-from shaper.models.pn2_utils import PointNetSAModuleMSG
+from shaper.models.pointnet2.modules import PointNetSAModuleMSG
 from shaper.nn.init import set_bn
-from shaper.models.loss import ClsLoss
-from shaper.models.metric import ClsAccuracy
 
 
 class PointNet2MSGCls(nn.Module):
@@ -110,27 +108,6 @@ class PointNet2MSGCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
-
-
-def build_pointnet2msg(cfg):
-    if cfg.TASK == "classification":
-        net = PointNet2MSGCls(
-            in_channels=cfg.INPUT.IN_CHANNELS,
-            out_channels=cfg.DATASET.NUM_CLASSES,
-            num_centroids=cfg.MODEL.PN2MSG.NUM_CENTROIDS,
-            radius_list=cfg.MODEL.PN2MSG.RADIUS,
-            num_neighbours_list=cfg.MODEL.PN2MSG.NUM_NEIGHBOURS,
-            sa_channels_list=cfg.MODEL.PN2MSG.SA_CHANNELS,
-            global_channels=cfg.MODEL.PN2MSG.GLOBAL_CHANNELS,
-            dropout_prob=cfg.MODEL.PN2MSG.DROPOUT_PROB,
-            use_xyz=cfg.MODEL.PN2MSG.USE_XYZ
-        )
-        loss_fn = ClsLoss()
-        metric_fn = ClsAccuracy()
-    else:
-        raise NotImplementedError
-
-    return net, loss_fn, metric_fn
 
 
 if __name__ == '__main__':

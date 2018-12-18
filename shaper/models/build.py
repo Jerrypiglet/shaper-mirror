@@ -15,16 +15,15 @@ Notes:
 """
 
 from .pointnet import build_pointnet
+from .pointnet2 import build_pointnet2ssg, build_pointnet2msg
 from .dgcnn import build_dgcnn
-from .pn2_ssg import build_pointnet2ssg
-from .pn2_msg import build_pointnet2msg
 
 
 _MODEL_BUILDERS = {
     "POINTNET": build_pointnet,
-    "DGCNN": build_dgcnn,
     "PN2SSG": build_pointnet2ssg,
     "PN2MSG": build_pointnet2msg,
+    "DGCNN": build_dgcnn,
 }
 
 

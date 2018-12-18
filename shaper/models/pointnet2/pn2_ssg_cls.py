@@ -13,10 +13,8 @@ import torch
 import torch.nn as nn
 
 from shaper.nn import MLP, SharedMLP
-from shaper.models.pn2_utils import PointNetSAModule
+from shaper.models.pointnet2.modules import PointNetSAModule
 from shaper.nn.init import set_bn
-from shaper.models.loss import ClsLoss
-from shaper.models.metric import ClsAccuracy
 
 
 class PointNet2SSGCls(nn.Module):
@@ -35,6 +33,7 @@ class PointNet2SSGCls(nn.Module):
         global_channels (tuple of int): the numbers of channels to extract global features
         dropout_prob (float): the probability to dropout input features
         use_xyz (bool): whether or not to use the xyz position of a points as a feature
+
     """
 
     def __init__(self,
@@ -116,28 +115,6 @@ class PointNet2SSGCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
-
-
-def build_pointnet2ssg(cfg):
-    if cfg.TASK == "classification":
-        net = PointNet2SSGCls(
-            in_channels=cfg.INPUT.IN_CHANNELS,
-            out_channels=cfg.DATASET.NUM_CLASSES,
-            num_centroids=cfg.MODEL.PN2SSG.NUM_CENTROIDS,
-            radius=cfg.MODEL.PN2SSG.RADIUS,
-            num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
-            sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
-            local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
-            global_channels=cfg.MODEL.PN2SSG.GLOBAL_CHANNELS,
-            dropout_prob=cfg.MODEL.PN2SSG.DROPOUT_PROB,
-            use_xyz=cfg.MODEL.PN2SSG.USE_XYZ
-        )
-        loss_fn = ClsLoss()
-        metric_fn = ClsAccuracy()
-    else:
-        raise NotImplementedError
-
-    return net, loss_fn, metric_fn
 
 
 if __name__ == '__main__':

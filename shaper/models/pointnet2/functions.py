@@ -1,7 +1,7 @@
 import torch
 
 try:
-    from shaper.models.pn2_utils import pn2_ext
+    from shaper.models.pointnet2 import pn2_ext
 except ImportError:
     print("Please compile source files before using pointnet2 cuda extension.")
 
