@@ -1,7 +1,7 @@
 import torch
 
-from shaper.models.dgcnn_utils.functions import pdist, \
-    construct_edge_feature_index, construct_edge_feature_gather, construct_edge_feature
+from shaper.models.dgcnn.functions import pdist, construct_edge_feature_index, construct_edge_feature_gather, \
+    construct_edge_feature
 
 
 def generate_data(batch_size=16, num_points=1024, in_channels=64, k=20):

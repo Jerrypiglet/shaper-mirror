@@ -3,7 +3,7 @@
 import torch
 
 from shaper.nn.functional import pdist
-from shaper.models.dgcnn_utils.gather_knn import gather_knn
+from shaper.models.dgcnn.gather_knn import gather_knn
 
 
 def get_knn_inds(pdist, k=20, remove=False):

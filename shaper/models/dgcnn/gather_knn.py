@@ -2,7 +2,7 @@
 import torch
 
 try:
-    from shaper.models.dgcnn_utils import dgcnn_ext
+    from shaper.models.dgcnn import dgcnn_ext
 except ImportError:
     print("Please compile source files before using dgcnn cuda extension.")
 

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from shaper.nn.modules import SharedMLP
+from shaper.nn import SharedMLP
 from .functions import pdist, get_knn_inds, get_edge_feature, gather_knn
 
 

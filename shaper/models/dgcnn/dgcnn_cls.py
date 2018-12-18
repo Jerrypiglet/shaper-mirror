@@ -13,10 +13,9 @@ import torch
 import torch.nn as nn
 
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
-from shaper.models.dgcnn_utils import get_edge_feature, EdgeConvBlockV2
+from shaper.models.dgcnn.functions import get_edge_feature
+from shaper.models.dgcnn.modules import EdgeConvBlockV2
 from shaper.nn.init import set_bn
-from shaper.models.loss import ClsLoss
-from shaper.models.metric import ClsAccuracy
 
 
 class TNet(nn.Module):
@@ -164,26 +163,6 @@ class DGCNNCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
-
-
-def build_dgcnn(cfg):
-    if cfg.TASK == "classification":
-        net = DGCNNCls(
-            in_channels=cfg.INPUT.IN_CHANNELS,
-            out_channels=cfg.DATASET.NUM_CLASSES,
-            edge_conv_channels=cfg.MODEL.DGCNN.EDGE_CONV_CHANNELS,
-            inter_channels=cfg.MODEL.DGCNN.INTER_CHANNELS,
-            global_channels=cfg.MODEL.DGCNN.GLOBAL_CHANNELS,
-            k=cfg.MODEL.DGCNN.K,
-            dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
-            with_transform=cfg.MODEL.DGCNN.WITH_TRANSFORM,
-        )
-        loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
-        metric_fn = ClsAccuracy()
-    else:
-        raise NotImplementedError()
-
-    return net, loss_fn, metric_fn
 
 
 if __name__ == "__main__":
