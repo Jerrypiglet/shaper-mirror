@@ -150,6 +150,7 @@ def evaluate_part_segmentation(dataset,
 
         segids = class_to_seg_map[gt_cls_label]
         pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
+        # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
         pred_seg_label = np.argmax(pred_seg_logit, axis=0)
         for ind, segid in enumerate(segids):
             # convert partid to segid
