@@ -40,6 +40,7 @@ python setup.py build_ext --inplace
 ### Download datasets
 Shaper currently supports several datasets, like ModelNet40 and ShapeNet.
 Scripts to download data are provided in ``shaper``.
+It is recommended to create symbol links for datasets.
 ```
 # take ModelNet40 for example
 mkdir data
@@ -102,7 +103,9 @@ pytest -s test_functional.py
 - Name the module
     - Singular form for nn.Module or implicit nn.ModuleList(e.g. SharedMLP)
     - Plural form for explicit nn.ModuleList
+- Name a sequence or dictionary, e.g. ``preds, labels``.
 - https://google.github.io/styleguide/pyguide.html
+- https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 ## CUDA extension
 
@@ -122,4 +125,5 @@ In general, ``setup.py`` will build extensions by compiling source files(".cpp",
 Run ``python setup.py build develop`` instead of ``python setup.py install develop``.
 
 ### Failure to find dynamic library(.so) after compiling source files.
-There exist some errors in your source codes. For example, some functions are only declared.
+There exist some errors in your source codes.
+For example, some functions are only declared or wrong pytorch version is used.

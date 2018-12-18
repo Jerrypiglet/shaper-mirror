@@ -10,8 +10,8 @@ exclude_dirs = ("configs", "tests", "scripts", "data", "outputs")
 
 setup(
     name='shaper',
-    version="0.0.2",
-    author="Rui Chen, Jiayuan Gu",
+    version="0.0.3",
+    author="Rui Chen, Jiayuan Gu, Maximilian Jaritz",
     url="https://github.com/facebookresearch/maskrcnn-benchmark",
     description="point clouds machine learning in pytorch",
     packages=find_packages(exclude=(exclude_dirs)),
