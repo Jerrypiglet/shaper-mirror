@@ -12,6 +12,7 @@ Without specification, the experiment setting is to train one model for 250 epoc
 and test it with multi-view(12) ensemble 5 times,
 which might alleviate the randomness caused by the size of dataset.
 By default, only one gpu is used for comparision.
+Scripts to reproduce results are stored at ``scripts/baselines``.
 
 | model | batch_size | lr | train time (s/iter) | train memory (GB) | test time (s/iter) | accuracy | comments |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
