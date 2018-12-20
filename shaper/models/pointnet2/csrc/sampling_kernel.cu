@@ -21,6 +21,9 @@
         index.data<int64_t>(), \
         points_trans.data<scalar_t>(), \
         temp.data<scalar_t>(), \
+        distance.data<scalar_t>(), \
+        mdist.data<scalar_t>(), \
+        pos.data<int64_t>(), \
         num_points, \
         num_centroids); \
     })); \
@@ -48,6 +51,9 @@ __global__ void FarthestPointSampleKernel(
     index_t* __restrict__ index,
     const scalar_t* __restrict__ points,
     scalar_t* __restrict__ temp,
+    const scalar_t* __restrict__ distance,
+    const scalar_t* __restrict__ mdist,
+    const index_t* __restrict__ pos,
     const int64_t num_points,
     const int64_t num_centroids) {
   // alocated shared memory
@@ -59,6 +65,7 @@ __global__ void FarthestPointSampleKernel(
   int32_t cur_ind = 0;
   const scalar_t* points_offset = points + batch_index * num_points * 3;
   scalar_t* temp_offset = temp + batch_index * num_points;
+  const scalar_t* dist_offset = distance + batch_index * num_points * num_points;
   index_t* index_offset = index + batch_index * num_centroids;
   // explicitly choose the first point as a centroid
   if (threadIdx.x == 0) index_offset[0] = cur_ind;
@@ -78,7 +85,10 @@ __global__ void FarthestPointSampleKernel(
       scalar_t y2 = points_offset[offset2 + 1];
       scalar_t z2 = points_offset[offset2 + 2];
 
-      scalar_t dist = (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1);
+      scalar_t dist1 = (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1);
+      scalar_t dist = dist_offset[cur_ind*num_points+j];
+      dist = dist > 0 ? dist : 0;
+      assert(std::abs(dist-dist1) < 0.001);
       scalar_t last_dist = temp_offset[j];
       if (last_dist > dist || last_dist < 0) {
         temp_offset[j] = dist;
@@ -124,6 +134,10 @@ Output:
 */
 at::Tensor FarthestPointSample(
 	  const at::Tensor points,
+          const at::Tensor mdist,
+          const at::Tensor pos,
+          const at::Tensor distance,
+	  const at::Tensor point,
     const int64_t num_centroids) {
 
 	const auto batch_size = points.size(0);
@@ -157,6 +171,9 @@ at::Tensor FarthestPointSample(
         index.data<int64_t>(),
         points_trans.data<scalar_t>(),
         temp.data<scalar_t>(),
+        distance.data<scalar_t>(),
+        mdist.data<scalar_t>(),
+        pos.data<int64_t>(),
         num_points,
         num_centroids);
     }));
