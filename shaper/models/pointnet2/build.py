@@ -41,6 +41,20 @@ def build_pointnet2msg(cfg):
         )
         loss_fn = ClsLoss()
         metric_fn = ClsAccuracy()
+    elif cfg.TASK == "part_segmentation":
+        net = PointNet2MSGSeg(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            out_channels=cfg.DATASET.NUM_CLASSES,
+            num_centroids=cfg.MODEL.PN2MSG.NUM_CENTROIDS,
+            radius_list=cfg.MODEL.PN2MSG.RADIUS,
+            num_neighbours_list=cfg.MODEL.PN2MSG.NUM_NEIGHBOURS,
+            sa_channels_list=cfg.MODEL.PN2MSG.SA_CHANNELS,
+            global_channels=cfg.MODEL.PN2MSG.GLOBAL_CHANNELS,
+            dropout_prob=cfg.MODEL.PN2MSG.DROPOUT_PROB,
+            use_xyz=cfg.MODEL.PN2MSG.USE_XYZ
+        )
+        loss_fn = SegLoss()
+        metric_fn = PartSegMetric()
     else:
         raise NotImplementedError
 
