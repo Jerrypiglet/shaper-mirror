@@ -51,7 +51,7 @@ def main():
     args = parse_args()
     num_gpus = torch.cuda.device_count()
 
-    cfg = importlib.import_module("shaper.config.{:s}".format(args.task))._C
+    cfg = importlib.import_module("shaper.config.{:s}".format(args.task)).cfg
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg = purge_cfg(cfg)
