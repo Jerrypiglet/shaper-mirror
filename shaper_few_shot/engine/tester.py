@@ -171,7 +171,7 @@ def test(cfg, output_dir=""):
             logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
                 score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
-            overall_acc, acc_per_class = evaluate_classification(
+            overall_acc, acc_per_class, true_positive_per_class = evaluate_classification(
                 test_dataset, pred_labels,
                 output_dir=output_dir,
                 vis_dir=vis_dir,
@@ -179,10 +179,10 @@ def test(cfg, output_dir=""):
 
     else:
         pred_labels = np.argmax(cls_logits_all[0], -1)
-        overall_acc, acc_per_class = evaluate_classification(
+        overall_acc, acc_per_class, true_positive_per_class = evaluate_classification(
             test_dataset, pred_labels,
             aux_preds=test_result_collection[0],
             output_dir=output_dir,
             vis_dir=vis_dir)
 
-    return test_dataset, cls_logits_all, overall_acc, acc_per_class
+    return test_dataset, cls_logits_all, overall_acc, acc_per_class, true_positive_per_class

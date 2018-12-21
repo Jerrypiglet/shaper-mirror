@@ -90,7 +90,7 @@ class ModelNet(Dataset):
 
 if __name__ == "__main__":
     root_dir = "../../../data/modelnet40"
-    modelnet = ModelNet(root_dir, ['test'])
+    modelnet = ModelNet(root_dir, ['train'])
     print('total data num: ', modelnet.__len__())
     # print(modelnet[0][0].size(), modelnet[0][0].type())
     # print(modelnet[0])

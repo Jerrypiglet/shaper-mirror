@@ -10,7 +10,7 @@ from shaper_few_shot.data import build_dataloader
 from shaper_few_shot.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
-from shaper.nn.freeze_weight import unfreeze_by_patterns, _unfreeze_all_params
+from shaper.nn.freeze_weight import unfreeze_by_patterns, _unfreeze_all_params, check_frozen_params
 
 
 def train_model(model,
@@ -168,6 +168,7 @@ def train(cfg, output_dir=""):
     else:
         start_epoch = checkpoint_data.get("epoch", 0)
         best_metric = checkpoint_data.get(best_metric_name, None)
+    check_frozen_params(model, logger)
     logger.info("Start training from epoch {}".format(start_epoch))
     for epoch in range(start_epoch, max_epoch):
         cur_epoch = epoch + 1

@@ -1,4 +1,4 @@
-from shaper.config.defaults import _C
+from shaper.config.classification import _C
 from yacs.config import CfgNode as CN
 
 _C.COMPARE_NET = CN()

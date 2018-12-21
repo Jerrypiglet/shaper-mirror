@@ -54,7 +54,7 @@ class PointNetFewShotCls(PointNetCls):
         x = self.mlp_global(x)
         if self.before_classifier_channels > 0:
             x = self.before_classifier(x)
-            x = F.dropout(x, self.dropout_prob, self.training, inplace=False)
+            # x = F.dropout(x, self.dropout_prob, self.training, inplace=False)
             x = self.classifier(x)
         else:
             x = self.classifier(x)

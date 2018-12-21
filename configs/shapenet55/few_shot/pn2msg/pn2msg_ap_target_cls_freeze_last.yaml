@@ -1,0 +1,39 @@
+TASK:
+  "classification"
+INPUT:
+  NUM_POINTS: 1024
+MODEL:
+  TYPE: "PN2MSGFewShot"
+  WEIGHT: "/home/rayc/Projects/shaper/outputs/shapenet55/few_shot/pn2msg/pn2msg_ap_train_cls/model_250.pth"
+  PN2MSG:
+    NUM_CENTROIDS: (1024,)
+    RADIUS: ((0.2, 0.3, 0.4),)
+    NUM_NEIGHBOURS: ((32, 48, 64),)
+    SA_CHANNELS: (((64, 64, 16), (64, 64, 16), (64, 64, 29)),)
+    LOCAL_CHANNELS: (128, 1024)
+    DROPOUT_PROB: 0.3
+DATASET:
+  ROOT_DIR: "/home/rayc/Projects/shaper/data/shapenet55_h5/shapenet55_fewshot"
+  TYPE: "SHAPENET55_FEWSHOT"
+  NUM_CLASSES: 11
+  TRAIN: ("support",)
+  VAL: ("target",)
+  TEST: ("target",)
+  SHAPENET55_FEWSHOT:
+    NUM_PER_CLASS: 1
+    CROSS_NUM: 0
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 250
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+TRAIN:
+  LOAD_PRETRAIN: True
+  FREEZE_PARAMS: ('^((?!classifier).)*$',)
+  BATCH_SIZE: 11
+  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation", "PointCloudScale", "PointCloudTranslate", "PointCloudJitter",)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 50
+  VAL_PERIOD: 100
+TEST:
+  BATCH_SIZE: 11

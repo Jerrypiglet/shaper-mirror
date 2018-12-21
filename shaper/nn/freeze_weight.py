@@ -134,13 +134,15 @@ def unfreeze_modules(module, frozen_modules, prefix=''):
 
 def unfreeze_by_patterns(module, patterns):
     """Defrost Module by matching patterns"""
-    unfreeze_params = []
-    unfreeze_modules = []
+    unfreeze_params_name = []
+    unfreeze_modules_name = []
     for pattern in patterns:
         if pattern.startswith('module:'):
-            unfreeze_modules.append(pattern[7:])
+            unfreeze_modules_name.append(pattern[7:])
         else:
-            unfreeze_params.append(pattern)
+            unfreeze_params_name.append(pattern)
+    unfreeze_modules(unfreeze_modules_name)
+    unfreeze_params(unfreeze_params_name)
 
 
 def _unfreeze_all_params(module):
@@ -148,3 +150,13 @@ def _unfreeze_all_params(module):
     for name, params in module.named_parameters():
         params.requires_grad = True
         print('Params %s is unfrozen.' % name)
+
+
+def check_frozen_params(module, logger=None):
+    for name, params in module.named_parameters():
+        if not params.requires_grad:
+            log_str = "Params {} is frozen.".format(name)
+            if logger:
+                logger.info(log_str)
+            else:
+                print(log_str)

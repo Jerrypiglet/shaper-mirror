@@ -202,13 +202,17 @@ class ModelNetCompare(Dataset):
             shuffle_inds = np.arange(target_data_length)
             if self.shuffle_data:
                 np.random.shuffle(shuffle_inds)
-            shuffled_target_data_labels_set = []
-            shuffled_target_data_points_set = []
-            shuffled_target_data_normals_set = []
-            for i in range(target_data_length):
-                shuffled_target_data_labels_set.append(target_data_labels_set[shuffle_inds[i]])
-                shuffled_target_data_points_set.append(target_data_points_set[shuffle_inds[i]])
-                shuffled_target_data_normals_set.append(target_data_normals_set[shuffle_inds[i]])
+                shuffled_target_data_labels_set = []
+                shuffled_target_data_points_set = []
+                shuffled_target_data_normals_set = []
+                for i in range(target_data_length):
+                    shuffled_target_data_labels_set.append(target_data_labels_set[shuffle_inds[i]])
+                    shuffled_target_data_points_set.append(target_data_points_set[shuffle_inds[i]])
+                    shuffled_target_data_normals_set.append(target_data_normals_set[shuffle_inds[i]])
+            else:
+                shuffled_target_data_labels_set = target_data_labels_set.copy()
+                shuffled_target_data_points_set = target_data_points_set.copy()
+                shuffled_target_data_normals_set = target_data_normals_set.copy()
 
             curr_batch_num = target_data_length // self.batch_target_num
             self.batch_num += curr_batch_num
@@ -216,10 +220,16 @@ class ModelNetCompare(Dataset):
             for i in range(curr_batch_num):
                 # Add support data
                 for j in range(len(class_inds)):
-                    self.data_labels.append(class_inds[j])
-                    random_inds = random.randint(0, len(support_data_points_per_class[class_inds[j]]) - 1)
-                    self.data_points.append(support_data_points_per_class[class_inds[j]][random_inds])
-                    self.data_normals.append(support_data_normals_per_class[class_inds[j]][random_inds])
+                    # random_inds = random.randint(0, len(support_data_points_per_class[class_inds[j]]) - 1)
+                    assert (len(support_data_points_per_class[class_inds[j]]) >= self.batch_support_num_per_class
+                            ), "The data number of class [{}] is smaller than the batch_support_num_per_class [{}]"\
+                        .format(len(support_data_points_per_class[class_inds[j]]), self.batch_support_num_per_class)
+                    random_inds = np.random.choice(len(support_data_points_per_class[class_inds[j]]),
+                                                   size=self.batch_support_num_per_class, replace=False)
+                    for random_ind in random_inds:
+                        self.data_labels.append(class_inds[j])
+                        self.data_points.append(support_data_points_per_class[class_inds[j]][random_ind])
+                        self.data_normals.append(support_data_normals_per_class[class_inds[j]][random_ind])
                 # Add target data
                 for j in range(self.batch_target_num):
                     curr_inds = i * self.batch_target_num + j

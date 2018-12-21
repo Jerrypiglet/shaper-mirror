@@ -26,6 +26,25 @@ def pdist(feature):
     return distance
 
 
+def euclidean_dist(feature_1, feature_2):
+    """Compute pairwise distances between feature_1 and feature_2.
+
+       Args:
+           feature_1 (torch.Tensor): (N_1, channels)
+           feature_2 (torch.Tensor): (N_2, channels)
+
+       Returns:
+           distance (torch.Tensor): (N_1, N_2)
+
+       """
+    n_1, c_1 = list(feature_1.size())
+    n_2, c_2 = list(feature_2.size())
+    assert (c_1 == c_2), "Channels should match"
+    feature_1 = feature_1.unsqueeze(1).expand(n_1, n_2, c_1)
+    feature_2 = feature_2.unsqueeze(0).expand(n_1, n_2, c_2)
+
+    return torch.pow(feature_1 - feature_2, 2).sum(2)
+
 # -----------------------------------------------------------------------------
 # Losses
 # -----------------------------------------------------------------------------

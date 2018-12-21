@@ -263,8 +263,8 @@ if __name__ == "__main__":
     generator = ShapeNet55FewShotGenerator(
         fewshot_label_inds=FEWSHOT_LABEL_INDS,
         source_dir=SOURCE_DIR,
-        target_dir='/home/rayc/Projects/shaper/data/shapenet55_h5/shapenet55_fewshot',
-        num_per_class=1,
+        target_dir='/home/rayc/Projects/shaper/data/shapenet55_h5/shapenet55_fewshot_5shot',
+        num_per_class=5,
         cross_num=10, force=False
     )
     generator.generate()

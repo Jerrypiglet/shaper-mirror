@@ -1,0 +1,7 @@
+build/
+cache/
+data/
+outputs/
+trials/
+.git/
+.idea/

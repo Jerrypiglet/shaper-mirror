@@ -121,6 +121,7 @@ def test(cfg, output_dir=""):
         mkdir(vis_dir)
 
     if cfg.TEST.VOTE.ENABLE:  # Multi-view voting
+        raise NotImplementedError
         for view_ind in range(cfg.TEST.VOTE.NUM_VIEW):
             start_time = time.time()
             tmp_cfg = cfg.clone()
@@ -161,6 +162,7 @@ def test(cfg, output_dir=""):
     test_dataset.transform = None
 
     if cfg.TEST.VOTE.ENABLE:
+        raise NotImplementedError
         for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
             if score_heur == "soft_label":
                 cls_logits_ensemble = np.mean(cls_preds_all, axis=0)

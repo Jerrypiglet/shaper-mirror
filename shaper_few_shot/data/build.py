@@ -57,8 +57,15 @@ def build_dataset(cfg, mode="train"):
                                   cross_num=cfg.DATASET.SHAPENET_FEWSHOT.CROSS_NUM,
                                   shuffle_points=is_train,
                                   num_points=cfg.INPUT.NUM_POINTS,
-                                  transform=transform
-                                  )
+                                  transform=transform)
+    elif cfg.DATASET.TYPE == "SHAPENET55_FEWSHOT":
+        dataset = ShapeNet55FewShot(root_dir=cfg.DATASET.ROOT_DIR,
+                                    dataset_names=dataset_names,
+                                    num_per_class=cfg.DATASET.SHAPENET55_FEWSHOT.NUM_PER_CLASS,
+                                    cross_num=cfg.DATASET.SHAPENET55_FEWSHOT.CROSS_NUM,
+                                    shuffle_points=is_train,
+                                    num_points=cfg.INPUT.NUM_POINTS,
+                                    transform=transform)
     else:
         raise NotImplementedError()
 

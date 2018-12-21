@@ -65,12 +65,12 @@ class NetworkWrapper(nn.Module):
         relation_pairs = torch.cat((support_features_ext, target_features_ext), -1).view(-1, self.feature_channels * 2)
         relations = self.compare_net(relation_pairs).view(-1)
 
-        relation_preds = relations.view(self.support_instance_num, target_instance_num).transpose(0, 1)  # (tar, sup)
+        relation_preds_T = relations.view(self.support_instance_num, target_instance_num).transpose(0, 1)  # (tar, sup)
 
         support_labels = data_batch["cls_labels"][:self.support_instance_num]
         support_labels_one_hot = encode_one_hot(support_labels, self.class_num)
 
-        relation_preds_per_class = torch.mm(relation_preds, support_labels_one_hot)
+        relation_preds_per_class = torch.mm(relation_preds_T, support_labels_one_hot)
 
         direct_preds = self.classifier(target_features)
 
