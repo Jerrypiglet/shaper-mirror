@@ -29,6 +29,8 @@ _C.INPUT = CN()
 
 _C.INPUT.IN_CHANNELS = 3
 _C.INPUT.NUM_POINTS = -1
+# Whether to use normal
+_C.INPUT.USE_NORMAL = False
 
 # -----------------------------------------------------------------------------
 # Dataset
