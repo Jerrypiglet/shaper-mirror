@@ -4,7 +4,6 @@ import torch.nn as nn
 from shaper.nn import SharedMLP
 from . import functions as _F
 
-
 class FarthestPointSampler(nn.Module):
     """Farthest point sampling
 
@@ -53,6 +52,40 @@ class QueryGrouper(nn.Module):
 
     def extra_repr(self):
         return "radius={:.1e}, num_neighbours={:d}, use_xyz={}".format(self.radius, self.num_neighbours, self.use_xyz)
+
+
+class FeatureInterpolator(nn.Module):
+    def __init__(self,
+                 num_neighbors):
+        super(FeatureInterpolator, self).__init__()
+        self.num_neighbors = num_neighbors
+
+    def forward(self, xyz1, xyz2, features1, features2):
+        """
+
+        :param xyz1: xyz of the input of set abstraction layer
+        :param xyz2: xyz of the output of set abstraction layer (input of the feature propagation layer)
+        :param features1: features of xyz1
+        :param features2: features of xyz2
+        :return:
+            new_features: the new features for xyz1
+        """
+        dist, idx = _F.search_nn_distance(xyz1, xyz2, self.num_neighbors)
+        dist = torch.clamp(dist, min=1e-10)
+        norm = torch.sum(1.0 / dist, dim=1, keepdim=True)
+        weight = (1.0 / dist) / norm
+
+        interpolated_features = _F.feature_interpolation(features2, idx, weight)
+
+        if features1 is not None:
+            new_features = torch.cat([interpolated_features, features1], dim=1)   # TODO: double check if dim=2 or dim=1
+        else:
+            new_features = interpolated_features
+
+        return new_features
+
+    def extra_repr(self):
+        return "num_neighbours={:d}".format(self.num_neighbors)
 
 
 class PointNetSAModule(nn.Module):
@@ -162,3 +195,27 @@ class PointNetSAModuleMSG(nn.Module):
             new_feature_list.append(new_feature)
 
         return new_xyz, torch.cat(new_feature_list, dim=1)
+
+
+class PointnetFPModule(nn.Module):
+    """PointNet feature propagation module"""
+
+    def __init__(self,
+                 in_channels,
+                 mlp_channels,
+                 num_neighbors):
+        super(PointnetFPModule, self).__init__()
+
+        # print("FP in_channels", in_channels, "mlp_channels", mlp_channels)
+        self.in_channels = in_channels
+        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=2, bn=True)
+        self.interpolator = FeatureInterpolator(num_neighbors)
+
+    def forward(self, xyz1, xyz2, features1, features2):
+        new_features = self.interpolator(xyz1, xyz2, features1, features2)
+
+        new_features = new_features.unsqueeze(-1)
+        new_features = self.mlp(new_features)
+        new_features = new_features.squeeze(-1)
+
+        return new_features

@@ -135,3 +135,24 @@ def test_ball_query():
 
     assert np.all(index == index_tensor)
     assert np.all(count == count_tensor)
+
+
+def test_point_search():
+    # this is a draft for testing the point_search cuda code
+    pass
+    # dist, idx = _F.search_nn_distance(xyz1, xyz2, self.num_neighbors)
+    # dist = torch.clamp(dist, min=1e-10)
+    #
+    # print("dist:\n", dist.size())
+    # print("xyz2:\n", xyz2.size())
+    # print("xyz1:\n", xyz1.size())
+    #
+    # dist_repl = 1.0 / dist
+    # print("dist_repl:\n", dist_repl.size())
+    # print(dist_repl[0])
+    #
+    # norm = torch.sum(1.0 / dist, dim=1, keepdim=True)
+    # print("norm:\n", norm.size())
+    # print(norm[0])
+    # exit()
+    # weight = (1.0 / dist) / norm

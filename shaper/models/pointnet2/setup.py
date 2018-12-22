@@ -14,6 +14,7 @@ setup(
                 'csrc/ball_query_kernel.cu',
                 'csrc/grouping_kernel.cu',
                 'csrc/sampling_kernel.cu',
+                'csrc/interpolate_kernel.cu',
             ],
             extra_compile_args=extra_compile_args
         ),

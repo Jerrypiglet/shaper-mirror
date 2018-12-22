@@ -18,7 +18,7 @@ from shaper.nn.init import set_bn
 
 
 class PointNet2SSGCls(nn.Module):
-    """PointNet2 with single-scale grouping for classfication
+    """PointNet2 with single-scale grouping for classification
 
     Structure: input -> [PointNetSA]s -> [MLP]s -> [MaxPooling] -> [MLP]s -> [Linear] -> logits
 
@@ -27,7 +27,7 @@ class PointNet2SSGCls(nn.Module):
         out_channels (int): the number of semantics classes to predict over
         num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
         radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
-        num_neighbours(tuple of int): the numbers of neighbours to query for each centroid
+        num_neighbours (tuple of int): the numbers of neighbours to query for each centroid
         sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
         local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
         global_channels (tuple of int): the numbers of channels to extract global features
