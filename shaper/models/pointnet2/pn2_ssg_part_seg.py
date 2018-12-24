@@ -11,6 +11,7 @@ References:
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from shaper.nn import SharedMLP, Conv1d
 from shaper.models.pointnet2.modules import PointNetSAModule, PointnetFPModule
@@ -173,6 +174,22 @@ class PointNet2SSGPartSeg(nn.Module):
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
 
+class PointNet2SSGPartSegLoss(nn.Module):
+    """Pointnet2 part segmentation loss [Incomplete comment]"""
+    def __init__(self, seg_loss_weight):
+        super(PointNet2SSGPartSegLoss, self).__init__()
+        self.seg_loss_weight = seg_loss_weight
+        assert self.seg_loss_weight >= 0.0
+
+    def forward(self, preds, labels):
+        seg_logit = preds["seg_logit"]
+        seg_label = labels["seg_label"]
+        seg_loss = F.cross_entropy(seg_logit, seg_label)
+        loss_dict = {
+            "seg_loss": seg_loss * self.seg_loss_weight
+        }
+
+        return loss_dict
 
 if __name__ == '__main__':
     batch_size = 8

@@ -1,7 +1,8 @@
 from .pn2_ssg_cls import PointNet2SSGCls
 from .pn2_msg_cls import PointNet2MSGCls
+from .pn2_ssg_part_seg import PointNet2SSGPartSeg, PointNet2SSGPartSegLoss
 from ..loss import ClsLoss
-from ..metric import ClsAccuracy
+from ..metric import ClsAccuracy, PartSegMetric
 
 
 def build_pointnet2ssg(cfg):
@@ -20,6 +21,23 @@ def build_pointnet2ssg(cfg):
         )
         loss_fn = ClsLoss()
         metric_fn = ClsAccuracy()
+    elif cfg.TASK == "part_segmentation":
+        net = PointNet2SSGPartSeg(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            num_seg_classes=cfg.DATASET.NUM_SEG_CLASSES,
+            num_centroids=cfg.MODEL.PN2SSG.NUM_CENTROIDS,
+            radius=cfg.MODEL.PN2SSG.RADIUS,
+            num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
+            sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
+            local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
+            fp_channels=cfg.MODEL.PN2SSG.FP_CHANNELS,
+            num_fp_neighbour=cfg.MODEL.PN2SSG.NUM_FP_NEIGHBOUR,
+            seg_channels=cfg.MODEL.PN2SSG.SEG_CHANNELS,
+            dropout=cfg.MODEL.PN2SSG.DROPOUT_PROB,
+            use_xyz=cfg.MODEL.PN2SSG.USE_XYZ
+        )
+        loss_fn = PointNet2SSGPartSegLoss(cfg.MODEL.PN2SSG.SEG_LOSS_WEIGHT)
+        metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError
 
