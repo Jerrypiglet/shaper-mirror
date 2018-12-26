@@ -140,10 +140,34 @@ def unfreeze_all_params(module):
         # print('Params %s is unfrozen.' % name)
 
 
+def check_frozen_modules(module, logger=None):
+    """Check which modules are frozen.
+
+    Args:
+        module (torch.nn.Module):
+        logger (optional):
+
+    """
+    for name, m in module.named_modules():
+        if not m.training:
+            log_str = "Module {} is frozen.".format(name)
+            if logger:
+                logger.info(log_str)
+            else:
+                print(log_str)
+
+
 def check_frozen_params(module, logger=None):
+    """Check which params are frozen.
+
+    Args:
+        module (torch.nn.Module):
+        logger (optional):
+
+    """
     for name, params in module.named_parameters():
         if not params.requires_grad:
-            log_str = "Params {} is frozen.".format(name)
+            log_str = "Param {} is frozen.".format(name)
             if logger:
                 logger.info(log_str)
             else:
