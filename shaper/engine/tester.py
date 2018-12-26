@@ -173,6 +173,7 @@ def test(cfg, output_dir=""):
                 logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
                     score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
+                # dataset will remove transform and use all valid points
                 evaluate_classification(test_dataset, pred_labels,
                                         output_dir=output_dir,
                                         vis_dir=vis_dir,
@@ -190,6 +191,7 @@ def test(cfg, output_dir=""):
             raise NotImplementedError()
         else:
             seg_logit_all = seg_logit_collection[0]
+            # dataset will remove transform and use all valid points
             evaluate_part_segmentation(test_dataset, seg_logit_all,
                                        aux_preds=test_result_collection[0],
                                        output_dir=output_dir,

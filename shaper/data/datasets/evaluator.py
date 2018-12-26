@@ -36,6 +36,7 @@ def evaluate_classification(dataset,
     dataset.transform = None
     # use valid points
     dataset.num_points = -1
+    dataset.shuffle_points = False
 
     # aliases
     num_samples = len(dataset)
@@ -72,6 +73,7 @@ def evaluate_classification(dataset,
             # point clouds
             if aux_preds is not None and "key_point_inds" in aux_preds:
                 point_colors = np.ones([num_points, 3], dtype=points.dtype)
+                # TODO: remove invalid index
                 cur_keypoint_inds = aux_preds["key_point_inds"][ind]
                 point_colors[cur_keypoint_inds, ...] = [1, 0, 0]
                 points = np.concatenate((points, point_colors), -1)
@@ -99,6 +101,12 @@ def evaluate_classification(dataset,
     logger.info("average class accuracy={:.2f}%.\n{}".format(
         100.0 * np.mean(acc_per_class), table))
 
+    return {"overall_acc": overall_acc,
+            "acc_per_class": acc_per_class,
+            "num_tp_per_class": num_tp_per_class,
+            "num_gt": num_gt,
+            }
+
 
 def evaluate_part_segmentation(dataset,
                                pred_logits,
@@ -124,6 +132,7 @@ def evaluate_part_segmentation(dataset,
     dataset.transform = None
     # use valid points
     dataset.num_points = -1
+    dataset.shuffle_points = False
 
     # aliases
     num_samples = len(dataset)
