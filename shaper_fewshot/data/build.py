@@ -21,8 +21,8 @@ def build_dataset(cfg, mode="train"):
     if cfg.DATASET.TYPE == "MODELNET_FEWSHOT":
         dataset = D.ModelNetFewShot(root_dir=cfg.DATASET.ROOT_DIR,
                                     dataset_names=dataset_names,
-                                    k_shot=cfg.DATASET.K_SHOT,
-                                    cross_index=cfg.DATASET.CROSS_INDEX,
+                                    k_shot=cfg.DATASET.FEWSHOT.K,
+                                    cross_index=cfg.DATASET.FEWSHOT.CROSS_INDEX,
                                     shuffle_points=is_train,
                                     num_points=cfg.INPUT.NUM_POINTS,
                                     transform=transform,
@@ -30,8 +30,8 @@ def build_dataset(cfg, mode="train"):
     elif cfg.DATASET.TYPE == "SHAPENET_FEWSHOT":
         dataset = D.ShapeNetFewShot(root_dir=cfg.DATASET.ROOT_DIR,
                                     dataset_names=dataset_names,
-                                    k_shot=cfg.DATASET.K_SHOT,
-                                    cross_index=cfg.DATASET.CROSS_INDEX,
+                                    k_shot=cfg.DATASET.FEWSHOT.K,
+                                    cross_index=cfg.DATASET.FEWSHOT.CROSS_INDEX,
                                     shuffle_points=is_train,
                                     num_points=cfg.INPUT.NUM_POINTS,
                                     transform=transform,

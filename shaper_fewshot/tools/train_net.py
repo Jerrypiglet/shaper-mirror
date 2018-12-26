@@ -5,7 +5,7 @@ import torch
 
 from shaper_fewshot.config import cfg, purge_cfg
 from shaper_fewshot.engine.trainer import train
-# from shaper_fewshot.engine.tester import test
+from shaper_fewshot.engine.tester import test
 from shaper.utils.io import mkdir
 from shaper.utils.logger import setup_logger
 
@@ -65,7 +65,7 @@ def main():
 
     if args.do_test:
         torch.cuda.empty_cache()
-        # test(cfg, output_dir)
+        test(cfg, output_dir)
 
 
 if __name__ == "__main__":

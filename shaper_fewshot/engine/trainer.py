@@ -11,7 +11,7 @@ from shaper_fewshot.data import build_dataloader
 from shaper_fewshot.utils.checkpoint import CheckpointerFewshot
 from shaper.utils.tensorboard_logger import TensorboardLogger
 from shaper.engine.trainer import train_model, validate_model
-from shaper.nn.freeze_weight import freeze_by_patterns, check_frozen_params
+from shaper.nn.freeze_weight import freeze_params, freeze_modules, check_frozen_params, check_frozen_modules
 
 
 def train(cfg, output_dir=""):
@@ -44,9 +44,12 @@ def train(cfg, output_dir=""):
                                        save_dir=output_dir,
                                        logger=logger)
 
-    checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME)
-    # freeze params
-    freeze_by_patterns(model, cfg.TRAIN.FROZEN_PARAMS)
+    checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME, pretrained=True)
+
+    # freeze modules and params
+    freeze_modules(model, cfg.TRAIN.FROZEN_MODULES)
+    freeze_params(model, cfg.TRAIN.FROZEN_PARAMS)
+    check_frozen_modules(model, logger)
     check_frozen_params(model, logger)
 
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD

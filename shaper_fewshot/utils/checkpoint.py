@@ -3,8 +3,7 @@ from .md5 import get_file_md5
 
 
 class CheckpointerFewshot(Checkpointer):
-    def load(self, f=None, resume=True):
-        pretrained = f is not None
+    def load(self, f=None, resume=True, pretrained=False):
         if resume and self.has_checkpoint():
             # If there is existing checkpoint in path, do not load pretrain weight.
             # override argument with existing checkpoint

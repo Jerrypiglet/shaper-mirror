@@ -25,6 +25,7 @@ class PointNetFewShotCls(PointNetCls):
             self.classifier = nn.Linear(penult_channels, out_channels, bias=True)
         else:
             self.penult_classifier = None
+            self.penult_dropout = None
             self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
@@ -46,6 +47,7 @@ class PointNetFewShotCls(PointNetCls):
 
         # mlp for global features
         x = self.mlp_global(x)
+        end_points['cls_feature'] = x
 
         if self.penult_classifier is not None:
             x = self.penult_classifier(x)
