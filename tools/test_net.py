@@ -49,7 +49,7 @@ def main():
     cfg = importlib.import_module("shaper.config.{:s}".format(args.task)).cfg
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
-    cfg = purge_cfg(cfg)
+    purge_cfg(cfg)
     cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR

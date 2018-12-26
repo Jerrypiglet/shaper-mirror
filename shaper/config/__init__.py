@@ -17,14 +17,10 @@ def purge_cfg(cfg):
     Args:
         cfg (CfgNode): input config
 
-    Returns:
-        CfgNode: output config
-
     """
-    new_cfg = cfg.clone()
-    target_key = new_cfg.get("TYPE", None)
+    target_key = cfg.get("TYPE", None)
     removed_keys = []
-    for k, v in new_cfg.items():
+    for k, v in cfg.items():
         if isinstance(v, CfgNode):
             if target_key is not None and (k not in target_key):
                 removed_keys.append(k)
@@ -32,6 +28,4 @@ def purge_cfg(cfg):
                 purge_cfg(v)
 
     for k in removed_keys:
-        del new_cfg[k]
-
-    return new_cfg
+        del cfg[k]
