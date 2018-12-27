@@ -176,17 +176,16 @@ class PointNet2SSGPartSeg(nn.Module):
 
 class PointNet2SSGPartSegLoss(nn.Module):
     """Pointnet2 part segmentation loss [Incomplete comment]"""
-    def __init__(self, seg_loss_weight):
+    def __init__(self):
         super(PointNet2SSGPartSegLoss, self).__init__()
-        self.seg_loss_weight = seg_loss_weight
-        assert self.seg_loss_weight >= 0.0
+        pass
 
     def forward(self, preds, labels):
         seg_logit = preds["seg_logit"]
         seg_label = labels["seg_label"]
         seg_loss = F.cross_entropy(seg_logit, seg_label)
         loss_dict = {
-            "seg_loss": seg_loss * self.seg_loss_weight
+            "seg_loss": seg_loss
         }
 
         return loss_dict

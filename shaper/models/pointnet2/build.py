@@ -36,7 +36,7 @@ def build_pointnet2ssg(cfg):
             dropout=cfg.MODEL.PN2SSG.DROPOUT_PROB,
             use_xyz=cfg.MODEL.PN2SSG.USE_XYZ
         )
-        loss_fn = PointNet2SSGPartSegLoss(cfg.MODEL.PN2SSG.SEG_LOSS_WEIGHT)
+        loss_fn = PointNet2SSGPartSegLoss()
         metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError

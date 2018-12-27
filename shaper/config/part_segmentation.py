@@ -48,4 +48,18 @@ _C.MODEL.PN2SSG.SEG_CHANNELS = (128,)
 _C.MODEL.PN2SSG.DROPOUT_PROB = 0.5
 _C.MODEL.PN2SSG.USE_XYZ = True
 
-_C.MODEL.PN2SSG.SEG_LOSS_WEIGHT = 1.0
+# -----------------------------------------------------------------------------
+# PN2SSG options (Small Network Test)
+# -----------------------------------------------------------------------------
+# _C.MODEL.PN2SSG = CN()
+#
+# _C.MODEL.PN2SSG.NUM_CENTROIDS = (512, )
+# _C.MODEL.PN2SSG.RADIUS = (0.2, )
+# _C.MODEL.PN2SSG.NUM_NEIGHBOURS = (32, )
+# _C.MODEL.PN2SSG.SA_CHANNELS = ((32, 32, 64), )
+# _C.MODEL.PN2SSG.LOCAL_CHANNELS = (256, 512, 1024)
+# _C.MODEL.PN2SSG.FP_CHANNELS = ((128, 64), (64, 64, 64))
+# _C.MODEL.PN2SSG.NUM_FP_NEIGHBOUR = (3, 3, )
+# _C.MODEL.PN2SSG.SEG_CHANNELS = (64,)
+# _C.MODEL.PN2SSG.DROPOUT_PROB = 0.5
+# _C.MODEL.PN2SSG.USE_XYZ = True

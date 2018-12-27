@@ -162,7 +162,7 @@ class FeatureInterpolation(torch.autograd.Function):
         m, idx, weight = ctx.params_for_backward
 
         ret_grad = pn2_ext.interpolate_backward(m, grad_out, weight, idx)
-        return ret_grad
+        return ret_grad, None, None
 
 
 feature_interpolation = FeatureInterpolation.apply
