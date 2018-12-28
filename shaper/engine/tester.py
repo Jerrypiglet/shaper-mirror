@@ -59,6 +59,10 @@ def test_model(model,
             for k, v in preds.items():
                 test_result_dict[k].append(v.cpu().numpy())
 
+            # add label into predictions
+            if "cls_label" in data_batch:
+                test_result_dict["cls_label"].append(data_batch["cls_label"].cpu().numpy())
+
             if with_label:
                 loss_dict = loss_fn(preds, data_batch)
                 metric_dict = metric_fn(preds, data_batch)
