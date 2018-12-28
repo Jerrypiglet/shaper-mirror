@@ -35,7 +35,7 @@ class Checkpointer(object):
         data.update(kwargs)
 
         save_file = os.path.join(self.save_dir, "{}.pth".format(name))
-        self.logger.info("Saving checkpoint to {}".format(save_file))
+        self.logger.info("Saving checkpoint to {}".format(os.path.abspath(save_file)))
         torch.save(data, save_file)
         self.tag_last_checkpoint(save_file)
 
@@ -69,6 +69,9 @@ class Checkpointer(object):
         try:
             with open(save_file, "r") as f:
                 last_saved = f.read()
+            # If not absolute path, add save_dir as prefix
+            if not os.path.isabs(last_saved):
+                last_saved = os.path.join(self.save_dir, last_saved)
         except IOError:
             # if file doesn't exist, maybe because it has just been
             # deleted by a separate process
@@ -77,6 +80,9 @@ class Checkpointer(object):
 
     def tag_last_checkpoint(self, last_filename):
         save_file = os.path.join(self.save_dir, "last_checkpoint")
+        # If not absolute path, only save basename
+        if not os.path.isabs(last_filename):
+            last_filename = os.path.basename(last_filename)
         with open(save_file, "w") as f:
             f.write(last_filename)
 
