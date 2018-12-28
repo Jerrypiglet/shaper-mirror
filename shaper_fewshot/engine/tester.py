@@ -78,6 +78,12 @@ def test(cfg, output_dir="",
         test_time = time.time() - start_time
         logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
 
+    # Save predictions
+    if save_pred:
+        pred_fname = osp.join(output_dir, "pred" + suffix + ".pkl")
+        write_pkl(test_result_collection, pred_fname)
+        logger.info("Write predictions into {:s}.".format(pred_fname))
+
     # ---------------------------------------------------------------------------- #
     # Ensemble
     # ---------------------------------------------------------------------------- #
@@ -85,13 +91,6 @@ def test(cfg, output_dir="",
     cls_logit_collection = [d["cls_logit"] for d in test_result_collection]
     # sanity check
     assert all(len(cls_logit) == len(test_dataset) for cls_logit in cls_logit_collection)
-
-    # Save predictions
-    if save_pred:
-        pred_fname = osp.join(output_dir, "pred" + suffix + ".pkl")
-        write_pkl(test_result_collection, pred_fname)
-        logger.info("Write predictions into {:s}.".format(pred_fname))
-
 
     if cfg.TEST.VOTE.ENABLE:
         for score_heur in cfg.TEST.VOTE.SCORE_HEUR:

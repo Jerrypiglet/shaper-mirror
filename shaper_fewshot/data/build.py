@@ -58,7 +58,8 @@ def build_dataloader(cfg, mode="train"):
         dataset,
         batch_size=batch_size,
         shuffle=is_train,
-        drop_last=is_train,
+        # shuffle=False,
+        drop_last=False,  # set False for fewshot learning
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
     return data_loader

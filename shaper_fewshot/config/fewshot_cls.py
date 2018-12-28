@@ -18,6 +18,7 @@ _C.DATASET.FEWSHOT.CROSS_INDEX = 0
 
 # Random seed for data loader
 _C.DATALOADER.RNG_SEED = 0
+_C.DATALOADER.DROP_LAST = False
 
 # ---------------------------------------------------------------------------- #
 # Specific train options
