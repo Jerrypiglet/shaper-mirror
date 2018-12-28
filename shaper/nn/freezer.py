@@ -1,4 +1,11 @@
-"""Helpers for operating weights/params"""
+"""Helpers for operating modules/parameters
+
+Notes:
+    Useful regex expression
+    1. nothing else classifier: "^((?!classifier).)*$"
+
+"""
+
 import re
 
 import torch.nn as nn
@@ -14,7 +21,7 @@ def freeze_bn(module, bn_eval, bn_frozen):
 
     """
     for module_name, m in module.named_modules():
-        if isinstance(m, nn.BatchNorm2d):
+        if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
             if bn_eval:
                 # Notice the difference between the behaviors of
                 # BatchNorm.eval() and BatchNorm(track_running_stats=False)
@@ -27,7 +34,7 @@ def freeze_bn(module, bn_eval, bn_frozen):
 
 
 def freeze_params(module, frozen_params):
-    """Freeze params and/or convert them into eval mode
+    """Freeze parameters
 
     Args:
         module (torch.nn.Module):
@@ -43,7 +50,7 @@ def freeze_params(module, frozen_params):
 
 
 def freeze_modules(module, frozen_modules, prefix=''):
-    """Set module's eval mode and freeze its params
+    """Set module's eval mode
 
     Args:
         module (torch.nn.Module):
@@ -57,7 +64,7 @@ def freeze_modules(module, frozen_modules, prefix=''):
             full_name = prefix + ('.' if prefix else '') + name
             if re.search(pattern, full_name):
                 m.eval()
-                freeze_all_params(m)
+                # freeze_all_params(m)
                 # print('Module %s is frozen.' % full_name)
             else:
                 freeze_modules(m, frozen_modules, prefix=full_name)
@@ -83,12 +90,11 @@ def freeze_all_params(module):
 
 
 def unfreeze_params(module, frozen_params):
-    """Unfreeze params and/or convert them into eval mode
+    """Unfreeze params
 
     Args:
         module (torch.nn.Module):
-        frozen_params: a list/tuple of strings,
-            which define all the patterns of interests
+        frozen_params: a list/tuple of strings, which define all the patterns of interests
 
     """
     for name, params in module.named_parameters():
@@ -100,7 +106,7 @@ def unfreeze_params(module, frozen_params):
 
 
 def unfreeze_modules(module, frozen_modules, prefix=''):
-    """Set module's eval mode and freeze its params
+    """Set module's training mode
 
     Args:
         module (torch.nn.Module):
@@ -114,14 +120,14 @@ def unfreeze_modules(module, frozen_modules, prefix=''):
             full_name = prefix + ('.' if prefix else '') + name
             if re.search(pattern, full_name):
                 m.train()
-                unfreeze_all_params(m)
+                # unfreeze_all_params(m)
                 # print('Module %s is unfrozen.' % full_name)
             else:
                 unfreeze_modules(m, frozen_modules, prefix=full_name)
 
 
 def unfreeze_by_patterns(module, patterns):
-    """Unfreeze Module by matching patterns"""
+    """Unfreeze module by matching patterns"""
     frozen_params = []
     frozen_modules = []
     for pattern in patterns:
@@ -134,7 +140,7 @@ def unfreeze_by_patterns(module, patterns):
 
 
 def unfreeze_all_params(module):
-    """Freeze all params in a module"""
+    """Freeze all parameters in a module"""
     for name, params in module.named_parameters():
         params.requires_grad = True
         # print('Params %s is unfrozen.' % name)
@@ -167,7 +173,7 @@ def check_frozen_params(module, logger=None):
     """
     for name, params in module.named_parameters():
         if not params.requires_grad:
-            log_str = "Param {} is frozen.".format(name)
+            log_str = "Parameter {} is frozen.".format(name)
             if logger:
                 logger.info(log_str)
             else:
