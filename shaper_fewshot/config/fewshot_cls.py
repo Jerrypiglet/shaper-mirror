@@ -20,14 +20,6 @@ _C.DATASET.FEWSHOT.CROSS_INDEX = 0
 _C.DATALOADER.RNG_SEED = 0
 _C.DATALOADER.DROP_LAST = False
 
-# ---------------------------------------------------------------------------- #
-# Specific train options
-# ---------------------------------------------------------------------------- #
-# Modules to be frozen; support regex
-_C.TRAIN.FROZEN_MODULES = ()
-# Parameters to be frozen; support regex
-_C.TRAIN.FROZEN_PARAMS = ()
-
 # Learning rate scheduler with warm up
 # The number of epochs to warm up. 0 for disable.
 _C.SOLVER.WARMUP_STEP = 0

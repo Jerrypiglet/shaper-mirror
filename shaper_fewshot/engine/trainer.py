@@ -7,11 +7,11 @@ from torch import nn
 from shaper_fewshot.models import build_model
 from shaper.solver import build_optimizer
 from shaper.solver.lr_scheduler import WarmupMultiStepLR
+from shaper.nn.freezer import Freezer
 from shaper_fewshot.data import build_dataloader
 from shaper_fewshot.utils.checkpoint import CheckpointerFewshot
 from shaper.utils.tensorboard_logger import TensorboardLogger
 from shaper.engine.trainer import train_model, validate_model
-from shaper.nn.freeze_weight import freeze_params, freeze_modules, check_frozen_params, check_frozen_modules
 
 
 def train(cfg, output_dir=""):
@@ -46,11 +46,12 @@ def train(cfg, output_dir=""):
 
     checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME, pretrained=True)
 
-    # freeze modules and params
-    freeze_modules(model, cfg.TRAIN.FROZEN_MODULES)
-    freeze_params(model, cfg.TRAIN.FROZEN_PARAMS)
-    check_frozen_modules(model, logger)
-    check_frozen_params(model, logger)
+    # build freezer
+    if cfg.TRAIN.FROZEN_PATTERNS:
+        freezer = Freezer(model, cfg.TRAIN.FROZEN_PATTERNS)
+        freezer.freeze(verbose=True)  # sanity check
+    else:
+        freezer = None
 
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD
 
@@ -82,6 +83,7 @@ def train(cfg, output_dir=""):
                                    metric_fn,
                                    train_data_loader,
                                    optimizer=optimizer,
+                                   freezer=freezer,
                                    log_period=cfg.TRAIN.LOG_PERIOD,
                                    )
         epoch_time = time.time() - start_time
