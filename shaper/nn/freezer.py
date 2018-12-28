@@ -7,8 +7,22 @@ Notes:
 """
 
 import re
+import logging
 
 import torch.nn as nn
+
+
+class Freezer(object):
+    def __init__(self, module, patterns):
+        self.module = module
+        self.patterns = patterns
+        self.logger = logging.getLogger("shaper.freezer")
+
+    def freeze(self, verbose=False):
+        freeze_by_patterns(self.module, self.patterns)
+        if verbose:
+            check_frozen_modules(self.module, self.logger)
+            check_frozen_params(self.module, self.logger)
 
 
 def freeze_bn(module, bn_eval, bn_frozen):

@@ -103,6 +103,9 @@ _C.TRAIN.VAL_METRIC = ""
 # For example, ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2))
 _C.TRAIN.AUGMENTATION = ()
 
+# Regex patterns of modules and/or parameters to freeze
+_C.TRAIN.FROZEN_PATTERNS = ()
+
 # ---------------------------------------------------------------------------- #
 # Specific test options
 # ---------------------------------------------------------------------------- #
