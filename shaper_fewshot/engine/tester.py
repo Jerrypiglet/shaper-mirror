@@ -110,20 +110,20 @@ def test(cfg, output_dir="",
             logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
                 score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
-            eval_results = evaluate_classification(test_dataset, pred_labels,
-                                                   output_dir=output_dir,
-                                                   vis_dir=vis_dir,
-                                                   suffix=score_heur)
+            eval_result_dict = evaluate_classification(test_dataset, pred_labels,
+                                                       output_dir=output_dir,
+                                                       vis_dir=vis_dir,
+                                                       suffix=score_heur)
 
     else:
         pred_labels = np.argmax(cls_logit_collection[0], -1)
-        eval_results = evaluate_classification(test_dataset, pred_labels,
-                                               aux_preds=test_result_collection[0],
-                                               output_dir=output_dir,
-                                               vis_dir=vis_dir)
+        eval_result_dict = evaluate_classification(test_dataset, pred_labels,
+                                                   aux_preds=test_result_collection[0],
+                                                   output_dir=output_dir,
+                                                   vis_dir=vis_dir)
 
     # Save eval result
     if save_eval:
         eval_result_fname = osp.join(output_dir, "eval" + suffix + ".pkl")
-        write_pkl(eval_results, eval_result_fname)
+        write_pkl(eval_result_dict, eval_result_fname)
         logger.info("Write eval results into {:s}.".format(eval_result_fname))

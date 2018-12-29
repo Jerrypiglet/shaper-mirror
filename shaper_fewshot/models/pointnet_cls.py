@@ -43,11 +43,11 @@ class PointNetFewShotCls(PointNetCls):
 
         # max pool over points
         x, max_indices = torch.max(x, 2)
-        end_points['key_point_inds'] = max_indices
+        end_points["key_point_inds"] = max_indices
 
         # mlp for global features
         x = self.mlp_global(x)
-        end_points['cls_feature'] = x
+        end_points["cls_feature"] = x
 
         if self.penult_classifier is not None:
             x = self.penult_classifier(x)
@@ -56,7 +56,7 @@ class PointNetFewShotCls(PointNetCls):
         x = self.classifier(x)
 
         preds = {
-            'cls_logit': x
+            "cls_logit": x
         }
         preds.update(end_points)
 
