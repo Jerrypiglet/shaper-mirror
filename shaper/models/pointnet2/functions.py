@@ -139,7 +139,7 @@ class FeatureInterpolation(torch.autograd.Function):
         """
 
         :param ctx:
-        :param features: (b, m, c) features of the input of set abstraction layer
+        :param features: (b, m, c) features of the output of set abstraction layer
         :param idx: (b, n, k) indices to the input
         :param weight: (b, n, k) weights to the input
         :return:

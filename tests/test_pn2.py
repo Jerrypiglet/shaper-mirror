@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import pdb
 
-from shaper.models.pointnet2.functions import farthest_point_sample, group_points, ball_query, search_nn_distance
+from shaper.models.pointnet2.functions import farthest_point_sample, group_points, \
+    ball_query, search_nn_distance, feature_interpolation
 
 
 def farthest_point_sample_np(points, num_centroids):
@@ -190,7 +191,6 @@ def search_nn_distance_np(xyz1, xyz2, num_neighbor):
 
 
 def test_search_nn_distance():
-
     batch_size = 8
     channels = 3
     n = 1024
@@ -212,13 +212,76 @@ def test_search_nn_distance():
     assert np.all(idx == idx_tensor)
 
 
+def feature_interpolation_np(features, idx, weight):
+    """
+    Generate new features based on input features
+
+    Args:
+        features: (b, c, m)
+        idx: (b, k, n)
+        weight: (b, k, n)
+
+    Returns:
+        New features to be interpolated: (b, c, n)
+    """
+    batch_size = features.shape[0]
+    n = idx.shape[2]
+    m = features.shape[2]
+    num_neighbor = idx.shape[1]
+    assert batch_size == idx.shape[0]
+    assert batch_size == weight.shape[0]
+    assert n == weight.shape[2]
+    assert num_neighbor == weight.shape[1]
+
+    interpolated_features = []
+    for b in range(batch_size):
+        features_per_batch = features[b]
+        idx_per_batch = idx[b]
+        weight_per_batch = weight[b]
+
+        interpolated_features_per_batch = []
+        for i in range(n):
+            curr_idx = idx_per_batch[:, i]
+            curr_weight = weight_per_batch[:, i]
+            curr_features = features_per_batch[:, curr_idx]
+
+            new_features = np.sum(curr_features * curr_weight, axis=0)
+            interpolated_features_per_batch.append(new_features)
+        interpolated_features.append(interpolated_features_per_batch)
+
+    interpolated_features = np.swapaxes(np.asarray(interpolated_features), 1, 2)
+
+    return interpolated_features
 
 
-test_search_nn_distance()
+def test_feature_interpolation():
+    batch_size = 8
+    channels = 3
+    n = 64
+    m = 32
+    num_neighbor = 3
+
+    features = np.random.rand(batch_size, channels, m)
+    idx = np.random.randint(m, size=(batch_size, num_neighbor, n))
+    weight = np.random.rand(batch_size, num_neighbor, n)
+
+    # Weight normalization
+    weight_sum = np.sum(weight, axis=1, keepdims=True)
+    weight = weight / np.tile(weight_sum, (1, num_neighbor, 1))
+    interpolated_features = feature_interpolation_np(features, idx, weight)
+
+    features_tensor = torch.from_numpy(features).cuda()
+    idx_tensor = torch.from_numpy(idx).cuda()
+    weight_tensor = torch.from_numpy(weight).cuda()
+    interpolated_features_tensor = feature_interpolation(features_tensor, idx_tensor, weight_tensor)
+    interpolated_features_tensor = interpolated_features_tensor.cpu().numpy()
+
+    pdb.set_trace()
+
+    assert
 
 
-
-
+test_feature_interpolation()
 
 # def test_point_search():
 #     # this is a draft for testing the point_search cuda code
