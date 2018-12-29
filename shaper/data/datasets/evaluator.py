@@ -47,7 +47,7 @@ def evaluate_classification(dataset,
 
     num_tp_per_class = defaultdict(int)
     # the number of ground_truth/positive
-    num_gt = defaultdict(int)
+    num_gt_per_class = defaultdict(int)
 
     for ind in tqdm(range(num_samples)):
         data = dataset[ind]
@@ -56,7 +56,7 @@ def evaluate_classification(dataset,
 
         # Guarantee that seen classes are keys
         num_tp_per_class[gt_label] += (gt_label == pred_label)
-        num_gt[gt_label] += 1
+        num_gt_per_class[gt_label] += 1
 
         if pred_label != gt_label and vis_dir:
             fname = "{:04d}_label_{}_pred_{}" + suffix
@@ -82,7 +82,7 @@ def evaluate_classification(dataset,
 
     # Overall accuracy
     total_tp = sum(num_tp_per_class.values())
-    assert sum(num_gt.values()) == num_samples
+    assert sum(num_gt_per_class.values()) == num_samples
     overall_acc = total_tp / num_samples
     logger.info("overall accuracy={:.2f}%".format(100.0 * overall_acc))
 
@@ -90,12 +90,12 @@ def evaluate_classification(dataset,
     acc_per_class = []
     table = PrettyTable(["Class", "Accuracy", "Correct", "Total"])
     for ind, class_name in enumerate(class_names):
-        if ind in num_gt:  # seen class
-            acc = num_tp_per_class[ind] / num_gt[ind]
+        if ind in num_gt_per_class:  # seen class
+            acc = num_tp_per_class[ind] / num_gt_per_class[ind]
             acc_per_class.append(acc)
             table.add_row([class_name, "{:.2f}".format(100.0 * acc),
                            num_tp_per_class[ind],
-                           num_gt[ind]])
+                           num_gt_per_class[ind]])
         else:
             table.add_row([class_name, 0, 0, 0])
     logger.info("average class accuracy={:.2f}%.\n{}".format(
@@ -104,7 +104,8 @@ def evaluate_classification(dataset,
     return {"overall_acc": overall_acc,
             "acc_per_class": acc_per_class,
             "num_tp_per_class": num_tp_per_class,
-            "num_gt": num_gt,
+            "num_gt_per_class": num_gt_per_class,
+            "class_names": class_names,
             }
 
 
