@@ -121,6 +121,7 @@ class SearchNNDistance(torch.autograd.Function):
         """
         # n = xyz1.size(1)
         # m = xyz2.size(1)
+        # print("xyz1:\n", xyz1.size())
         dist, idx = pn2_ext.point_search(num_neighbor, xyz2, xyz1)
         return dist, idx
 
@@ -146,7 +147,11 @@ class FeatureInterpolation(torch.autograd.Function):
         """
         _, _, m = features.size()
         # _, n, k = idx.size()
-        ctx.params_for_backward = (m, idx, weight)      # Save parameters for backward
+        ctx.save_for_backward(idx, weight)
+        ctx.m = m
+        # ctx.params_for_backward = (m, idx, weight)      # Save parameters for backward
+
+
         interpolated_features = pn2_ext.interpolate(features, idx, weight)
         return interpolated_features
 
@@ -159,7 +164,8 @@ class FeatureInterpolation(torch.autograd.Function):
         :return: (b, m, c)
         """
         #_, n, c = grad_out.size()
-        m, idx, weight = ctx.params_for_backward
+        m = ctx.m
+        idx, weight = ctx.saved_tensors
 
         ret_grad = pn2_ext.interpolate_backward(m, grad_out, weight, idx)
         return ret_grad, None, None

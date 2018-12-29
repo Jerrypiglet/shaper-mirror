@@ -1,7 +1,8 @@
 import numpy as np
 import torch
+import pdb
 
-from shaper.models.pointnet2.functions import farthest_point_sample, group_points, ball_query
+from shaper.models.pointnet2.functions import farthest_point_sample, group_points, ball_query, search_nn_distance
 
 
 def farthest_point_sample_np(points, num_centroids):
@@ -137,9 +138,91 @@ def test_ball_query():
     assert np.all(count == count_tensor)
 
 
-def test_point_search():
-    # this is a draft for testing the point_search cuda code
-    pass
+def search_nn_distance_np(xyz1, xyz2, num_neighbor):
+    """
+    For each element in xyz1, find its distances to k nearest neighbor in xyz2
+
+    Args:
+        xyz1: (batch, xyz-coordinates, n)
+        xyz2: (batch, xyz-coordinates, m)
+        num_neighbor: an integer k
+
+    Returns:
+        dist: (batch, distance, n) distance to the k nearest neighbors in xyz2
+        idx: (batch, index, n) indices of these neighbors in xyz2
+    """
+    batch_size = xyz1.shape[0]
+    n = xyz1.shape[2]
+    m = xyz2.shape[2]
+    assert num_neighbor < n and num_neighbor < m
+    assert xyz1.shape[0] == xyz2.shape[0]
+    assert xyz1.shape[1] == xyz2.shape[1]
+
+    dist = []
+    idx = []
+
+    for b in range(batch_size):
+        dist_per_batch = []
+        idx_per_batch = []
+
+        xyz1_per_batch = xyz1[b, :, :]
+        xyz2_per_batch = xyz2[b, :, :]
+        for idx1 in range(n):
+            curr_xyz1 = xyz1_per_batch[:, idx1]
+
+            diff = np.tile(curr_xyz1, (m, 1)).T - xyz2_per_batch
+            dist_to_xyz2 = np.linalg.norm(diff, axis=0)
+            dist_to_xyz2 = np.power(dist_to_xyz2, 2)
+            dist_sorted_idx = dist_to_xyz2.argsort()        # The sorted order is from small to large.
+
+            idx_knn = dist_sorted_idx[:num_neighbor]
+            dist_knn = dist_to_xyz2[idx_knn]
+
+            dist_per_batch.append(dist_knn)
+            idx_per_batch.append(idx_knn)
+
+        dist.append(dist_per_batch)
+        idx.append(idx_per_batch)
+
+    dist = np.swapaxes(np.asarray(dist), 1, 2)
+    idx = np.swapaxes(np.asarray(idx), 1, 2)
+    return dist, idx
+
+
+def test_search_nn_distance():
+
+    batch_size = 8
+    channels = 3
+    n = 1024
+    m = 512
+    num_neighbor = 3
+
+    np.random.seed(0)
+    xyz1 = np.random.rand(batch_size, channels, n)
+    xyz2 = np.random.rand(batch_size, channels, m)
+    dist, idx = search_nn_distance_np(xyz1, xyz2, num_neighbor)
+
+    xyz1_tensor = torch.from_numpy(xyz1).cuda()
+    xyz2_tensor = torch.from_numpy(xyz2).cuda()
+    dist_tensor, idx_tensor = search_nn_distance(xyz1_tensor, xyz2_tensor, num_neighbor)
+    dist_tensor = dist_tensor.cpu().numpy()
+    idx_tensor = idx_tensor.cpu().numpy()
+
+    assert np.allclose(dist, dist_tensor)
+    assert np.all(idx == idx_tensor)
+
+
+
+
+test_search_nn_distance()
+
+
+
+
+
+# def test_point_search():
+#     # this is a draft for testing the point_search cuda code
+#     pass
     # dist, idx = _F.search_nn_distance(xyz1, xyz2, self.num_neighbors)
     # dist = torch.clamp(dist, min=1e-10)
     #

@@ -71,6 +71,9 @@ class FeatureInterpolator(nn.Module):
             new_features: the new features for xyz1
         """
         dist, idx = _F.search_nn_distance(xyz1, xyz2, self.num_neighbors)
+
+        print("dist:\n", dist.size())
+
         dist = torch.clamp(dist, min=1e-10)
         norm = torch.sum(1.0 / dist, dim=1, keepdim=True)
         weight = (1.0 / dist) / norm
@@ -208,14 +211,14 @@ class PointnetFPModule(nn.Module):
 
         # print("FP in_channels", in_channels, "mlp_channels", mlp_channels)
         self.in_channels = in_channels
-        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=2, bn=True)
+        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=1, bn=True)
         self.interpolator = FeatureInterpolator(num_neighbors)
 
     def forward(self, xyz1, xyz2, features1, features2):
         new_features = self.interpolator(xyz1, xyz2, features1, features2)
 
-        new_features = new_features.unsqueeze(-1)
+        # new_features = new_features.unsqueeze(-1)
         new_features = self.mlp(new_features)
-        new_features = new_features.squeeze(-1)
+        # new_features = new_features.squeeze(-1)
 
         return new_features
