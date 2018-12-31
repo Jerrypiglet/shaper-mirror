@@ -26,3 +26,19 @@ class ClsLoss(nn.Module):
             'cls_loss': cls_loss,
         }
         return loss_dict
+
+
+class PartSegLoss(nn.Module):
+    """Part segmentation loss"""
+    def __init__(self):
+        super(PartSegLoss, self).__init__()
+
+    def forward(self, preds, labels):
+        seg_logit = preds["seg_logit"]
+        seg_label = labels["seg_label"]
+        seg_loss = F.cross_entropy(seg_logit, seg_label)
+        loss_dict = {
+            "seg_loss": seg_loss
+        }
+
+        return loss_dict

@@ -1,23 +1,24 @@
 #ifndef _INTERPOLATE
 #define _INTERPOLATE
 
+#include <vector>
 #include <torch/extension.h>
 
 //CUDA declarations
 std::vector<at::Tensor> PointSearch(
-    const int64_t npoint,
-    const at::Tensor old_xyz,       // i.e. xyz2, the output of SA layers
-    const at::Tensor new_xyz);      // i.e. xyz1, the input of SA layers
+    const at::Tensor query_xyz,
+    const at::Tensor key_xyz,
+    const int64_t num_neighbours);
 
-at::Tensor interpolate(
-    const at::Tensor point_features,
-    const at::Tensor id,
+at::Tensor InterpolateForward(
+    const at::Tensor input,
+    const at::Tensor index,
     const at::Tensor weight);
 
-at::Tensor interpolateBackward(
-    const int64_t m,
-    const at::Tensor grad_out,
+at::Tensor InterpolateBackward(
+    const at::Tensor grad_output,
+    const at::Tensor index,
     const at::Tensor weight,
-    const at::Tensor id);
+    const int64_t num_inst);
 
 #endif

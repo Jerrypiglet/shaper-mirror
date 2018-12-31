@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-import pdb
+from torch.autograd import gradcheck
 
-from shaper.models.pointnet2.functions import farthest_point_sample, group_points, \
-    ball_query, search_nn_distance, feature_interpolation
+from shaper.models.pointnet2.functions import farthest_point_sample, group_points, ball_query
+from shaper.models.pointnet2.functions import search_nn_distance, feature_interpolate
 
 
 def farthest_point_sample_np(points, num_centroids):
@@ -139,166 +139,128 @@ def test_ball_query():
     assert np.all(count == count_tensor)
 
 
-def search_nn_distance_np(xyz1, xyz2, num_neighbor):
-    """
-    For each element in xyz1, find its distances to k nearest neighbor in xyz2
+def search_nn_distance_np(query_xyz, key_xyz, num_neighbors):
+    """For each point in query set, find its distances to k nearest neighbors in key set
 
     Args:
-        xyz1: (batch, xyz-coordinates, n)
-        xyz2: (batch, xyz-coordinates, m)
-        num_neighbor: an integer k
+        query_xyz: (batch_size, 3, num_query)
+        key_xyz: (batch_size, 3, num_key)
+        num_neighbors (int):
 
     Returns:
-        dist: (batch, distance, n) distance to the k nearest neighbors in xyz2
-        idx: (batch, index, n) indices of these neighbors in xyz2
+        distance: (batch_size, num_query, num_neighbor), distance to the k nearest neighbors in key_xyz
+        index: (batch_size, num_query, num_neighbor), indices of these neighbors in key_xyz
     """
-    batch_size = xyz1.shape[0]
-    n = xyz1.shape[2]
-    m = xyz2.shape[2]
-    assert num_neighbor < n and num_neighbor < m
-    assert xyz1.shape[0] == xyz2.shape[0]
-    assert xyz1.shape[1] == xyz2.shape[1]
+    num_query = query_xyz.shape[2]
+    num_key = key_xyz.shape[2]
+    assert num_neighbors <= num_query and num_neighbors <= num_key
+    assert query_xyz.shape[0] == key_xyz.shape[0]
+    assert query_xyz.shape[1] == key_xyz.shape[1]
 
-    dist = []
-    idx = []
+    distance = []
+    index = []
 
-    for b in range(batch_size):
-        dist_per_batch = []
-        idx_per_batch = []
+    for query_xyz_per_batch, key_xyz_per_batch in zip(query_xyz, key_xyz):
+        distance_per_batch = []
+        index_per_batch = []
+        for cur_ind in range(num_query):
+            cur_xyz = query_xyz_per_batch[:, cur_ind]
+            diff = key_xyz_per_batch - cur_xyz[:, None]
+            dist2key = np.sum(diff ** 2, axis=0)
+            sorted_idx = np.argsort(dist2key)
+            idx_knn = sorted_idx[:num_neighbors]
+            dist_knn = dist2key[idx_knn]
+            index_per_batch.append(idx_knn)
+            distance_per_batch.append(dist_knn)
+        distance.append(distance_per_batch)
+        index.append(index_per_batch)
 
-        xyz1_per_batch = xyz1[b, :, :]
-        xyz2_per_batch = xyz2[b, :, :]
-        for idx1 in range(n):
-            curr_xyz1 = xyz1_per_batch[:, idx1]
-
-            diff = np.tile(curr_xyz1, (m, 1)).T - xyz2_per_batch
-            dist_to_xyz2 = np.linalg.norm(diff, axis=0)
-            dist_to_xyz2 = np.power(dist_to_xyz2, 2)
-            dist_sorted_idx = dist_to_xyz2.argsort()        # The sorted order is from small to large.
-
-            idx_knn = dist_sorted_idx[:num_neighbor]
-            dist_knn = dist_to_xyz2[idx_knn]
-
-            dist_per_batch.append(dist_knn)
-            idx_per_batch.append(idx_knn)
-
-        dist.append(dist_per_batch)
-        idx.append(idx_per_batch)
-
-    dist = np.swapaxes(np.asarray(dist), 1, 2)
-    idx = np.swapaxes(np.asarray(idx), 1, 2)
-    return dist, idx
+    distance = np.asarray(distance)
+    index = np.asarray(index)
+    return distance, index
 
 
 def test_search_nn_distance():
-    batch_size = 8
+    batch_size = 4
     channels = 3
-    n = 1024
-    m = 512
-    num_neighbor = 3
+    num_query = 512
+    num_key = 128
+    num_neighbors = 3
 
     np.random.seed(0)
-    xyz1 = np.random.rand(batch_size, channels, n)
-    xyz2 = np.random.rand(batch_size, channels, m)
-    dist, idx = search_nn_distance_np(xyz1, xyz2, num_neighbor)
+    query_xyz = np.random.rand(batch_size, channels, num_query)
+    key_xyz = np.random.rand(batch_size, channels, num_key)
+    distance, index = search_nn_distance_np(query_xyz, key_xyz, num_neighbors)
 
-    xyz1_tensor = torch.from_numpy(xyz1).cuda()
-    xyz2_tensor = torch.from_numpy(xyz2).cuda()
-    dist_tensor, idx_tensor = search_nn_distance(xyz1_tensor, xyz2_tensor, num_neighbor)
-    dist_tensor = dist_tensor.cpu().numpy()
-    idx_tensor = idx_tensor.cpu().numpy()
+    query_xyz_tensor = torch.from_numpy(query_xyz).cuda()
+    key_xyz_tensor = torch.from_numpy(key_xyz).cuda()
+    distance_tensor, index_tensor = search_nn_distance(query_xyz_tensor, key_xyz_tensor, num_neighbors)
+    distance_tensor = distance_tensor.cpu().numpy()
+    index_tensor = index_tensor.cpu().numpy()
 
-    assert np.allclose(dist, dist_tensor)
-    assert np.all(idx == idx_tensor)
+    np.testing.assert_allclose(distance, distance_tensor, verbose=True)
+    np.testing.assert_equal(index, index_tensor, verbose=True)
 
 
-def feature_interpolation_np(features, idx, weight):
+def feature_interpolate_np(feature, index, weight):
     """
     Generate new features based on input features
 
     Args:
-        features: (b, c, m)
-        idx: (b, k, n)
-        weight: (b, k, n)
+        feature: (batch_size, channels, num_key)
+        index: (batch_size, num_query, num_neighbours)
+        weight: (batch_size, num_query, num_neighbours)
 
     Returns:
-        New features to be interpolated: (b, c, n)
+        interpolated feature: (batch_size, channels, num_query)
     """
-    batch_size = features.shape[0]
-    n = idx.shape[2]
-    m = features.shape[2]
-    num_neighbor = idx.shape[1]
-    assert batch_size == idx.shape[0]
-    assert batch_size == weight.shape[0]
-    assert n == weight.shape[2]
-    assert num_neighbor == weight.shape[1]
+    batch_size, _, num_key = feature.shape
+    num_query = index.shape[1]
+    assert batch_size == index.shape[0]
+    assert all(x == y for x, y in zip(index.shape, weight.shape))
 
-    interpolated_features = []
-    for b in range(batch_size):
-        features_per_batch = features[b]
-        idx_per_batch = idx[b]
-        weight_per_batch = weight[b]
+    interpolated_feature = []
+    for batch_ind in range(batch_size):
+        feature_per_batch = feature[batch_ind]
+        index_per_batch = index[batch_ind]
+        weight_per_batch = weight[batch_ind]
 
-        interpolated_features_per_batch = []
-        for i in range(n):
-            curr_idx = idx_per_batch[:, i]
-            curr_weight = weight_per_batch[:, i]
-            curr_features = features_per_batch[:, curr_idx]
+        interpolated_feature_per_batch = []
+        for query_ind in range(num_query):
+            cur_index = index_per_batch[query_ind]
+            cur_weight = weight_per_batch[query_ind]
+            cur_feature = feature_per_batch[:, cur_index]
+            new_feature = np.matmul(cur_feature, cur_weight)
+            interpolated_feature_per_batch.append(new_feature)
+        interpolated_feature.append(interpolated_feature_per_batch)
 
-            new_features = np.sum(curr_features * curr_weight, axis=0)
-            interpolated_features_per_batch.append(new_features)
-        interpolated_features.append(interpolated_features_per_batch)
+    interpolated_feature = np.asarray(interpolated_feature)
+    interpolated_feature = interpolated_feature.swapaxes(1, 2)
 
-    interpolated_features = np.swapaxes(np.asarray(interpolated_features), 1, 2)
-
-    return interpolated_features
+    return interpolated_feature
 
 
-def test_feature_interpolation():
-    batch_size = 8
+def test_feature_interpolate():
+    batch_size = 4
     channels = 3
-    n = 64
-    m = 32
-    num_neighbor = 3
+    num_query = 64
+    num_key = 32
+    num_neighbors = 3
 
-    features = np.random.rand(batch_size, channels, m)
-    idx = np.random.randint(m, size=(batch_size, num_neighbor, n))
-    weight = np.random.rand(batch_size, num_neighbor, n)
+    feature = np.random.rand(batch_size, channels, num_key)
+    index = np.random.randint(num_key, size=(batch_size, num_query, num_neighbors))
+    weight = np.random.uniform(1e-10, 1, [batch_size, num_query, num_neighbors])
+    weight = weight / weight.sum(axis=2, keepdims=True)
 
-    # Weight normalization
-    weight_sum = np.sum(weight, axis=1, keepdims=True)
-    weight = weight / np.tile(weight_sum, (1, num_neighbor, 1))
-    interpolated_features = feature_interpolation_np(features, idx, weight)
+    new_feature = feature_interpolate_np(feature, index, weight)
 
-    features_tensor = torch.from_numpy(features).cuda()
-    idx_tensor = torch.from_numpy(idx).cuda()
+    features_tensor = torch.from_numpy(feature).cuda()
+    index_tensor = torch.from_numpy(index).cuda()
     weight_tensor = torch.from_numpy(weight).cuda()
-    interpolated_features_tensor = feature_interpolation(features_tensor, idx_tensor, weight_tensor)
-    interpolated_features_tensor = interpolated_features_tensor.cpu().numpy()
+    new_feature_tensor = feature_interpolate(features_tensor, index_tensor, weight_tensor)
+    new_feature_tensor = new_feature_tensor.cpu().numpy()
 
-    pdb.set_trace()
+    np.testing.assert_allclose(new_feature, new_feature_tensor)
 
-    assert
-
-
-test_feature_interpolation()
-
-# def test_point_search():
-#     # this is a draft for testing the point_search cuda code
-#     pass
-    # dist, idx = _F.search_nn_distance(xyz1, xyz2, self.num_neighbors)
-    # dist = torch.clamp(dist, min=1e-10)
-    #
-    # print("dist:\n", dist.size())
-    # print("xyz2:\n", xyz2.size())
-    # print("xyz1:\n", xyz1.size())
-    #
-    # dist_repl = 1.0 / dist
-    # print("dist_repl:\n", dist_repl.size())
-    # print(dist_repl[0])
-    #
-    # norm = torch.sum(1.0 / dist, dim=1, keepdim=True)
-    # print("norm:\n", norm.size())
-    # print(norm[0])
-    # exit()
-    # weight = (1.0 / dist) / norm
+    features_tensor.requires_grad = True
+    assert gradcheck(feature_interpolate, (features_tensor, index_tensor, weight_tensor))

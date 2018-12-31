@@ -9,6 +9,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("group_points_backward", &GroupPointsBackward, "Group points backward (CUDA)");
   m.def("farthest_point_sample", &FarthestPointSample, "Farthest point sampling (CUDA)");
   m.def("point_search", &PointSearch, "point searching in interpolate (CUDA)");
-  m.def("interpolate", &interpolate,"interpolate feature in new map (CUDA)");
-  m.def("interpolate_backward", &interpolateBackward, "get gradient in interpolate layer (CUDA)");
+  m.def("interpolate_forward", &InterpolateForward,"Interpolate feature forward (CUDA)");
+  m.def("interpolate_backward", &InterpolateBackward, "Interpolate feature backward (CUDA)");
 }

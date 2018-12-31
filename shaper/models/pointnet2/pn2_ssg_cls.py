@@ -81,13 +81,13 @@ class PointNet2SSGCls(nn.Module):
         set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
-        point = data_batch["points"]
+        points = data_batch["points"]
         end_points = {}
 
         # torch.Tensor.narrow; share same memory
-        xyz = point.narrow(1, 0, 3)
-        if point.size(1) > 3:
-            feature = point.narrow(1, 3, point.size(1) - 3)
+        xyz = points.narrow(1, 0, 3)
+        if points.size(1) > 3:
+            feature = points.narrow(1, 3, points.size(1) - 3)
         else:
             feature = None
 
@@ -95,10 +95,8 @@ class PointNet2SSGCls(nn.Module):
             xyz, feature = sa_module(xyz, feature)
 
         if self.use_xyz:
-            x = torch.cat([xyz, feature], dim=1)
-        else:
-            x = feature
-        x = self.mlp_local(x)
+            feature = torch.cat([xyz, feature], dim=1)
+        x = self.mlp_local(feature)
         x, max_indices = torch.max(x, 2)
         end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
@@ -123,11 +121,11 @@ if __name__ == '__main__':
     num_points = 1024
     num_classes = 40
 
-    data = torch.rand(batch_size, in_channels, num_points)
-    data = data.cuda()
+    points = torch.rand(batch_size, in_channels, num_points)
+    points = points.cuda()
 
     pn2ssg = PointNet2SSGCls(in_channels, num_classes)
     pn2ssg.cuda()
-    out_dict = pn2ssg({"points": data})
+    out_dict = pn2ssg({"points": points})
     for k, v in out_dict.items():
         print('PointNet2SSG:', k, v.shape)

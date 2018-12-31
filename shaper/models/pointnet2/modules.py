@@ -4,6 +4,7 @@ import torch.nn as nn
 from shaper.nn import SharedMLP
 from . import functions as _F
 
+
 class FarthestPointSampler(nn.Module):
     """Farthest point sampling
 
@@ -16,7 +17,8 @@ class FarthestPointSampler(nn.Module):
         self.num_centroids = num_centroids
 
     def forward(self, points):
-        index = _F.farthest_point_sample(points, self.num_centroids)
+        with torch.no_grad():
+            index = _F.farthest_point_sample(points, self.num_centroids)
         return index
 
     def extra_repr(self):
@@ -31,7 +33,8 @@ class QueryGrouper(nn.Module):
         self.use_xyz = use_xyz
 
     def forward(self, new_xyz, xyz, feature):
-        index, unique_count = _F.ball_query(xyz, new_xyz, self.radius, self.num_neighbours)
+        with torch.no_grad():
+            index, unique_count = _F.ball_query(xyz, new_xyz, self.radius, self.num_neighbours)
 
         # (batch_size, 3, num_centroids, num_neighbours)
         grouped_xyz = _F.group_points(xyz, index)
@@ -55,37 +58,40 @@ class QueryGrouper(nn.Module):
 
 
 class FeatureInterpolator(nn.Module):
-    def __init__(self,
-                 num_neighbors):
+    def __init__(self, num_neighbors, eps=1e-10):
         super(FeatureInterpolator, self).__init__()
         self.num_neighbors = num_neighbors
+        self.eps = eps
 
-    def forward(self, xyz1, xyz2, features1, features2):
+    def forward(self, query_xyz, key_xyz, query_feature, key_feature):
         """
 
-        :param xyz1: xyz of the input of set abstraction layer
-        :param xyz2: xyz of the output of set abstraction layer (input of the feature propagation layer)
-        :param features1: features of xyz1
-        :param features2: features of xyz2
-        :return:
-            new_features: the new features for xyz1
+        Args:
+            query_xyz: query xyz, (B, 3, N1)
+            key_xyz: key xyz, (B, 3, N2)
+            query_feature: (B, C1, N1), feature corresponding to xyz1
+            key_feature: (B, C2, N2), feature corresponding to xyz2
+
+        Returns:
+            new_feature: (B, C1+C2, N2), propagated feature
+
         """
-        dist, idx = _F.search_nn_distance(xyz1, xyz2, self.num_neighbors)
+        with torch.no_grad():
+            # distance: (B, N1, K)
+            distance, index = _F.search_nn_distance(query_xyz, key_xyz, self.num_neighbors)
+            distance = torch.clamp(distance, min=self.eps)
+            inv_distance = 1.0 / distance
+            norm = torch.sum(inv_distance, dim=2, keepdim=True)
+            weight = inv_distance / norm
 
-        print("dist:\n", dist.size())
+        interpolated_feature = _F.feature_interpolate(key_feature, index, weight)
 
-        dist = torch.clamp(dist, min=1e-10)
-        norm = torch.sum(1.0 / dist, dim=1, keepdim=True)
-        weight = (1.0 / dist) / norm
-
-        interpolated_features = _F.feature_interpolation(features2, idx, weight)
-
-        if features1 is not None:
-            new_features = torch.cat([interpolated_features, features1], dim=1)   # TODO: double check if dim=2 or dim=1
+        if query_feature is not None:
+            new_feature = torch.cat([interpolated_feature, query_feature], dim=1)
         else:
-            new_features = interpolated_features
+            new_feature = interpolated_feature
 
-        return new_features
+        return new_feature
 
     def extra_repr(self):
         return "num_neighbours={:d}".format(self.num_neighbors)
@@ -209,16 +215,12 @@ class PointnetFPModule(nn.Module):
                  num_neighbors):
         super(PointnetFPModule, self).__init__()
 
-        # print("FP in_channels", in_channels, "mlp_channels", mlp_channels)
         self.in_channels = in_channels
         self.mlp = SharedMLP(in_channels, mlp_channels, ndim=1, bn=True)
         self.interpolator = FeatureInterpolator(num_neighbors)
 
-    def forward(self, xyz1, xyz2, features1, features2):
-        new_features = self.interpolator(xyz1, xyz2, features1, features2)
+    def forward(self, query_xyz, key_xyz, query_feature, key_feature):
+        new_feature = self.interpolator(query_xyz, key_xyz, query_feature, key_feature)
+        new_feature = self.mlp(new_feature)
 
-        # new_features = new_features.unsqueeze(-1)
-        new_features = self.mlp(new_features)
-        # new_features = new_features.squeeze(-1)
-
-        return new_features
+        return new_feature
