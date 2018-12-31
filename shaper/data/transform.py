@@ -22,6 +22,16 @@ class Compose(object):
         return format_string
 
 
+class ComposeSeg(Compose):
+    def __call__(self, points, seg_label):
+        for t in self.transforms:
+            points, seg_label = t(points, seg_label)
+        return points, seg_label
+
+
+# ---------------------------------------------------------------------------- #
+# Transformation related to only points
+# ---------------------------------------------------------------------------- #
 class PointCloudToTensor(object):
     def __call__(self, points):
         assert isinstance(points, np.ndarray)
@@ -76,26 +86,26 @@ def get_rotation_matrix(angle, axis):
 
 
 class PointCloudRotate(object):
-    def __init__(self, axis=(0.0, 1.0, 0.0)):
+    def __init__(self, axis=(0.0, 1.0, 0.0), use_normal=False, **kwargs):
         self.axis = torch.as_tensor(axis).float()
+        self.use_normal = use_normal
 
     def __call__(self, points):
         angle = torch.rand(1) * 2 * np.pi
         rotation_matrix = get_rotation_matrix(angle, self.axis)
 
-        use_normal = points.size(1) > 3
-        if not use_normal:
-            return points @ rotation_matrix
+        if not self.use_normal:
+            points[:, 0:3] = points[:, 0:3] @ rotation_matrix
+            return points
         else:
-            pc_xyz = points[:, 0:3]
-            pc_normals = points[:, 3:]
-            points[:, 0:3] = pc_xyz @ rotation_matrix
-            points[:, 3:] = pc_normals @ rotation_matrix
+            assert points.size(1) >= 6
+            points[:, 0:3] = points[:, 0:3] @ rotation_matrix
+            points[:, 3:6] = points[:, 3:6] @ rotation_matrix
             return points
 
 
 class PointCloudRotateByAngle(object):
-    def __init__(self, axis_name, angle):
+    def __init__(self, axis_name, angle, use_normal=False, **kwargs):
         assert axis_name in ["x", "y", "z"]
         if axis_name == "x":
             self.axis = np.array([1.0, 0.0, 0.0])
@@ -106,24 +116,25 @@ class PointCloudRotateByAngle(object):
         self.angle = angle
         rotation_matrix = get_rotation_matrix_np(self.angle, self.axis)
         self.rotation_matrix = torch.from_numpy(rotation_matrix).float()
+        self.use_normal = use_normal
 
     def __call__(self, points):
-        use_normal = points.size(1) > 3
-        if not use_normal:
-            return points @ self.rotation_matrix
+        if not self.use_normal:
+            points[:, 0:3] = points[:, 0:3] @ self.rotation_matrix
+            return points
         else:
-            pc_xyz = points[:, 0:3]
-            pc_normals = points[:, 3:]
-            points[:, 0:3] = pc_xyz @ self.rotation_matrix
-            points[:, 3:] = pc_normals @ self.rotation_matrix
+            assert points.size(1) >= 6
+            points[:, 0:3] = points[:, 0:3] @ self.rotation_matrix
+            points[:, 3:6] = points[:, 3:6] @ self.rotation_matrix
             return points
 
 
 class PointCloudRotatePerturbation(object):
-    def __init__(self, angle_sigma=0.06, angle_clip=0.18):
+    def __init__(self, angle_sigma=0.06, angle_clip=0.18, use_normal=False, **kwargs):
         self.angle_sigma = angle_sigma
         self.angle_clip = angle_clip
         self.axes = torch.eye(3)
+        self.use_normal = use_normal
 
     def __call__(self, points):
         angles = torch.clamp(self.angle_sigma * torch.randn(3),
@@ -135,19 +146,18 @@ class PointCloudRotatePerturbation(object):
 
         rotation_matrix = Rz @ Ry @ Rx
 
-        use_normal = points.size(1) > 3
-        if not use_normal:
-            return points @ rotation_matrix
+        if not self.use_normal:
+            points[:, 0:3] = points[:, 0:3] @ rotation_matrix
+            return points
         else:
-            pc_xyz = points[:, 0:3]
-            pc_normals = points[:, 3:]
-            points[:, 0:3] = pc_xyz @ rotation_matrix
-            points[:, 3:] = pc_normals @ rotation_matrix
+            assert points.size(1) >= 6
+            points[:, 0:3] = points[:, 0:3] @ rotation_matrix
+            points[:, 3:6] = points[:, 3:6] @ rotation_matrix
             return points
 
 
 class PointCloudTranslate(object):
-    def __init__(self, translate_range=0.1):
+    def __init__(self, translate_range=0.1, **kwargs):
         self.translate_range = translate_range
 
     def __call__(self, points):
@@ -157,7 +167,7 @@ class PointCloudTranslate(object):
 
 
 class PointCloudScale(object):
-    def __init__(self, lo=0.8, hi=1.25):
+    def __init__(self, lo=0.8, hi=1.25, **kwargs):
         assert hi >= lo
         self.lo = lo
         self.hi = hi
@@ -169,7 +179,7 @@ class PointCloudScale(object):
 
 
 class PointCloudJitter(object):
-    def __init__(self, std=0.01, clip=0.05):
+    def __init__(self, std=0.01, clip=0.05, **kwargs):
         self.std, self.clip = std, clip
 
     def __call__(self, points):
@@ -179,26 +189,46 @@ class PointCloudJitter(object):
         return points
 
 
+# ---------------------------------------------------------------------------- #
+# Transformation related to points and point-wise labels
+# ---------------------------------------------------------------------------- #
 class PointCloudRandomInputDropout(object):
-    def __init__(self, max_dropout_ratio=0.875):
+    def __init__(self, max_dropout_ratio=0.95, **kwargs):
         assert 0 <= max_dropout_ratio < 1
         self.max_dropout_ratio = max_dropout_ratio
 
-    def __call__(self, points):
+    def __call__(self, points, seg_label=None):
         dropout_ratio = torch.rand(1) * self.max_dropout_ratio
         dropout_indices = torch.nonzero(torch.rand(points.size(0)) <= dropout_ratio)[:, 0]
-        if dropout_indices.numel() > 0:
-            points[dropout_indices] = points[0]  # set to the first point
-        return points
+        is_drop = dropout_indices.numel() > 0
+        if seg_label is None:
+            if is_drop:
+                points[dropout_indices] = points[0]  # set to the first point
+            return points
+        else:
+            if is_drop:
+                points[dropout_indices] = points[0]
+                seg_label[dropout_indices] = seg_label[0]
+            return points, seg_label
 
 
 class PointCloudShuffle(object):
-    def __call__(self, points):
+    def __init__(self, **kwargs):
+        super(PointCloudShuffle, self).__init__()
+    
+    def __call__(self, points, seg_label=None):
         index = torch.randperm(points.size(0))
-        return points[index, :]
+        if seg_label is None:
+            return points[index, :]
+        else:
+            return points[index, :], seg_label[index]
 
 
+# ---------------------------------------------------------------------------- #
+# Test helpers
+# ---------------------------------------------------------------------------- #
 class PointCloudGenerate(object):
+    """Generate dummy point cloud for correctness test."""
     def __init__(self, num_points, channels=3):
         self.num_points = num_points
         self.channels = channels
@@ -214,4 +244,4 @@ def test_rotation_matrix():
     rotation_matrix_tensor = get_rotation_matrix(
         angle=torch.tensor(angle).float(),
         axis=torch.tensor(axis))
-    print(np.allclose(rotation_matrix_np, rotation_matrix_tensor))
+    np.testing.assert_allclose(rotation_matrix_np, rotation_matrix_tensor)

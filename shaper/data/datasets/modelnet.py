@@ -85,6 +85,7 @@ class ModelNetH5(Dataset):
 
         if self.transform is not None:
             points = self.transform(points)
+            points.transpose_(0, 1)
 
         return {
             "points": points,

@@ -22,6 +22,7 @@ SOLVER:
 TRAIN:
   BATCH_SIZE: 32
   AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)
+  SEG_AUGMENTATION: ("PointCloudShuffle", "PointCloudRandomInputDropout")
   LOG_PERIOD: 50
   VAL_PERIOD: 1
 TEST:
