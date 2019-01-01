@@ -29,6 +29,9 @@ def test_model(model,
     In some case, the model is tested without labels, where loss_fn and metric_fn are invalid.
     This method will forward the model to get predictions in the order of dataloader.
 
+    Notes:
+        This method will store all the prediction, which might consume large memory.
+
     Args:
         model (nn.Module): model to test
         loss_fn (nn.Module or Function): loss function
@@ -38,6 +41,8 @@ def test_model(model,
         with_label (bool): whether dataloader has labels
 
     Returns:
+        meters (MetricLogger)
+        test_result_dict (dict)
 
     """
     logger = logging.getLogger("shaper.test")
@@ -59,11 +64,11 @@ def test_model(model,
             for k, v in preds.items():
                 test_result_dict[k].append(v.cpu().numpy())
 
-            # add label into predictions
-            if "cls_label" in data_batch:
-                test_result_dict["cls_label"].append(data_batch["cls_label"].cpu().numpy())
-
             if with_label:
+                # add label into predictions
+                if "cls_label" in data_batch:
+                    test_result_dict["cls_label"].append(data_batch["cls_label"].cpu().numpy())
+
                 loss_dict = loss_fn(preds, data_batch)
                 metric_dict = metric_fn(preds, data_batch)
 
@@ -119,7 +124,8 @@ def test(cfg, output_dir=""):
     if vis_dir:
         mkdir(vis_dir)
 
-    if cfg.TEST.VOTE.ENABLE:  # Multi-view voting
+    # Multi-view voting
+    if cfg.TEST.VOTE.ENABLE:
         for view_ind in range(cfg.TEST.VOTE.NUM_VIEW):
             start_time = time.time()
             tmp_cfg = cfg.clone()
@@ -137,7 +143,8 @@ def test(cfg, output_dir=""):
 
             test_result_collection.append(test_result_dict)
             test_time = time.time() - start_time
-            logger.info("Test rotation over [{}] axis by [{:.4f}] rad".format(cfg.TEST.VOTE.AXIS, angle))
+            logger.info("{:d}/{:d}: rotation over [{}] axis by [{:.4f}] rad".format(
+                view_ind + 1, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS, angle))
             logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
     else:
         start_time = time.time()
@@ -160,6 +167,7 @@ def test(cfg, output_dir=""):
         assert all(len(cls_logit) == len(test_dataset) for cls_logit in cls_logit_collection)
 
         if cfg.TEST.VOTE.ENABLE:
+            del test_result_collection
             for score_heur in cfg.TEST.VOTE.SCORE_HEUR:
                 if score_heur == "logit":
                     cls_logit_ensemble = np.mean(cls_logit_collection, axis=0)
@@ -177,7 +185,6 @@ def test(cfg, output_dir=""):
                 logger.info("Ensemble using [{}] with [{}] rotations over [{}] axis.".format(
                     score_heur, cfg.TEST.VOTE.NUM_VIEW, cfg.TEST.VOTE.AXIS))
 
-                # dataset will remove transform and use all valid points
                 evaluate_classification(test_dataset, pred_labels,
                                         output_dir=output_dir,
                                         vis_dir=vis_dir,
@@ -185,14 +192,22 @@ def test(cfg, output_dir=""):
 
         else:
             pred_labels = np.argmax(cls_logit_collection[0], -1)
+            # dataset will remove transform and use all valid points
             evaluate_classification(test_dataset, pred_labels,
                                     aux_preds=test_result_collection[0],
                                     output_dir=output_dir,
                                     vis_dir=vis_dir)
     elif cfg.TASK == "part_segmentation":
+        # For part segmentation, only use 'seg_logit'
         seg_logit_collection = [d["seg_logit"] for d in test_result_collection]
         if cfg.TEST.VOTE.ENABLE:
-            raise NotImplementedError()
+            del test_result_collection
+            assert len(cfg.TEST.VOTE.SCORE_HEUR) == 1 and cfg.TEST.VOTE.SCORE_HEUR[0] == "logit"
+            seg_logit_ensemble = np.mean(seg_logit_collection, axis=0)
+            del seg_logit_collection
+            evaluate_part_segmentation(test_dataset, seg_logit_ensemble,
+                                       output_dir=output_dir,
+                                       vis_dir=vis_dir)
         else:
             seg_logit_all = seg_logit_collection[0]
             # dataset will remove transform and use all valid points
@@ -200,3 +215,5 @@ def test(cfg, output_dir=""):
                                        aux_preds=test_result_collection[0],
                                        output_dir=output_dir,
                                        vis_dir=vis_dir)
+    else:
+        raise NotImplementedError()

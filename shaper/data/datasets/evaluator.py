@@ -204,4 +204,4 @@ def evaluate_part_segmentation(dataset,
                            num_inst_per_class[ind]])
         else:
             table.add_row([class_name, 0, 0, 0])
-    logger.info(table)
+    logger.info("class-wise segmentation accuracy.\n{}".format(table))
