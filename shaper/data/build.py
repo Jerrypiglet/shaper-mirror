@@ -88,6 +88,15 @@ def build_dataset(cfg, mode="train"):
                              normalize=True,
                              load_seg=load_seg,
                              seg_transform=seg_transform)
+    elif cfg.DATASET.TYPE == "ShapeNetNormal":
+        dataset = D.ShapeNetNormal(root_dir=cfg.DATASET.ROOT_DIR,
+                                   dataset_names=dataset_names,
+                                   shuffle_points=False,
+                                   num_points=cfg.INPUT.NUM_POINTS,
+                                   transform=transform,
+                                   normalize=True,
+                                   load_seg=load_seg,
+                                   seg_transform=seg_transform)
     else:
         raise NotImplementedError()
 

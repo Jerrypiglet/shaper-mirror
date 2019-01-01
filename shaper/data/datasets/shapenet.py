@@ -187,7 +187,7 @@ class ShapeNetNormal(Dataset):
         The seg_file "overallid_to_catid_partid.json" is copied from HDF5 data.
 
     """
-    URL = "https://shapenet.cs.stanford.edu/ericyi/shapenetcore_partanno_segmentation_benchmark_v0.zip"
+    URL = "https://shapenet.cs.stanford.edu/media/shapenetcore_partanno_segmentation_benchmark_v0_normal.zip"
     ROOT_DIR = "../../../data/shapenet_normal"
     cat_file = "synsetoffset2category.txt"
     seg_file = "overallid_to_catid_partid.json"
@@ -290,20 +290,24 @@ class ShapeNetNormal(Dataset):
         points = self._load_pts(meta_data["pts_path"])
         class_name = meta_data["class"]
         cls_label = self.class_to_ind_map[class_name]
-        seg_label = points[:, -1].astype(np.int32) if self.load_seg else None
+        seg_label = None
+        out_dict = {}
 
+        # normalize first, before crop_or_pad
         if self.normalize:
             points[:, 0:3] = normalize_points(points[:, 0:3])
-        points = points[:, 0:6]     # Discard the segmentation labels
 
-        points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
+        points, _ = crop_or_pad_points(points, self.num_points, self.shuffle_points)
+        if self.load_seg:
+            seg_label = points[:, -1].astype(int)
+        # Discard the segmentation labels
+        points = points[:, 0:6]
         if self.transform is not None:
             points = self.transform(points)
             if seg_label is not None and self.seg_transform is not None:
                 points, seg_label = self.seg_transform(points, seg_label)
             points.transpose_(0, 1)
 
-        out_dict = {}
         out_dict["points"] = points
         out_dict["cls_label"] = cls_label
         if seg_label is not None:

@@ -3,17 +3,20 @@ TASK:
 MODEL:
   TYPE: "PN2SSG"
 INPUT:
+  IN_CHANNELS: 6
   NUM_POINTS: 2048
+  USE_NORMAL: True
 DATASET:
-  ROOT_DIR: "data/shapenet_hdf5"
-  TYPE: "ShapeNetH5"
-  #  ROOT_DIR: "data/shapenet"
-  #  TYPE: "ShapeNet"
+  ROOT_DIR: "data/shapenet_normal"
+  TYPE: "ShapeNetNormal"
   NUM_CLASSES: 16
   NUM_SEG_CLASSES: 50
   TRAIN: ("train",)
   VAL: ("val",)
   TEST: ("test",)
+DATALOADER:
+  # ShapeNetNormal has many small files.
+  NUM_WORKERS: 8
 SOLVER:
   BASE_LR: 0.001
   MAX_EPOCH: 200
