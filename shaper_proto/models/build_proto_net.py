@@ -6,9 +6,11 @@ from shaper.nn import MLP
 from shaper.nn.functional import encode_one_hot, euclidean_dist
 
 from shaper_compare.models.pointnet import build_pointnet_feature
+from shaper_compare.models.pn2ssg import build_pointnet2ssg_feature
 
 _FEATURE_EXTRACTERS = {
-    "PointNet": build_pointnet_feature,
+    "POINTNET": build_pointnet_feature,
+    "PN2SSG": build_pointnet2ssg_feature,
 }
 
 
@@ -145,11 +147,12 @@ def build_model(cfg):
 if __name__ == "__main__":
     from shaper_proto.config import cfg
 
-    cfg.MODEL.TYPE = "PointNet"
+    cfg.MODEL.TYPE = "POINTNET"
     cfg.DATASET.NUM_CLASSES = 40
     cfg.freeze()
 
     net, loss_fn, metric_fn = build_model(cfg)
+    # net.cuda()
 
     batch_size = cfg.DATASET.PROTO.CLASS_NUM_PER_BATCH * cfg.DATASET.PROTO.BATCH_SUPPORT_NUM_PER_CLASS + cfg.DATASET.PROTO.TRAIN_BATCH_TARGET_NUM
     num_points = 1024
@@ -157,7 +160,9 @@ if __name__ == "__main__":
 
     data = torch.rand(batch_size, in_channels, num_points)
     cls_labels = torch.randint(cfg.DATASET.NUM_CLASSES, size=(batch_size,))
-    out_dict = net({"points": data,
-                    "cls_labels": cls_labels})
+    data_batch = {"points": data, "cls_labels": cls_labels}
+    out_dict = net(data_batch)
     for k, v in out_dict.items():
         print('Prototype Net:', k, v.shape)
+
+    loss = loss_fn(out_dict, data_batch)

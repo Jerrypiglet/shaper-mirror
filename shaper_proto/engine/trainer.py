@@ -150,6 +150,29 @@ def train(cfg, output_dir=""):
         start_epoch = checkpoint_data.get("epoch", 0)
         best_metric = checkpoint_data.get(best_metric_name, None)
     logger.info("Start training from epoch {}".format(start_epoch))
+    if start_epoch == 0:
+        cur_epoch = 0
+        val_meters = validate_model(model,
+                                    loss_fn,
+                                    metric_fn,
+                                    val_data_loader,
+                                    log_period=cfg.TEST.LOG_PERIOD,
+                                    )
+        logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
+
+        tensorboard_logger.add_scalars(val_meters.meters, cur_epoch, prefix="val")
+
+        # best validation
+        cur_metric = val_meters.meters[cfg.TRAIN.VAL_METRIC].global_avg
+        checkpoint_data["epoch"] = cur_epoch
+        checkpoint_data[best_metric_name] = best_metric
+        checkpointer.save("model_{:03d}".format(cur_epoch), **checkpoint_data)
+        if best_metric is None or cur_metric > best_metric:
+            best_metric = cur_metric
+            checkpoint_data["epoch"] = cur_epoch
+            checkpoint_data[best_metric_name] = best_metric
+            checkpointer.save("model_best", **checkpoint_data)
+
     for epoch in range(start_epoch, max_epoch):
         # reinitialize dataset for each epoch
         train_data_loader.dataset.reset()

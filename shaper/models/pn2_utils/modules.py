@@ -32,7 +32,8 @@ class QueryGrouper(nn.Module):
         self.use_xyz = use_xyz
 
     def forward(self, new_xyz, xyz, feature):
-        index, unique_count = _F.ball_query(xyz, new_xyz, self.radius, self.num_neighbours)
+        with torch.no_grad():
+            index, unique_count = _F.ball_query(xyz, new_xyz, self.radius, self.num_neighbours)
 
         # (batch_size, 3, num_centroids, num_neighbours)
         grouped_xyz = _F.group_points(xyz, index)
@@ -55,6 +56,37 @@ class QueryGrouper(nn.Module):
         return "radius={:.1e}, num_neighbours={:d}, use_xyz={}".format(self.radius, self.num_neighbours, self.use_xyz)
 
 
+class QueryGrouperWithCnt(nn.Module):
+    def __init__(self, radius, num_neighbours, use_xyz):
+        super(QueryGrouperWithCnt, self).__init__()
+        self.radius = radius
+        self.num_neighbours = num_neighbours
+        self.use_xyz = use_xyz
+
+    def forward(self, new_xyz, xyz, feature):
+        index, unique_count = _F.ball_query(xyz, new_xyz, self.radius, self.num_neighbours)
+
+        # (batch_size, 3, num_centroids, num_neighbours)
+        grouped_xyz = _F.group_points(xyz, index)
+        # translation normalization
+        grouped_xyz -= new_xyz.unsqueeze(-1)
+
+        if feature is not None:
+            # (batch_size, channels, num_centroids, num_neighbours)
+            group_feature = _F.group_points(feature, index)
+            if self.use_xyz:
+                new_feature = torch.cat([grouped_xyz, group_feature], dim=1)
+            else:
+                new_feature = group_feature
+        else:
+            new_feature = grouped_xyz
+
+        return new_feature, unique_count
+
+    def extra_repr(self):
+        return "radius={:.1e}, num_neighbours={:d}, use_xyz={}".format(self.radius, self.num_neighbours, self.use_xyz)
+
+
 class PointNetSAModule(nn.Module):
     """PointNet set abstraction module"""
 
@@ -69,6 +101,7 @@ class PointNetSAModule(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = mlp_channels[-1]
+        self.num_centroids = num_centroids
 
         if use_xyz:
             in_channels += 3
@@ -90,10 +123,13 @@ class PointNetSAModule(nn.Module):
             new_feature (torch.Tensor): (batch_size, out_channels, num_centroids)
 
         """
-        # sample new points
-        index = self.sampler(xyz)
-        # (batch_size, 3, num_centroids)
-        new_xyz = _F.gather_points(xyz, index)
+        if self.num_centroids > 0:
+            # sample new points
+            index = self.sampler(xyz)
+            # (batch_size, 3, num_centroids)
+            new_xyz = _F.gather_points(xyz, index)
+        else:
+            new_xyz = xyz
 
         # (batch_size, in_channels, num_centroids, num_neighbours)
         new_feature = self.grouper(new_xyz, xyz, feature)

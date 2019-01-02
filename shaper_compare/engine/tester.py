@@ -183,13 +183,14 @@ def test(cfg, output_dir=""):
 
     else:
         pred_labels = np.argmax(cls_preds_all[0], -1)
-        overall_acc, acc_per_class = evaluate_classification(test_dataset, pred_labels,
-                                                             aux_preds=test_result_collection[0],
-                                                             output_dir=output_dir,
-                                                             vis_dir=vis_dir)
+        overall_acc, acc_per_class, true_positive_per_class = evaluate_classification(
+            test_dataset, pred_labels,
+            aux_preds=test_result_collection[0],
+            output_dir=output_dir,
+            vis_dir=vis_dir)
         total_correct_num = np.sum(metric_result_collection[0]["acc"])
         metric_accuracy = total_correct_num / pred_labels.shape[0]
         print("pred accuracy: {:.4f}".format(overall_acc))
         print("metric accuracy {:.4f}".format(metric_accuracy))
 
-    return test_dataset, cls_preds_all, overall_acc, acc_per_class
+    return test_dataset, cls_preds_all, overall_acc, acc_per_class, true_positive_per_class

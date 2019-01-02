@@ -119,9 +119,15 @@ class ModelNetFewShot(Dataset):
 
 
 if __name__ == "__main__":
-    root_dir = "../../../data/modelnet40/modelnet40_fewshot"
-    modelnet = ModelNetFewShot(root_dir, ['support'], cross_num=2)
+    root_dir = "../../../data/modelnet40/modelnet40_fewshot_resplit"
+    modelnet = ModelNetFewShot(root_dir, ['support'], num_per_class=5, cross_num=4)
     print('total data num: ', modelnet.__len__())
+    for i in range(modelnet.__len__()):
+        print(modelnet[i]["cls_labels"])
+        # pts = modelnet[i]["points"]
+        # print(pts)
+        # np.savetxt("pts_{}_cls_{}.xyz".format(i, modelnet[i]["cls_labels"]),
+        #            pts, fmt="%.4f")
     # print(modelnet[0][0].size(), modelnet[0][0].type())
     # print(modelnet[0])
     # Visualizer.visualize_pts(modelnet[0][0])

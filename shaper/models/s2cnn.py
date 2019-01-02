@@ -88,7 +88,8 @@ class S2CNNCls(nn.Module):
         else:
             self.classifier = nn.Linear(nfeature_out, out_channels)
 
-    def forward(self, x):
+    def forward(self, data_batch):
+        x = data_batch["points"]
         if self.use_normal:
             xyz, norm = self.pc_projector(x)
             xyz = self.xyz_sequential(xyz)
@@ -98,6 +99,12 @@ class S2CNNCls(nn.Module):
             inter_feature = torch.cat((xyz, norm), -1)
         else:
             xyz = self.pc_projector(x)
+
+            import numpy as np
+            for ii in range(4):
+                np.savetxt("sph_feature_cls_{}.txt".format(ii), xyz[ii, 0, ...].detach().cpu().numpy(), fmt="%.2f")
+            raise ValueError("step0")
+
             xyz = self.xyz_sequential(xyz)
             xyz = so3_integrate(xyz)
             inter_feature = xyz
@@ -141,19 +148,20 @@ class S2CNNFeature(nn.Module):
         # xyz SO3 layers
         for l in range(len(feature_channels) - 1):
             nfeature_in = self.feature_channels[l]
-        nfeature_out = self.feature_channels[l + 1]
-        b_in = band_width_list[l]
-        b_out = band_width_list[l + 1]
+            nfeature_out = self.feature_channels[l + 1]
+            b_in = band_width_list[l]
+            b_out = band_width_list[l + 1]
 
-        xyz_sequence.append(nn.BatchNorm3d(nfeature_in, affine=True))
-        xyz_sequence.append(nn.ReLU())
-        grid = so3_equatorial_grid(max_beta=0, max_gamma=0, n_alpha=2 * b_in, n_beta=1, n_gamma=1)
-        xyz_sequence.append(SO3Convolution(nfeature_in, nfeature_out, b_in, b_out, grid))
+            xyz_sequence.append(nn.BatchNorm3d(nfeature_in, affine=True))
+            xyz_sequence.append(nn.ReLU())
+            grid = so3_equatorial_grid(max_beta=0, max_gamma=0, n_alpha=2 * b_in, n_beta=1, n_gamma=1)
+            xyz_sequence.append(SO3Convolution(nfeature_in, nfeature_out, b_in, b_out, grid))
 
         xyz_sequence.append(nn.BatchNorm3d(nfeature_out, affine=True))
         xyz_sequence.append(nn.ReLU())
 
         self.xyz_sequential = nn.Sequential(*xyz_sequence)
+        self.xyz_feature_layer = nn.Linear(feature_channels[-1], feature_channels[-1])
 
         # normal layers
         if self.use_normal:
@@ -164,35 +172,54 @@ class S2CNNFeature(nn.Module):
             # norm SO3 layers
             for l in range(len(feature_channels) - 1):
                 nfeature_in = self.feature_channels[l]
-            nfeature_out = self.feature_channels[l + 1]
-            b_in = band_width_list[l]
-            b_out = band_width_list[l + 1]
+                nfeature_out = self.feature_channels[l + 1]
+                b_in = band_width_list[l]
+                b_out = band_width_list[l + 1]
 
-            norm_sequence.append(nn.BatchNorm3d(nfeature_in, affine=True))
-            norm_sequence.append(nn.ReLU())
-            grid = so3_equatorial_grid(max_beta=0, max_gamma=0, n_alpha=2 * b_in, n_beta=1, n_gamma=1)
-            norm_sequence.append(SO3Convolution(nfeature_in, nfeature_out, b_in, b_out, grid))
+                norm_sequence.append(nn.BatchNorm3d(nfeature_in, affine=True))
+                norm_sequence.append(nn.ReLU())
+                grid = so3_equatorial_grid(max_beta=0, max_gamma=0, n_alpha=2 * b_in, n_beta=1, n_gamma=1)
+                norm_sequence.append(SO3Convolution(nfeature_in, nfeature_out, b_in, b_out, grid))
 
             norm_sequence.append(nn.BatchNorm3d(nfeature_out, affine=True))
             norm_sequence.append(nn.ReLU())
 
             self.norm_sequential = nn.Sequential(*norm_sequence)
 
-    def forward(self, x):
+            self.norm_feature_layer = nn.Linear(feature_channels[-1], feature_channels[-1])
+
+        self.init_weights()
+
+    def forward(self, x, pts_cnt=None):
         if self.use_normal:
-            xyz, norm = self.pc_projector(x)
+            xyz, norm = self.pc_projector(x, pts_cnt)
             xyz = self.xyz_sequential(xyz)
             xyz = so3_integrate(xyz)
+            xyz = self.xyz_feature_layer(xyz)
             norm = self.norm_sequential(norm)
             norm = so3_integrate(norm)
+            norm = self.norm_feature_layer(norm)
             inter_feature = torch.cat((xyz, norm), -1)
         else:
-            xyz = self.pc_projector(x)
+            xyz = self.pc_projector(x, pts_cnt)
+            # #
+            # import numpy as np
+            # for ii in range(10):
+            #     np.savetxt("sph_feature_{}.txt".format(ii), xyz[ii, 0, ...].detach().cpu().numpy(), fmt="%.2f")
+
             xyz = self.xyz_sequential(xyz)
             xyz = so3_integrate(xyz)
+            xyz = self.xyz_feature_layer(xyz)
             inter_feature = xyz
 
         return inter_feature
+
+    def init_weights(self):
+        nn.init.zeros_(self.xyz_feature_layer.weight)
+        nn.init.zeros_(self.xyz_feature_layer.bias)
+        if self.use_normal:
+            nn.init.zeros_(self.norm_feature_layer.weight)
+            nn.init.zeros_(self.norm_feature_layer.bias)
 
 
 class S2CNNClsLoss(nn.Module):
@@ -228,7 +255,11 @@ def build_s2cnn(cfg):
 
 if __name__ == "__main__":
     x = np.random.rand(4, 6, 1024)
-    x = torch.as_tensor(x).type(torch.float32)
-    s2cnn = S2CNNCls(6, 10)
-    pred_x = s2cnn(x)
-    print("pred_x: \n", pred_x['cls_logits'].size())
+    x = torch.as_tensor(x).type(torch.float32).cuda()
+    # s2cnn = S2CNNCls(6, 10)
+    # pred_x = s2cnn(x)
+    # print("pred_x: \n", pred_x['cls_logits'].size())
+    s2cnn_feature = S2CNNFeature(6).cuda()
+
+    feature = s2cnn_feature(x)
+    print("feature: ", feature.size())

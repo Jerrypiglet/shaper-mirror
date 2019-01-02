@@ -18,12 +18,14 @@ from .pointnet_fewshot import build_pointnet_fewshot
 from .pn2ssg_fewshot import build_pn2ssg_fewshot
 from .pn2msg_fewshot import build_pn2msg_fewshot
 from .dgcnn_fewshot import build_dgcnn_fewshot
+from .pn2s2cnn_fewshot import build_pns2cnn_fewshot
 
 _MODEL_BUILDERS = {
     "PointNetFewShot": build_pointnet_fewshot,
     "PN2SSGFewShot": build_pn2ssg_fewshot,
     "PN2MSGFewShot": build_pn2msg_fewshot,
     "DGCNNFewShot": build_dgcnn_fewshot,
+    "PNS2CNNFewShot": build_pns2cnn_fewshot,
 }
 
 _MODEL_BUILDERS.update(origin_MODEL_BUILDERS)

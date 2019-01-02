@@ -337,7 +337,7 @@ __global__ void main_(const float* in, const float* wig, float* out)
     }
 }
 '''
-    import s2cnn_modules.utils.cuda as cuda_utils
+    import shaper.models.s2cnn_modules.utils.cuda as cuda_utils
     kernel = cuda_utils.compile_kernel(kernel, 'so3fft.cu', 'main_')
     stream = cuda_utils.Stream(ptr=torch.cuda.current_stream().cuda_stream)
 
@@ -430,7 +430,7 @@ __global__ void main_(const float* in, const float* wig, float* out)
     }
 }
 '''
-    import s2cnn_modules.utils.cuda as cuda_utils
+    import shaper.models.s2cnn_modules.utils.cuda as cuda_utils
     kernel = cuda_utils.compile_kernel(kernel, 'so3ifft.cu', 'main_')
     stream = cuda_utils.Stream(ptr=torch.cuda.current_stream().cuda_stream)
 

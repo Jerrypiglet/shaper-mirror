@@ -76,7 +76,7 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
                            num_positive_per_class[ind]])
         else:
             table.add_row([class_name, 0, 0, 0])
-    logger.info("average class accuracy={:.2f}%.\n{}".format(
-        100.0 * np.mean(acc_per_class), table))
+    # logger.info("average class accuracy={:.2f}%.\n{}".format(
+    #     100.0 * np.mean(acc_per_class), table))
 
     return overall_acc, np.mean(acc_per_class), true_positive_per_class

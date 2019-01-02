@@ -6,9 +6,11 @@ from shaper.nn import MLP
 from shaper.nn.functional import encode_one_hot
 
 from shaper_compare.models.pointnet import build_pointnet_feature
+from shaper_compare.models.pn2ssg import build_pointnet2ssg_feature
 
 _FEATURE_EXTRACTERS = {
-    "PointNet": build_pointnet_feature,
+    "POINTNET": build_pointnet_feature,
+    "PN2SSG": build_pointnet2ssg_feature,
 }
 
 

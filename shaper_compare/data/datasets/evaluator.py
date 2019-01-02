@@ -63,7 +63,9 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
     # Average class accuracy
     acc_per_class = []
     table = PrettyTable(["Class", "Accuracy", "Correct", "Total"])
+
     for ind, class_name in enumerate(class_names):
+        true_positive_per_class[class_name] = true_positive_per_class[ind]
         if ind in num_positive_per_class:  # seen class
             acc = true_positive_per_class[ind] / num_positive_per_class[ind]
             acc_per_class.append(acc)
@@ -75,4 +77,4 @@ def evaluate_classification(dataset, pred_labels, aux_preds=None,
     logger.info("average class accuracy={:.2f}%.\n{}".format(
         100.0 * np.mean(acc_per_class), table))
 
-    return overall_acc, np.mean(acc_per_class)
+    return overall_acc, np.mean(acc_per_class), true_positive_per_class

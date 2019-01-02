@@ -46,7 +46,7 @@ def build_dataset(cfg, mode="train"):
                                   dataset_names=dataset_names,
                                   num_per_class=cfg.DATASET.MODELNET_FEWSHOT.NUM_PER_CLASS,
                                   cross_num=cfg.DATASET.MODELNET_FEWSHOT.CROSS_NUM,
-                                  shuffle_points=is_train,
+                                  shuffle_points=False,
                                   num_points=cfg.INPUT.NUM_POINTS,
                                   transform=transform,
                                   use_normal=cfg.INPUT.USE_NORMAL)
@@ -55,7 +55,7 @@ def build_dataset(cfg, mode="train"):
                                   dataset_names=dataset_names,
                                   num_per_class=cfg.DATASET.SHAPENET_FEWSHOT.NUM_PER_CLASS,
                                   cross_num=cfg.DATASET.SHAPENET_FEWSHOT.CROSS_NUM,
-                                  shuffle_points=is_train,
+                                  shuffle_points=False,
                                   num_points=cfg.INPUT.NUM_POINTS,
                                   transform=transform)
     elif cfg.DATASET.TYPE == "SHAPENET55_FEWSHOT":
@@ -63,7 +63,7 @@ def build_dataset(cfg, mode="train"):
                                     dataset_names=dataset_names,
                                     num_per_class=cfg.DATASET.SHAPENET55_FEWSHOT.NUM_PER_CLASS,
                                     cross_num=cfg.DATASET.SHAPENET55_FEWSHOT.CROSS_NUM,
-                                    shuffle_points=is_train,
+                                    shuffle_points=False,
                                     num_points=cfg.INPUT.NUM_POINTS,
                                     transform=transform)
     else:

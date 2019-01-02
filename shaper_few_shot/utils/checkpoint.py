@@ -23,6 +23,7 @@ class Checkpointer(DirCheckpointer):
             assert (not load_pretrain_file)
             self.logger.info("No checkpoint found. Initializing model from scratch")
             return {}, resume_success
+        # f = f.replace("ruichen", "rayc")
         self.logger.info("Loading checkpoint from {}, MD5: {}".format(f, get_md5_for_file(f)))
 
         if load_pretrain_file:

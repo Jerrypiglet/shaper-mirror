@@ -81,9 +81,49 @@ def build_dataset(cfg, mode="train"):
                                       num_points=cfg.INPUT.NUM_POINTS,
                                       transform=transform,
                                       use_normal=cfg.INPUT.USE_NORMAL)
+    elif cfg.DATASET.TYPE == "ShapeNet55Proto":
+        if mode == "train":
+            dataset = ShapeNet55Compare(root_dir=cfg.DATASET.ROOT_DIR,
+                                        dataset_names=dataset_names,
+                                        class_num_per_batch=cfg.DATASET.PROTO.CLASS_NUM_PER_BATCH,
+                                        batch_support_num_per_class=cfg.DATASET.PROTO.BATCH_SUPPORT_NUM_PER_CLASS,
+                                        batch_target_num=cfg.DATASET.PROTO.TRAIN_BATCH_TARGET_NUM,
+                                        num_per_class=cfg.DATASET.PROTO.NUM_PER_CLASS,
+                                        cross_num=cfg.DATASET.PROTO.CROSS_NUM,
+                                        shuffle_data=is_train,
+                                        shuffle_points=is_train,
+                                        num_points=cfg.INPUT.NUM_POINTS,
+                                        transform=transform,
+                                        use_normal=cfg.INPUT.USE_NORMAL)
+        elif mode == "val":
+            dataset = ShapeNet55Compare(root_dir=cfg.DATASET.ROOT_DIR,
+                                        dataset_names=dataset_names,
+                                        class_num_per_batch=cfg.DATASET.PROTO.CLASS_NUM_PER_BATCH,
+                                        batch_support_num_per_class=cfg.DATASET.PROTO.BATCH_SUPPORT_NUM_PER_CLASS,
+                                        batch_target_num=cfg.DATASET.PROTO.VAL_BATCH_TARGET_NUM,
+                                        num_per_class=cfg.DATASET.PROTO.NUM_PER_CLASS,
+                                        cross_num=cfg.DATASET.PROTO.CROSS_NUM,
+                                        shuffle_data=is_train,
+                                        shuffle_points=is_train,
+                                        num_points=cfg.INPUT.NUM_POINTS,
+                                        transform=transform,
+                                        use_normal=cfg.INPUT.USE_NORMAL)
+        else:
+            dataset = ShapeNet55Compare(root_dir=cfg.DATASET.ROOT_DIR,
+                                        dataset_names=dataset_names,
+                                        class_num_per_batch=cfg.DATASET.PROTO.CLASS_NUM_PER_BATCH,
+                                        batch_support_num_per_class=cfg.DATASET.PROTO.BATCH_SUPPORT_NUM_PER_CLASS,
+                                        batch_target_num=cfg.DATASET.PROTO.TEST_BATCH_TARGET_NUM,
+                                        num_per_class=cfg.DATASET.PROTO.NUM_PER_CLASS,
+                                        cross_num=cfg.DATASET.PROTO.CROSS_NUM,
+                                        shuffle_data=is_train,
+                                        shuffle_points=is_train,
+                                        num_points=cfg.INPUT.NUM_POINTS,
+                                        transform=transform,
+                                        use_normal=cfg.INPUT.USE_NORMAL)
 
     else:
-        raise NotImplementedError()
+        raise ValueError("Undefined dataset type: {}.".format(cfg.DATASET.TYPE))
 
     return dataset
 
@@ -105,3 +145,21 @@ def build_dataloader(cfg, mode="train"):
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
     return data_loader
+
+
+if __name__ == "__main__":
+    from shaper_proto.config import cfg
+
+    cfg.merge_from_file(
+        "/home/rayc/Projects/shaper/configs/modelnet40/proto_net/pn2ssg/pn2ssg_source_cls_without_dir.yaml")
+
+    cfg.freeze()
+
+    data_loader = build_dataloader(cfg)
+
+    for iteration, data_batch in enumerate(data_loader):
+
+        for k, v in data_batch.items():
+            print("{}: {}".format(k, v))
+
+        break

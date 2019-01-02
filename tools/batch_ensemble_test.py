@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument(
         "--cfg",
         dest="config_file",
-        default="/home/rayc/Projects/shaper/configs/few_shot/pointnet/pointnet_fewshot_target_cls_onelayer_freeze_last.yaml",
+        default="/home/rayc/Projects/shaper/configs/few_shot/pointnet/pointnet_target_cls_1shot_nodrop_best.yaml",
         metavar="FILE",
         help="path to config file",
         type=str,

@@ -18,11 +18,14 @@ def train_model(model,
                 metric_fn,
                 data_loader,
                 optimizer,
+                curr_epoch,
+                tensorboard_logger,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
     model.train()
     end = time.time()
+    total_iteration = data_loader.__len__()
     for iteration, data_batch in enumerate(data_loader):
         data_time = time.time() - end
 
@@ -58,6 +61,7 @@ def train_model(model,
                     memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
                 )
             )
+            tensorboard_logger.add_scalars(meters.meters, curr_epoch * total_iteration + iteration, prefix="train")
     return meters
 
 
@@ -65,11 +69,14 @@ def validate_model(model,
                    loss_fn,
                    metric_fn,
                    data_loader,
+                   curr_epoch,
+                   tensorboard_logger,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
     meters = MetricLogger(delimiter="  ")
     model.eval()
     end = time.time()
+    total_iteration = data_loader.__len__()
     with torch.no_grad():
         for iteration, data_batch in enumerate(data_loader):
             data_time = time.time() - end
@@ -98,6 +105,7 @@ def validate_model(model,
                         meters=str(meters),
                     )
                 )
+                tensorboard_logger.add_scalars(meters.meters, curr_epoch * total_iteration + iteration, prefix="valid")
     return meters
 
 
@@ -185,13 +193,15 @@ def train(cfg, output_dir=""):
                                    metric_fn,
                                    train_data_loader,
                                    optimizer=optimizer,
+                                   curr_epoch=epoch,
+                                   tensorboard_logger=tensorboard_logger,
                                    log_period=cfg.TRAIN.LOG_PERIOD,
                                    )
         epoch_time = time.time() - start_time
         logger.info("Epoch[{}]-Train {}  total_time: {:.2f}s".format(
             cur_epoch, train_meters.summary_str, epoch_time))
 
-        tensorboard_logger.add_scalars(train_meters.meters, cur_epoch, prefix="train")
+        # tensorboard_logger.add_scalars(train_meters.meters, cur_epoch, prefix="train")
 
         # checkpoint
         if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
@@ -213,11 +223,13 @@ def train(cfg, output_dir=""):
                                         loss_fn,
                                         metric_fn,
                                         val_data_loader,
+                                        curr_epoch=epoch,
+                                        tensorboard_logger=tensorboard_logger,
                                         log_period=cfg.TEST.LOG_PERIOD,
                                         )
             logger.info("Epoch[{}]-Val {}".format(cur_epoch, val_meters.summary_str))
 
-            tensorboard_logger.add_scalars(val_meters.meters, cur_epoch, prefix="val")
+            # tensorboard_logger.add_scalars(val_meters.meters, cur_epoch, prefix="val")
 
             # best validation
             cur_metric = val_meters.meters[cfg.TRAIN.VAL_METRIC].global_avg

@@ -47,6 +47,7 @@ class Checkpointer(object):
             # no checkpoint could be found
             self.logger.info("No checkpoint found. Initializing model from scratch")
             return {}
+        f = f.replace("ruichen", "rayc")
         self.logger.info("Loading checkpoint from {}".format(f))
         checkpoint = self._load_file(f)
         self.model.load_state_dict(checkpoint.pop("model"))

@@ -36,7 +36,7 @@ class PointNetFewShotCls(PointNetCls):
         else:
             self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
-        self.init_weights()
+        # self.init_weights()
         # set batch normalization to 0.01 as default
         set_bn(self, momentum=0.01)
 

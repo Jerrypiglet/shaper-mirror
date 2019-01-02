@@ -21,7 +21,9 @@ class PointNet2SSGFewShotCls(PointNet2SSGCls):
                  global_channels=(512, 256),
                  dropout_prob=0.5,
                  use_xyz=True,
-                 before_classifier_channels=40):
+                 before_classifier_channels=40,
+                 with_transform=False,
+                 ):
         super(PointNet2SSGFewShotCls, self).__init__(
             in_channels=in_channels,
             out_channels=out_channels,
@@ -32,7 +34,8 @@ class PointNet2SSGFewShotCls(PointNet2SSGCls):
             local_channels=local_channels,
             global_channels=global_channels,
             dropout_prob=dropout_prob,
-            use_xyz=use_xyz)
+            use_xyz=use_xyz,
+            with_transform=with_transform)
 
         self.dropout_prob = dropout_prob
         self.before_classifier_channels = before_classifier_channels
@@ -56,6 +59,11 @@ class PointNet2SSGFewShotCls(PointNet2SSGCls):
             feature = point.narrow(1, 3, point.size(1) - 3)
         else:
             feature = None
+
+        if self.with_transform:
+            trans_input = self.transform_input(xyz)
+            xyz = torch.bmm(trans_input, xyz)
+            end_points['trans_input'] = trans_input
 
         for sa_module in self.sa_modules:
             xyz, feature = sa_module(xyz, feature)
@@ -97,7 +105,8 @@ def build_pn2ssg_fewshot(cfg):
             global_channels=cfg.MODEL.PN2SSG.GLOBAL_CHANNELS,
             dropout_prob=cfg.MODEL.PN2SSG.DROPOUT_PROB,
             use_xyz=cfg.MODEL.PN2SSG.USE_XYZ,
-            before_classifier_channels=cfg.MODEL.PN2SSG.BEFORE_CHANNELS
+            before_classifier_channels=cfg.MODEL.PN2SSG.BEFORE_CHANNELS,
+            with_transform=cfg.MODEL.PN2SSG.TRANSFORM,
         )
         loss_fn = ClsLoss()
         metric_fn = Accuracy()

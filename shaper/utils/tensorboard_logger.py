@@ -1,17 +1,19 @@
+import time
 import os.path as osp
 
 from .metric_logger import AverageMeter
 from tensorboardX import SummaryWriter
-
+from .io import mkdir
 
 _KEYWORDS = ("loss", "acc")
 
 
 class TensorboardLogger(object):
     def __init__(self, log_dir, keywords=_KEYWORDS):
-        self.log_dir = log_dir
+        self.log_dir = osp.join(log_dir, "events.{}".format(time.strftime("%m_%d_%H_%M_%S")))
+        mkdir(self.log_dir)
         self.keywords = keywords
-        self.writer = SummaryWriter(log_dir=log_dir)
+        self.writer = SummaryWriter(log_dir=self.log_dir)
 
     def add_scalars(self, meters, step, prefix=""):
         for k, meter in meters.items():

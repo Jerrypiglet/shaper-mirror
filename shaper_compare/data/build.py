@@ -81,9 +81,49 @@ def build_dataset(cfg, mode="train"):
                                       num_points=cfg.INPUT.NUM_POINTS,
                                       transform=transform,
                                       use_normal=cfg.INPUT.USE_NORMAL)
+    elif cfg.DATASET.TYPE == "ShapeNet55Compare":
+        if mode == "train":
+            dataset = ShapeNet55Compare(root_dir=cfg.DATASET.ROOT_DIR,
+                                        dataset_names=dataset_names,
+                                        class_num_per_batch=cfg.DATASET.COMPARE.CLASS_NUM_PER_BATCH,
+                                        batch_support_num_per_class=cfg.DATASET.COMPARE.BATCH_SUPPORT_NUM_PER_CLASS,
+                                        batch_target_num=cfg.DATASET.COMPARE.TRAIN_BATCH_TARGET_NUM,
+                                        num_per_class=cfg.DATASET.COMPARE.NUM_PER_CLASS,
+                                        cross_num=cfg.DATASET.COMPARE.CROSS_NUM,
+                                        shuffle_data=is_train,
+                                        shuffle_points=is_train,
+                                        num_points=cfg.INPUT.NUM_POINTS,
+                                        transform=transform,
+                                        use_normal=cfg.INPUT.USE_NORMAL)
+        elif mode == "val":
+            dataset = ShapeNet55Compare(root_dir=cfg.DATASET.ROOT_DIR,
+                                        dataset_names=dataset_names,
+                                        class_num_per_batch=cfg.DATASET.COMPARE.CLASS_NUM_PER_BATCH,
+                                        batch_support_num_per_class=cfg.DATASET.COMPARE.BATCH_SUPPORT_NUM_PER_CLASS,
+                                        batch_target_num=cfg.DATASET.COMPARE.VAL_BATCH_TARGET_NUM,
+                                        num_per_class=cfg.DATASET.COMPARE.NUM_PER_CLASS,
+                                        cross_num=cfg.DATASET.COMPARE.CROSS_NUM,
+                                        shuffle_data=is_train,
+                                        shuffle_points=is_train,
+                                        num_points=cfg.INPUT.NUM_POINTS,
+                                        transform=transform,
+                                        use_normal=cfg.INPUT.USE_NORMAL)
+        else:
+            dataset = ShapeNet55Compare(root_dir=cfg.DATASET.ROOT_DIR,
+                                        dataset_names=dataset_names,
+                                        class_num_per_batch=cfg.DATASET.COMPARE.CLASS_NUM_PER_BATCH,
+                                        batch_support_num_per_class=cfg.DATASET.COMPARE.BATCH_SUPPORT_NUM_PER_CLASS,
+                                        batch_target_num=cfg.DATASET.COMPARE.TEST_BATCH_TARGET_NUM,
+                                        num_per_class=cfg.DATASET.COMPARE.NUM_PER_CLASS,
+                                        cross_num=cfg.DATASET.COMPARE.CROSS_NUM,
+                                        shuffle_data=is_train,
+                                        shuffle_points=is_train,
+                                        num_points=cfg.INPUT.NUM_POINTS,
+                                        transform=transform,
+                                        use_normal=cfg.INPUT.USE_NORMAL)
 
     else:
-        raise NotImplementedError()
+        raise ValueError("Undefined dataset type: {}.".format(cfg.DATASET.TYPE))
 
     return dataset
 

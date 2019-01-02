@@ -5,11 +5,12 @@ import logging
 
 import numpy as np
 import scipy.stats as stats
+from prettytable import PrettyTable
 
 import torch
 
-from shaper_compare.config import cfg
-from shaper_compare.engine.tester import test
+from shaper_histo.config import cfg
+from shaper_histo.engine.tester import test
 from shaper.utils.logger import setup_logger, shutdown_logger
 from shaper.utils.io import mkdir
 from shaper_compare.data.datasets import evaluate_classification
@@ -34,8 +35,8 @@ def parse_args():
     )
     parser.add_argument(
         "--score_heur",
-        choices=["soft_label", "label"],
-        default="soft_label",
+        choices=["label"],
+        default="label",
         type=str,
     )
     parser.add_argument(
@@ -72,13 +73,16 @@ def ensemble_test(args, cfg):
     logger.info("Running with config:\n{}".format(cfg))
 
     dataset_collection = []
-    cls_logits_collection = []
+    cls_preds_collection = []
     overall_acc_collection = []
     acc_per_class_collection = []
+    true_positive_per_class_collection = []
     vis_dir = cfg.TEST.VIS_DIR.replace("@", output_dir_ensemble)
     if vis_dir:
         mkdir(vis_dir)
-
+    if args.no_adaption:
+        args.repeat_num = 1
+        cfg.TEST.WEIGHT = "@/model_0.pth"
     for i in range(args.repeat_num):
         output_dir = cfg.OUTPUT_DIR + "/REP_%d" % i
         config_path = osp.splitext(args.config_file)[0]
@@ -86,46 +90,54 @@ def ensemble_test(args, cfg):
         output_dir = output_dir.replace('@', config_path)
         assert osp.exists(output_dir), "Directory {} not exists.".format(output_dir)
 
-        dataset, cls_logits, overall_acc, acc_per_class = test(cfg, output_dir)
+        dataset, cls_preds, overall_acc, acc_per_class, true_positive_per_class = test(cfg, output_dir)
         dataset_collection.append(dataset)
-        cls_logits_collection.append(cls_logits)
+        cls_preds_collection.append(cls_preds)
         overall_acc_collection.append(overall_acc)
         acc_per_class_collection.append(acc_per_class)
+        true_positive_per_class_collection.append(true_positive_per_class)
 
-    # multi model ensemble
-    # if cfg.TEST.VOTE.ENABLE:
-    cls_logits_collection = np.concatenate(cls_logits_collection)
-    if args.score_heur == "soft_label":
-        cls_logits_ensemble = np.mean(cls_logits_collection, axis=0)
-        pred_labels = np.argmax(cls_logits_ensemble, -1)  # (num_samples,)
-    elif args.score_heur == "label":
-        pred_labels_all = np.argmax(cls_logits_collection, -1)
-        pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
-    else:
-        raise ValueError("Unknown score heuristic")
+    true_positive_per_class_stat = {}
+    for ind, class_name in enumerate(dataset.classes):
+        true_positive_per_class_stat[class_name] = []
+    for i in range(args.repeat_num):
+        for ind, class_name in enumerate(dataset.classes):
+            true_positive_per_class_stat[class_name].append(true_positive_per_class_collection[i][ind])
 
-    overall_acc, acc_per_class = evaluate_classification(
-        dataset_collection[0], pred_labels,
-        output_dir=output_dir_ensemble,
-        vis_dir=vis_dir,
-        suffix=args.score_heur,
-    )
+    true_positive_per_class_stat["mean"] = {}
+    true_positive_per_class_stat["std"] = {}
+    true_positive_per_class_std_list = []
+    for ind, class_name in enumerate(dataset.classes):
+        true_positive_per_class_stat["mean"][class_name] = np.mean(true_positive_per_class_stat[class_name])
+        if args.repeat_num <= 1:
+            true_positive_per_class_stat["std"][class_name] = 0
+        else:
+            true_positive_per_class_stat["std"][class_name] = np.std(true_positive_per_class_stat[class_name], ddof=1)
+        true_positive_per_class_std_list.append(true_positive_per_class_stat["std"][class_name])
+    true_positive_per_class_stat["std"]["MEAN"] = np.mean(true_positive_per_class_std_list)
+    true_positive_per_class_stat["std"]["STD"] = np.std(true_positive_per_class_std_list, ddof=1)
 
-    # else:
-    #     cls_logits_collection = np.concatenate(cls_logits_collection)
-    #     if args.score_heur == "soft_label":
-    #         cls_logits_ensemble = np.mean(cls_logits_collection, axis=0)
-    #         pred_labels = np.argmax(cls_logits_ensemble, -1)  # (num_samples,)
-    #     elif args.score_heur == "label":
-    #         pred_labels_all = np.argmax(cls_logits_collection, -1)
-    #         pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
-    #     else:
-    #         raise ValueError("Unknown score heuristic")
-    #
-    #     overall_acc, acc_per_class = evaluate_classification(
-    #         dataset_collection[0], pred_labels,
-    #         output_dir=output_dir,
-    #         vis_dir=vis_dir)
+    order = np.argsort(-np.array(overall_acc_collection))
+    overall_acc_ensemble_collection = {}
+    acc_per_class_ensemble_collection = {}
+    for num_remain in range(1, len(overall_acc_collection) + 1):
+        cls_preds_collection_remain = []
+        for i in range(num_remain):
+            cls_preds_collection_remain.append(cls_preds_collection[order[i]])
+        cls_preds_collection_remain = np.concatenate(cls_preds_collection_remain)
+        if args.score_heur == "label":
+            pred_labels_all = cls_preds_collection_remain
+            pred_labels = stats.mode(pred_labels_all, axis=0)[0].squeeze(0)
+        else:
+            raise ValueError("Unknown score heuristic")
+
+        overall_acc, acc_per_class, true_positive_per_class_ensemble = evaluate_classification(
+            dataset_collection[0], pred_labels,
+            vis_dir=vis_dir,
+            suffix=args.score_heur,
+        )
+        overall_acc_ensemble_collection[num_remain] = overall_acc
+        acc_per_class_ensemble_collection[num_remain] = acc_per_class
 
     logger.info("Overall accuracy for [{}] times repetition:".format(args.repeat_num))
     logger.info(",".join("{:.4f}".format(x) for x in overall_acc_collection))
@@ -139,12 +151,18 @@ def ensemble_test(args, cfg):
         np.mean(acc_per_class_collection), np.std(acc_per_class_collection, ddof=1)))
 
     logger.info("Ensemble result: ")
-    logger.info("Overall accuracy: {:.2f}%".format(100.0 * overall_acc))
-    logger.info("Average class accuracy: {:.2f}%".format(100.0 * acc_per_class))
-
+    # logger.info("Overall accuracy: {:.2f}%".format(100.0 * overall_acc))
+    # logger.info("Average class accuracy: {:.2f}%".format(100.0 * acc_per_class))
+    table = PrettyTable(["Remain Num", "Overall Acc", "Acc per Cls"])
+    for num_remain in range(1, len(overall_acc_collection) + 1):
+        table.add_row([num_remain, "{:.4f}".format(overall_acc_ensemble_collection[num_remain]),
+                       "{:.4f}".format(acc_per_class_ensemble_collection[num_remain])])
+    logger.info("\n{}".format(table))
     shutdown_logger(logger)
 
-    return overall_acc, acc_per_class, overall_acc_collection, acc_per_class_collection
+    return overall_acc_ensemble_collection[len(overall_acc_collection)], \
+           acc_per_class_ensemble_collection[len(overall_acc_collection)], \
+           overall_acc_collection, acc_per_class_collection, true_positive_per_class_stat
 
 
 def main():

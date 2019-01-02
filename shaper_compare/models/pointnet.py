@@ -21,7 +21,7 @@ class PointNetFeature(nn.Module):
                  global_channels=(512, 256),
                  dropout_prob=0.5,
                  with_transform=True,
-                 bn_momentum=0.1):
+                 bn_momentum=0.01):
         super(PointNetFeature, self).__init__()
 
         self.in_channels = in_channels

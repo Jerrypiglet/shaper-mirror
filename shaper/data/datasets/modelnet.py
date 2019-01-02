@@ -2,6 +2,7 @@ import os.path as osp
 
 import h5py
 import numpy as np
+from prettytable import PrettyTable
 
 from torch.utils.data import Dataset
 
@@ -87,11 +88,38 @@ class ModelNet(Dataset):
     def __len__(self):
         return len(self.meta_data)
 
+    def get_stat(self):
+        title = ["Label", "Class"]
+        num_per_class = {}
+
+        for dataset_name, split_fname in self.dataset_map.items():
+            title.append(dataset_name)
+            num_per_class[dataset_name] = [0] * len(self.classes)
+            split_fname = osp.join(self.root_dir, self.dataset_map[dataset_name])
+            fname_list = [line.rstrip() for line in open(split_fname)]
+            for fname in fname_list:
+                data_path = osp.join(self.root_dir, osp.basename(fname))
+                with h5py.File(data_path) as fid:
+                    label = fid['label'][:].squeeze(1)
+                    for l in label:
+                        num_per_class[dataset_name][l] += 1
+
+        table = PrettyTable(title)
+        table.align = 'l'
+        for cls_ind in range(len(self.classes)):
+            row = [cls_ind, self.classes[cls_ind]]
+            for dataset_name in self.dataset_map.keys():
+                row.append(num_per_class[dataset_name][cls_ind])
+            table.add_row(row)
+
+        print("ModelNet40:\n{}".format(table))
+
 
 if __name__ == "__main__":
-    root_dir = "../../../data/modelnet40"
+    root_dir = "/home/rayc/Projects/shaper/data/modelnet40"
     modelnet = ModelNet(root_dir, ['train'])
-    print('total data num: ', modelnet.__len__())
+    modelnet.get_stat()
+    # print('total data num: ', modelnet.__len__())
     # print(modelnet[0][0].size(), modelnet[0][0].type())
     # print(modelnet[0])
     # Visualizer.visualize_pts(modelnet[0][0])

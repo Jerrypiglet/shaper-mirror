@@ -13,8 +13,11 @@ from itertools import chain
 # 10 classes for few-shot
 # ["bathtub", "bed", "chair", "desk", "dresser",
 #  "monitor", "night_stand", "sofa", "table", "toilet"]
-FEWSHOT_LABEL_INDS = [1, 2, 8, 12, 14, 22, 23, 30, 33, 35]
-SOURCE_DIR = "."
+# FEWSHOT_LABEL_INDS = [1, 2, 8, 12, 14, 22, 23, 30, 33, 35]
+
+# only for resplit
+FEWSHOT_LABEL_INDS = [0, 4, 5, 7, 16, 17, 21, 25, 36, 37]
+SOURCE_DIR = "/home/rayc/Projects/shaper/data/modelnet40"
 # Download dataset if necessary
 if not osp.exists(SOURCE_DIR):
     www = 'https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip'
@@ -48,7 +51,7 @@ def set_train_label(label, fewshot_label_inds):
                 larger_than_all = False
                 break
         if larger_than_all:
-            label[i] -= 10
+            label[i] -= len(fewshot_label_inds)
     return label
 
 
@@ -286,7 +289,7 @@ if __name__ == "__main__":
     generator = ModelNetFewShotGenerator(
         fewshot_label_inds=FEWSHOT_LABEL_INDS,
         source_dir=SOURCE_DIR,
-        target_dir='modelnet40_fewshot',
+        target_dir='/home/rayc/Projects/shaper/data/modelnet40/modelnet40_fewshot_resplit',
         num_per_class=1,
         cross_num=10, force=False
     )

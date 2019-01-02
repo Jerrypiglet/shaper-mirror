@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CFG="/home/rayc/Projects/shaper/configs/few_shot/pointnet/pointnet_fewshot_target_cls_onelayer_freeze_last.yaml"
+CFG="/home/rayc/Projects/shaper/configs/few_shot/pointnet/pointnet_target_cls_1shot_freeze_last.yaml"
 
 for i in 0 1 2 3 4 5 6 7 8 9
 do

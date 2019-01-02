@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument(
         "--cfg",
         dest="config_file",
-        default="/home/rayc/Projects/shaper/configs/few_shot/pointnet_fewshot_target_cls_best.yaml",
+        default="/home/rayc/Projects/shaper/configs/few_shot/pointnet/pointnet_target_cls_1shot_best.yaml",
         metavar="FILE",
         help="path to config file",
         type=str,
@@ -141,7 +141,24 @@ def ensemble_test(args, cfg):
         )
 
     else:
-        order = np.argsort(-np.array(overall_acc_collection))
+
+        cls_logits_collection_all = np.concatenate(cls_logits_collection)
+        cls_probs_all = np_softmax(np.asarray(cls_logits_collection_all))
+        cls_logit_ensemble_all = np.mean(cls_logits_collection_all, axis=0)
+        pred_prob_ensemble_all = np_softmax(cls_logit_ensemble_all)
+        table = PrettyTable(["Rep", "Acc", "KL"])
+        # print("233333333333333333333333")
+        KL_divergence_collection = []
+        for i in range(args.repeat_num):
+            cls_probs = cls_probs_all[i, ...]
+            kl_diverg = np.mean(np.sum(cls_probs * np.log(cls_probs / pred_prob_ensemble_all), axis=-1), axis=0)
+            KL_divergence_collection.append(kl_diverg)
+            # print("Rep_{}: Acc: {:.4f}, KL_diverge: {:.4f}".format(i, overall_acc_collection[i], kl_diverg))
+            table.add_row([i, "{:.4f}".format(overall_acc_collection[i]), "{:.4f}".format(kl_diverg)])
+        logger.info("Accuracy v.s. KL ensemble")
+        logger.info("\n{}".format(table))
+        order = np.argsort(np.array(KL_divergence_collection))
+        # order = np.argsort(-np.array(overall_acc_collection))
         overall_acc_ensemble_collection = {}
         acc_per_class_ensemble_collection = {}
         for num_remain in range(1, len(overall_acc_collection)+1):
@@ -164,12 +181,9 @@ def ensemble_test(args, cfg):
 
             overall_acc, acc_per_class, true_positive_per_class_ensemble = evaluate_classification(
                 dataset_collection[0], pred_labels,
-                output_dir=output_dir,
                 vis_dir=vis_dir)
             overall_acc_ensemble_collection[num_remain] = overall_acc
             acc_per_class_ensemble_collection[num_remain] = acc_per_class
-
-
 
     logger.info("Overall accuracy for [{}] times repetition:".format(args.repeat_num))
     logger.info(",".join("{:.4f}".format(x) for x in overall_acc_collection))
