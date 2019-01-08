@@ -156,10 +156,13 @@ def evaluate_part_segmentation(dataset,
         # sanity check
         num_valid_points = len(points)
         assert len(gt_seg_label) == num_valid_points
-        assert pred_seg_logit.shape[1] >= num_valid_points
+        # assert pred_seg_logit.shape[1] >= num_valid_points
 
         segids = class_to_seg_map[gt_cls_label]
+        num_valid_points = min(pred_seg_logit.shape[1], num_valid_points)
         pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
+        gt_seg_label = gt_seg_label[:num_valid_points]
+
         # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
         pred_seg_label = np.argmax(pred_seg_logit, axis=0)
         for ind, segid in enumerate(segids):

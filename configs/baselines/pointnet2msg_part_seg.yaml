@@ -11,8 +11,8 @@ DATASET:
   TYPE: "ShapeNetNormal"
   NUM_CLASSES: 16
   NUM_SEG_CLASSES: 50
-  TRAIN: ("train",)
-  VAL: ("val",)
+  TRAIN: ("train", "val",)
+  VAL: () # ("val",)
   TEST: ("test",)
 DATALOADER:
   # Use more dataloaders because ShapeNetNormal has many small files.
@@ -27,7 +27,7 @@ TRAIN:
   AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)
   SEG_AUGMENTATION: ("PointCloudShuffle", "PointCloudRandomInputDropout")
   LOG_PERIOD: 50
-  VAL_PERIOD: 1
+  VAL_PERIOD: 0 #1
 TEST:
   BATCH_SIZE: 32
   VOTE:
