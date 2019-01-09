@@ -34,6 +34,7 @@ class TNet(nn.Module):
         self.edge_conv = SharedMLP(2 * in_channels, conv_channels, ndim=2)
         self.mlp_local = SharedMLP(conv_channels[-1], local_channels)
         self.mlp_global = MLP(local_channels[-1], global_channels)
+
         self.linear = nn.Linear(global_channels[-1], self.in_channels * out_channels, bias=True)
 
         self.init_weights()
@@ -73,9 +74,9 @@ class DGCNNPartSeg(nn.Module):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 edge_conv_channels=(64, 64, 64, 64, 64, 64),
+                 edge_conv_channels=((64, 64), (64, 64), 64),
                  inter_channels= 1024,
-                 global_channels=(256, 256, 128),
+                 global_channels=(192, 256, 128),
                  k=20,
                  dropout_prob=0.6,
                  with_transform=True):
@@ -92,19 +93,60 @@ class DGCNNPartSeg(nn.Module):
         
         self.mlp_edge_conv = nn.ModuleList()
         for out_channels in edge_conv_channels:
-            self.mlp_edge_conv.append(EdgeConvBlockV2(in_channels, out_channels, k))
+            self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out_channels, k))
             in_channels = out_channels
         
         self.mlp_local = Conv1d(sum(edge_conv_channels)/2, inter_channels, 1)
-        self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob)
+        self.mlp_seg = SharedMLP(in_channels, global_channels, dropout=dropout_prob)
+        self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1)
 
-        self.classifier = nn.Linear(global_channels[-1])
+        self.lable_conv = Conv1d(out_channels, 64, 1)
+        self.seg_logit = nn.Conv1d(seg_channels[-1], out_channels, 1, bias=True)
 
         self.init_weights()
         set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         #specify computing process
+        end_points = {}
+        x = data_batch["points"]
+        label = data_batch["label"]
+
+        if self.with_transform:
+            trans_input = self.transform_input(x)
+            x = torch.bmm(trans_input, x)
+            end_points['trans_input'] = trans_input
+
+        features = []
+        for edge_conv in self.mlp_edge_conv:
+            x = edge_conv(x)
+            features.append(x)
+
+        x = torch.cat(features, dim=1)
+
+        x = self.mlp_local(x)
+
+        x, max_indice = torch.max(x, 2)
+        end_points['key_point_inds'] = max_indice
+
+        one_hot_label_expand = # reshape one hot vector 
+        one_hot_label_expand = self.lable_conv(one_hot_label_expand)
+
+        out_max = torch.cat(x, one_hot_label_expand)
+        #change size of out_max
+        x = torch.cat(expand, x)
+
+        
+        x = self.mlp_seg(x)
+        x = self.conv_seg(x)
+        x = self.classifier(x)
+        seg_logit = self.seg_logit(x)
+        preds = {
+            'seg_logit': seg_logit
+        }
+        preds.update(end_points)
+
+        return preds
     
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
