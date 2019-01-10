@@ -16,7 +16,7 @@ from shaper.models.pointnet2.modules import PointNetSAModuleMSG, PointnetFPModul
 from shaper.nn.init import set_bn
 
 
-class Pointnet2MSGSemSeg(nn.Module):
+class PointNet2MSGSemSeg(nn.Module):
     """ PointNet2 with multi-scale grouping for semantic segmentation
 
     Structure: input -> [PointNetSA(MSG)]s -> [PointNetFP]s -> [FC layer]s
@@ -80,21 +80,21 @@ class Pointnet2MSGSemSeg(nn.Module):
         num_sa_layers = len(num_centroids)
         num_fp_layers = len(fp_channels)
         assert len(radius_list) == num_sa_layers, \
-                "The number of lists of radii should be the same as the size of num_centroids." +
-                "Got {} and {}".format(len(radius_list), num_sa_layers)
+                """The number of lists of radii should be equal to the size of num_centroids.
+                Got {} and {}""".format(len(radius_list), num_sa_layers)
         assert len(num_neighbours_list) == num_sa_layers, \
-                "The number of lists of num_neighbors should be the same as the size of num_centroids." +
-                "Got {} and {}".format(len(num_neighbours_list), num_sa_layers)
+                """The number of lists of num_neighbors should be equal to the size of num_centroids.
+                Got {} and {}""".format(len(num_neighbours_list), num_sa_layers)
         assert len(sa_channels_list) == num_sa_layers, \
-                "The number of lists of set abstraction channels should be the same as the size of num_centroids." +
-                "Got {} and {}".format(len(sa_channels_list), num_sa_layers)
-        assert (num_sa_layers + 1) == num_fp_layers, \  # SA layer + Local feature extraction layer = FP layers
-                "The size of num_centroids should be one less than the size of the list of fp channels." +
-                "Got {} and {}".format(num_sa_layers, num_fp_layers)
+                """The number of lists of set abstraction channels should be equal to the size of num_centroids.
+                Got {} and {}""".format(len(sa_channels_list), num_sa_layers)
+        assert num_sa_layers == num_fp_layers, \
+                """The size of num_centroids should be equal to the size of the list of fp channels.
+                Got {} and {}""".format(num_sa_layers, num_fp_layers)
         assert len(num_fp_neighbours) == num_fp_layers, \
-                "The size of num_fp_neighbours should be one less than the size of the list of fp channels." +
-                "Got {} and {}".format(num_sa_layers, num_fp_layers)
-
+                """The size of num_fp_neighbours should be equal to the size of the list of fp channels.
+                Got {} and {}""".format(num_sa_layers, num_fp_layers)
+        
         # Set Abstraction Layers
         feature_channels = in_channels - 3
         self.sa_modules = nn.ModuleList()
