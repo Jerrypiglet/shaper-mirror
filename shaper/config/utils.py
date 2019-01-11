@@ -19,6 +19,7 @@ def load_cfg_from_file(cfg_filename, purge=False):
     with open(cfg_filename, "r") as f:
         cfg = load_cfg(f)
     assert cfg.TASK, "Task should be provided in config."
+    #print('.'+cfg.TASK)
     cfg_module = importlib.import_module('.' + cfg.TASK, "shaper.config")
     # exec("from .{} import _C as cfg_template".format(cfg.TASK))
     cfg_template = cfg_module._C

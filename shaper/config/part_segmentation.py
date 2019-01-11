@@ -28,3 +28,18 @@ _C.MODEL.POINTNET.WITH_TRANSFORM = True
 _C.MODEL.POINTNET.REG_WEIGHT = 0.032
 _C.MODEL.POINTNET.CLS_LOSS_WEIGHT = 0.0
 _C.MODEL.POINTNET.SEG_LOSS_WEIGHT = 1.0
+
+
+#------------------------------------------------------------------------------
+# DGCNN options
+#------------------------------------------------------------------------------
+
+_C.MODEL.DGCNN.DROPOUT_PROB_CLS = 0.3
+_C.MODEL.DGCNN.DROPOUT_PROB_SEG = 0.2
+_C.MODEL.DGCNN.WITH_TRANSFORM = True
+
+_C.MODEL.DGCNN.REG_WEIGHT = 0.032
+_C.MODEL.DGCNN.CLS_LOSS_WEIGHT = 0.0
+_C.MODEL.DGCNN.SEG_LOSS_WEIGHT = 1.0
+
+
