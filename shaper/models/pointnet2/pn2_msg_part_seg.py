@@ -35,8 +35,9 @@ class PointNet2MSGPartSeg(nn.Module):
                          ((32, 32, 64), (64, 64, 128), (64, 96, 128)),
                          ((128, 128, 256), (128, 196, 256))),
                  local_channels=(256, 512, 1024),
-                 fp_channels=((256, 256), (256, 128), (128, 128)),
-                 num_fp_neighbours=(3, 3, 3),
+                 fp_local_channels=(256, 256),
+                 fp_channels=((256, 128), (128, 128)),
+                 num_fp_neighbours=(3, 3),
                  seg_channels=(128,),
                  dropout_prob=0.5,
                  use_xyz=True):
@@ -70,7 +71,7 @@ class PointNet2MSGPartSeg(nn.Module):
         assert len(radius_list) == num_sa_layers
         assert len(num_neighbours_list) == num_sa_layers
         assert len(sa_channels_list) == num_sa_layers
-        assert (num_sa_layers + 1) == num_fp_layers  # SA layer + Local feature extraction layer = FP layers
+        assert num_sa_layers == num_fp_layers
         assert len(num_fp_neighbours) == num_fp_layers
 
         # Set Abstraction Layers
@@ -91,21 +92,23 @@ class PointNet2MSGPartSeg(nn.Module):
             feature_channels += 3
         self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
 
-        # Feature Propagation Layers
-        feature_channels = local_channels[-1]
         inter_channels = [in_channels if use_xyz else in_channels - 3]
         inter_channels[0] += num_classes  # concat with one-hot
-        inter_channels.extend([sa_modules.out_channels for sa_modules in self.sa_modules])
+        inter_channels.extend([sa_module.out_channels for sa_module in self.sa_modules])
+        # Local Feature Propagation Layers
+        self.mlp_local_fp = SharedMLP(local_channels[-1] + inter_channels[-1], fp_local_channels, bn=True)
+
+        # Feature Propagation Layers
         self.fp_modules = nn.ModuleList()
+        feature_channels = fp_local_channels[-1]
         for ind in range(num_fp_layers):
-            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-1 - ind],
+            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-2 - ind],
                                          mlp_channels=fp_channels[ind],
                                          num_neighbors=num_fp_neighbours[ind])
             self.fp_modules.append(fp_module)
             feature_channels = fp_channels[ind][-1]
 
         # Fully Connected Layers
-        feature_channels = fp_channels[-1][-1]
         self.mlp_seg = SharedMLP(feature_channels, seg_channels, ndim=1, dropout=dropout_prob)
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
@@ -145,19 +148,25 @@ class PointNet2MSGPartSeg(nn.Module):
         if self.use_xyz:
             feature = torch.cat([xyz, feature], dim=1)
         feature = self.mlp_local(feature)
+        global_feature, _ = torch.max(feature, 2)
+
+        # Local Feature Propagation Layers
+        global_feature_expand = global_feature.unsqueeze(2).expand(-1, -1, inter_xyz[-1].size(2))
+        feature = torch.cat([global_feature_expand, inter_feature[-1]], dim=1)
+        feature = self.mlp_local_fp(feature)
 
         # Feature Propagation Layers
-        dense_xyz = xyz
-        dense_feature = feature
+        key_xyz = xyz
+        key_feature = feature
         for fp_ind, fp_module in enumerate(self.fp_modules):
-            sparse_xyz = inter_xyz[-1 - fp_ind]
-            sparse_feature = inter_feature[-1 - fp_ind]
-            fp_feature = fp_module(sparse_xyz, dense_xyz, sparse_feature, dense_feature)
-            dense_xyz = sparse_xyz
-            dense_feature = fp_feature
+            query_xyz = inter_xyz[-2 - fp_ind]
+            query_feature = inter_feature[-2 - fp_ind]
+            fp_feature = fp_module(query_xyz, key_xyz, query_feature, key_feature)
+            key_xyz = query_xyz
+            key_feature = fp_feature
 
         # Fully Connected Layers
-        x = self.mlp_seg(dense_feature)
+        x = self.mlp_seg(key_feature)
         seg_logit = self.seg_logit(x)
 
         preds = {

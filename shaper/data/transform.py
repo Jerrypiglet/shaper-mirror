@@ -193,7 +193,7 @@ class PointCloudJitter(object):
 # Transformation related to points and point-wise labels
 # ---------------------------------------------------------------------------- #
 class PointCloudRandomInputDropout(object):
-    def __init__(self, max_dropout_ratio=0.95, **kwargs):
+    def __init__(self, max_dropout_ratio=0.875, **kwargs):
         assert 0 <= max_dropout_ratio < 1
         self.max_dropout_ratio = max_dropout_ratio
 

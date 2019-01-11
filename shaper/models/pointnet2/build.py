@@ -71,6 +71,7 @@ def build_pointnet2msg(cfg):
             num_neighbours_list=cfg.MODEL.PN2MSG.NUM_NEIGHBOURS_LIST,
             sa_channels_list=cfg.MODEL.PN2MSG.SA_CHANNELS_LIST,
             local_channels=cfg.MODEL.PN2MSG.LOCAL_CHANNELS,
+            fp_local_channels=cfg.MODEL.PN2MSG.FP_LOCAL_CHANNELS,
             fp_channels=cfg.MODEL.PN2MSG.FP_CHANNELS,
             num_fp_neighbours=cfg.MODEL.PN2MSG.NUM_FP_NEIGHBOURS,
             seg_channels=cfg.MODEL.PN2MSG.SEG_CHANNELS,
