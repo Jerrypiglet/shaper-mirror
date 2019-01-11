@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.models.dgcnn.functions import get_edge_feature
-from shaper.models.dgcnn.modules import EdgeConvBlockV2
+from shaper.models.dgcnn.modules import EdgeConvBlock
 from shaper.nn.init import set_bn
 
 class TNet(nn.Module):
@@ -74,7 +74,7 @@ class DGCNNPartSeg(nn.Module):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 edge_conv_channels=((64, 64), (64, 64), 64),
+                 edge_conv_channels=((64, 64), (64, 64), (64,)),
                  inter_channels= 1024,
                  global_channels=(192, 256, 128),
                  k=20,
@@ -89,20 +89,22 @@ class DGCNNPartSeg(nn.Module):
 
         #input transform
         if self.with_transform:
-            self.transform_input = TNet(inchannels, inter_channels, k=k)
+            self.transform_input = TNet(in_channels, inter_channels, k=k)
         
         self.mlp_edge_conv = nn.ModuleList()
-        for out_channels in edge_conv_channels:
-            self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out_channels, k))
-            in_channels = out_channels
+        for out in edge_conv_channels:
+            self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out, k))
+            if type(out) == int:
+                in_channels = out 
+            else: 
+                in_channels = out[-1]
         
-        self.mlp_local = Conv1d(sum(edge_conv_channels)/2, inter_channels, 1)
+        self.mlp_local = Conv1d(sum([item[-1] for item in edge_conv_channels]), inter_channels, 1)
         self.mlp_seg = SharedMLP(in_channels, global_channels, dropout=dropout_prob)
         self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1)
 
         self.lable_conv = Conv1d(out_channels, 64, 1)
-        self.seg_logit = nn.Conv1d(seg_channels[-1], out_channels, 1, bias=True)
-
+        self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
         self.init_weights()
         set_bn(self, momentum=0.01)
 
@@ -129,7 +131,7 @@ class DGCNNPartSeg(nn.Module):
         x, max_indice = torch.max(x, 2)
         end_points['key_point_inds'] = max_indice
 
-        one_hot_label_expand = # reshape one hot vector 
+        one_hot_label_expand = one_hot_label_expand.view(x.size()[0], 1, 1, -1) # reshape one hot vector 
         one_hot_label_expand = self.lable_conv(one_hot_label_expand)
 
         out_max = torch.cat(x, one_hot_label_expand)
@@ -139,8 +141,7 @@ class DGCNNPartSeg(nn.Module):
         
         x = self.mlp_seg(x)
         x = self.conv_seg(x)
-        x = self.classifier(x)
-        seg_logit = self.seg_logit(x)
+        seg_logit = self.classifier(x)
         preds = {
             'seg_logit': seg_logit
         }
