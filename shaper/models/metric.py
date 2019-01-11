@@ -65,12 +65,13 @@ class PartSegMetric(nn.Module):
     def __init__(self, num_seg_classes):
         super(PartSegMetric, self).__init__()
         self.seg_acc = SegAccuracy()
-        self.seg_iou = IntersectionAndUnion(num_seg_classes)
+        # Disable IOU metric since it is inconsistent with ShapeNet IOU metric.
+        # self.seg_iou = IntersectionAndUnion(num_seg_classes)
 
     def forward(self, preds, labels):
         metrics = self.seg_acc(preds, labels)
-        if not self.training:
-            metrics.update(self.seg_iou(preds, labels))
+        # if not self.training:
+        #     metrics.update(self.seg_iou(preds, labels))
         return metrics
 
 
@@ -86,8 +87,8 @@ class IntersectionAndUnion(nn.Module):
     So:
     union = TP + FP + FN = total number of predictions + total number of labels - TP
 
-    In this module, we compute the class-wise intersection over union over a batch.
-    It is an estimation of per-instance IOU.
+    In this module, we compute the class-wise intersection and union over a batch.
+    When reduction is "mean", it will give mean IOU over valid classes.
 
     References: https://github.com/CSAILVision/semantic-segmentation-pytorch/blob/master/utils.py
 

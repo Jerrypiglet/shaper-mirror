@@ -1,5 +1,4 @@
-"""
-Build models
+"""Build models
 
 Notes:
     When a new model is implemented, please provide a builder to build the model with config,

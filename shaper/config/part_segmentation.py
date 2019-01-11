@@ -2,9 +2,12 @@
 
 from .base import CN, _C
 
+# public alias
+cfg = _C
+
 _C.TASK = "part_segmentation"
 
-_C.TRAIN.VAL_METRIC = "IOU"
+_C.TRAIN.VAL_METRIC = "seg_acc"
 
 # -----------------------------------------------------------------------------
 # Dataset

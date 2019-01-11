@@ -3,10 +3,11 @@
 # however, it is written for possible discrepancy of functions.
 import argparse
 import os.path as osp
+import importlib
 
 import torch
 
-from shaper.config import load_cfg_from_file
+from shaper.config import purge_cfg
 from shaper.engine.tester import test
 from shaper.utils.io import mkdir
 from shaper.utils.logger import setup_logger
@@ -20,6 +21,14 @@ def parse_args():
         default="",
         metavar="FILE",
         help="path to config file",
+        type=str,
+    )
+    parser.add_argument(
+        "-t",
+        "--task",
+        dest="task",
+        default="classification",
+        help="task to train or test",
         type=str,
     )
     parser.add_argument(
@@ -37,8 +46,10 @@ def main():
     args = parse_args()
     num_gpus = torch.cuda.device_count()
 
-    cfg = load_cfg_from_file(args.config_file, purge=True)
+    cfg = importlib.import_module("shaper.config.{:s}".format(args.task)).cfg
+    cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    purge_cfg(cfg)
     cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR

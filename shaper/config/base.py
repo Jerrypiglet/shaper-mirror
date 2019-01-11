@@ -29,6 +29,8 @@ _C.INPUT = CN()
 
 _C.INPUT.IN_CHANNELS = 3
 _C.INPUT.NUM_POINTS = -1
+# Whether to use normal
+_C.INPUT.USE_NORMAL = False
 
 # -----------------------------------------------------------------------------
 # Dataset
@@ -100,6 +102,9 @@ _C.TRAIN.VAL_METRIC = ""
 # Data augmentation. The format is "method" or ("method", *args)
 # For example, ("PointCloudRotate", ("PointCloudRotatePerturbation",0.1, 0.2))
 _C.TRAIN.AUGMENTATION = ()
+
+# Regex patterns of modules and/or parameters to freeze
+_C.TRAIN.FROZEN_PATTERNS = ()
 
 # ---------------------------------------------------------------------------- #
 # Specific test options

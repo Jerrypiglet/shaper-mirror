@@ -6,6 +6,7 @@ from torch import nn
 
 from shaper.models import build_model
 from shaper.solver import build_optimizer
+from shaper.nn.freezer import Freezer
 from shaper.data import build_dataloader
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
@@ -17,10 +18,13 @@ def train_model(model,
                 metric_fn,
                 data_loader,
                 optimizer,
+                freezer=None,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
     model.train()
+    if freezer is not None:
+        freezer.freeze()
     metric_fn.train()
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
@@ -127,6 +131,13 @@ def train(cfg, output_dir=""):
     checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME)
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD
 
+    # build freezer
+    if cfg.TRAIN.FROZEN_PATTERNS:
+        freezer = Freezer(model, cfg.TRAIN.FROZEN_PATTERNS)
+        freezer.freeze(verbose=True)  # sanity check
+    else:
+        freezer = None
+
     # build data loader
     train_data_loader = build_dataloader(cfg, mode="train")
     val_period = cfg.TRAIN.VAL_PERIOD
@@ -150,6 +161,7 @@ def train(cfg, output_dir=""):
                                    metric_fn,
                                    train_data_loader,
                                    optimizer=optimizer,
+                                   freezer=freezer,
                                    log_period=cfg.TRAIN.LOG_PERIOD,
                                    )
         epoch_time = time.time() - start_time

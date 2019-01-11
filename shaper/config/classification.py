@@ -2,6 +2,9 @@
 
 from .base import CN, _C
 
+# public alias
+cfg = _C
+
 _C.TASK = "classification"
 
 _C.TRAIN.VAL_METRIC = "cls_acc"

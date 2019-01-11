@@ -36,6 +36,7 @@ def evaluate_classification(dataset,
     dataset.transform = None
     # use valid points
     dataset.num_points = -1
+    dataset.shuffle_points = False
 
     # aliases
     num_samples = len(dataset)
@@ -46,7 +47,7 @@ def evaluate_classification(dataset,
 
     num_tp_per_class = defaultdict(int)
     # the number of ground_truth/positive
-    num_gt = defaultdict(int)
+    num_gt_per_class = defaultdict(int)
 
     for ind in tqdm(range(num_samples)):
         data = dataset[ind]
@@ -55,7 +56,7 @@ def evaluate_classification(dataset,
 
         # Guarantee that seen classes are keys
         num_tp_per_class[gt_label] += (gt_label == pred_label)
-        num_gt[gt_label] += 1
+        num_gt_per_class[gt_label] += 1
 
         if pred_label != gt_label and vis_dir:
             fname = "{:04d}_label_{}_pred_{}" + suffix
@@ -72,6 +73,7 @@ def evaluate_classification(dataset,
             # point clouds
             if aux_preds is not None and "key_point_inds" in aux_preds:
                 point_colors = np.ones([num_points, 3], dtype=points.dtype)
+                # TODO: remove invalid index
                 cur_keypoint_inds = aux_preds["key_point_inds"][ind]
                 point_colors[cur_keypoint_inds, ...] = [1, 0, 0]
                 points = np.concatenate((points, point_colors), -1)
@@ -80,7 +82,7 @@ def evaluate_classification(dataset,
 
     # Overall accuracy
     total_tp = sum(num_tp_per_class.values())
-    assert sum(num_gt.values()) == num_samples
+    assert sum(num_gt_per_class.values()) == num_samples
     overall_acc = total_tp / num_samples
     logger.info("overall accuracy={:.2f}%".format(100.0 * overall_acc))
 
@@ -88,16 +90,23 @@ def evaluate_classification(dataset,
     acc_per_class = []
     table = PrettyTable(["Class", "Accuracy", "Correct", "Total"])
     for ind, class_name in enumerate(class_names):
-        if ind in num_gt:  # seen class
-            acc = num_tp_per_class[ind] / num_gt[ind]
+        if ind in num_gt_per_class:  # seen class
+            acc = num_tp_per_class[ind] / num_gt_per_class[ind]
             acc_per_class.append(acc)
             table.add_row([class_name, "{:.2f}".format(100.0 * acc),
                            num_tp_per_class[ind],
-                           num_gt[ind]])
+                           num_gt_per_class[ind]])
         else:
             table.add_row([class_name, 0, 0, 0])
     logger.info("average class accuracy={:.2f}%.\n{}".format(
         100.0 * np.mean(acc_per_class), table))
+
+    return {"overall_acc": overall_acc,
+            "acc_per_class": acc_per_class,
+            "num_tp_per_class": num_tp_per_class,
+            "num_gt_per_class": num_gt_per_class,
+            "class_names": class_names,
+            }
 
 
 def evaluate_part_segmentation(dataset,
@@ -124,6 +133,7 @@ def evaluate_part_segmentation(dataset,
     dataset.transform = None
     # use valid points
     dataset.num_points = -1
+    dataset.shuffle_points = False
 
     # aliases
     num_samples = len(dataset)
