@@ -65,7 +65,7 @@ def main():
     #     config_str = "\n" + fid.read()
     #     logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
-
+    logger.info("INT_CHANNEL IS {}, AND NUMCLASS IS {}",12 ,16)
     train(cfg, output_dir)
 
     if args.do_test:
