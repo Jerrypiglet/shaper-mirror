@@ -32,6 +32,7 @@ def build_pointnet2ssg(cfg):
             num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
             sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
             local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
+            fp_local_channels=cfg.MODEL.PN2SSG.FP_LOCAL_CHANNELS,
             fp_channels=cfg.MODEL.PN2SSG.FP_CHANNELS,
             num_fp_neighbours=cfg.MODEL.PN2SSG.NUM_FP_NEIGHBOURS,
             seg_channels=cfg.MODEL.PN2SSG.SEG_CHANNELS,

@@ -20,11 +20,13 @@ from shaper.nn.init import set_bn
 class PointNet2SSGPartSeg(nn.Module):
     """PointNet 2 part segmentation with single-scale grouping
 
-    Structure: input -> [PointNetSA]s -> [Local Feature Extraction Layer] ->
+    Structure: input -> [PointNetSA]s -> [Local Feature Extraction Layer] -> [Local Feature Propagation Layers]
                     [PointNetFP]s -> [FC layer]s
 
     PointNetSA: PointNet Set Abstraction Layer
     Local Feature Extraction Layer is a layer that converts the output of SAs to new features
+    Local Feature Propagation Layers will summarize the local feature into one and propagate this feature. Basically
+        this is a maxpooling layer + a feature propagation layer
     PointNetFP: PointNet Feature Propagation Layer
     """
 
@@ -37,8 +39,9 @@ class PointNet2SSGPartSeg(nn.Module):
                  num_neighbours=(64, 64),
                  sa_channels=((64, 64, 128), (128, 128, 256)),
                  local_channels=(256, 512, 1024),
-                 fp_channels=((256, 256), (256, 128), (128, 128, 128)),
-                 num_fp_neighbours=(3, 3, 3),
+                 fp_local_channels=(256, 256),
+                 fp_channels=((256, 128), (128, 128, 128)),
+                 num_fp_neighbours=(3, 3),
                  seg_channels=(128,),
                  dropout_prob=0.5,
                  use_xyz=True):
@@ -53,6 +56,7 @@ class PointNet2SSGPartSeg(nn.Module):
             num_neighbours (tuple of int): the numbers of neighbours to query for each centroid
             sa_channels (tuple of tuple of int): the numbers of channels within each set abstraction module
             local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
+            fp_local_channels (tuple of int): the number of channels for the local feature propagation layer
             fp_channels (tuple of tuple of int): the numbers of channels for feature propagation (FP) module
             num_fp_neighbours (tuple of int): the numbers of nearest neighbor used in FP
             seg_channels (tuple of int): the numbers of channels in segmentation mlp
@@ -72,8 +76,8 @@ class PointNet2SSGPartSeg(nn.Module):
         assert len(radius) == num_sa_layers
         assert len(num_neighbours) == num_sa_layers
         assert len(sa_channels) == num_sa_layers
-        assert (num_sa_layers + 1) == num_fp_layers  # SA layer + Local feature extraction layer = FP layers
         assert len(num_fp_neighbours) == num_fp_layers
+        assert num_sa_layers == num_fp_layers
 
         # Set Abstraction Layers
         feature_channels = in_channels - 3
@@ -93,21 +97,23 @@ class PointNet2SSGPartSeg(nn.Module):
             feature_channels += 3
         self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
 
-        # Feature Propagation Layers
-        feature_channels = local_channels[-1]
+        # Local Feature Propagation Layers
         inter_channels = [in_channels if use_xyz else in_channels - 3]
         inter_channels[0] += num_classes  # concat with one-hot
         inter_channels.extend([x[-1] for x in sa_channels])
+        self.mlp_local_fp = SharedMLP(local_channels[-1] + inter_channels[-1], fp_local_channels, bn=True)
+
+        # Feature Propagation Layers
         self.fp_modules = nn.ModuleList()
+        feature_channels = fp_local_channels[-1]
         for ind in range(num_fp_layers):
-            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-1 - ind],
+            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-2 - ind],
                                          mlp_channels=fp_channels[ind],
                                          num_neighbors=num_fp_neighbours[ind])
             self.fp_modules.append(fp_module)
             feature_channels = fp_channels[ind][-1]
 
         # Fully Connected Layers
-        feature_channels = fp_channels[-1][-1]
         self.mlp_seg = SharedMLP(feature_channels, seg_channels, ndim=1, dropout=dropout_prob)
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
@@ -147,13 +153,19 @@ class PointNet2SSGPartSeg(nn.Module):
         if self.use_xyz:
             feature = torch.cat([xyz, feature], dim=1)
         feature = self.mlp_local(feature)
+        global_feature, _ = torch.max(feature, 2)
+
+        # Local Feature Propagation Layers
+        global_feature_expand = global_feature.unsqueeze(2).expand(-1, -1, inter_xyz[-1].size(2))
+        feature = torch.cat([global_feature_expand, inter_feature[-1]], dim=1)
+        feature = self.mlp_local_fp(feature)
 
         # Feature Propagation Layers
         dense_xyz = xyz
         dense_feature = feature
         for fp_ind, fp_module in enumerate(self.fp_modules):
-            sparse_xyz = inter_xyz[-1 - fp_ind]
-            sparse_feature = inter_feature[-1 - fp_ind]
+            sparse_xyz = inter_xyz[-2 - fp_ind]
+            sparse_feature = inter_feature[-2 - fp_ind]
             fp_feature = fp_module(sparse_xyz, dense_xyz, sparse_feature, dense_feature)
             dense_xyz = sparse_xyz
             dense_feature = fp_feature
