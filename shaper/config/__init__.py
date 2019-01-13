@@ -1,9 +1,4 @@
-"""Configuration
-
-The current mode is to load a config.yaml first, and then dynamically load the corresponding configuration.
-The alternative is to use cfg.merge_from_file(args.config_file) if there is only one task.
-
-"""
+"""Configuration"""
 
 from yacs.config import CfgNode
 
@@ -12,7 +7,7 @@ def purge_cfg(cfg):
     """Purge configuration
 
     The rules to purge is:
-    1. If a CfgNode has "TYPE" attribute, remove its CfgNode children the key of which do not contain "TYPE".
+    1. If a CfgNode has "TYPE" attribute, remove its CfgNode children the key of which do not start with "TYPE".
 
     Args:
         cfg (CfgNode): input config
@@ -22,9 +17,10 @@ def purge_cfg(cfg):
     removed_keys = []
     for k, v in cfg.items():
         if isinstance(v, CfgNode):
-            if target_key is not None and (k not in target_key):
+            if target_key is not None and (not k.startswith(target_key)):
                 removed_keys.append(k)
             else:
+                # Recursive purge
                 purge_cfg(v)
 
     for k in removed_keys:

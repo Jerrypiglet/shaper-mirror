@@ -26,6 +26,11 @@ def crop_or_pad_points(points, num_points=-1, shuffle=False):
             pad = np.random.choice(choice, num_pad, replace=True)
             choice = np.concatenate([choice, pad])
     points = points[choice]
+
+    # Pad with replacement (used in original PointNet++)
+    # choice = np.random.choice(len(points), num_points, replace=True)
+    # points = points[choice]
+
     return points, choice
 
 

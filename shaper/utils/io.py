@@ -1,14 +1,9 @@
 import os
-import errno
 import pickle
 
 
 def mkdir(path):
-    try:
-        os.makedirs(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
+    os.makedirs(path, exist_ok=True)
 
 
 def write_pkl(obj, fname):

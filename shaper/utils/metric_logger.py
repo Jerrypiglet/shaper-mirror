@@ -1,4 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+# Modified by Jiayuan Gu
+from __future__ import division
 from collections import defaultdict
 from collections import deque
 
@@ -31,6 +33,10 @@ class AverageMeter(object):
     def global_avg(self):
         return self.sum / self.count
 
+    def reset(self):
+        self.sum = 0.0
+        self.count = 0
+
 
 class MetricLogger(object):
     def __init__(self, delimiter="\t"):
@@ -39,15 +45,25 @@ class MetricLogger(object):
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            count = 1
             if isinstance(v, torch.Tensor):
                 if v.numel() == 1:
-                    v = v.item()
+                    value = v.item()
+                    count = 1
                 else:
+                    value = v.sum().item()
                     count = v.numel()
-                    v = v.sum().item()
-            assert isinstance(v, (float, int))
-            self.meters[k].update(v, count)
+            elif isinstance(v, np.ndarray):
+                if v.size == 1:
+                    value = v.item()
+                    count = 1
+                else:
+                    value = v.sum().item()
+                    count = v.size
+            else:
+                value = v
+                count = 1
+            assert isinstance(value, (float, int))
+            self.meters[k].update(value, count)
 
     def __getattr__(self, attr):
         if attr in self.meters:
@@ -104,38 +120,45 @@ class AverageMeterV2(object):
     def global_avg(self):
         return np.mean(self.sum / np.maximum(self.count, 1.0))
 
+    def reset(self):
+        self.sum = None
+        self.count = None
+
 
 class MetricLoggerV2(MetricLogger):
     """Support non-scalar metrics"""
 
     def __init__(self, delimiter="\t"):
-        self.meters = dict()
+        super(MetricLogger, self).__init__()
+
+        self.meters = dict(AverageMeterV2)
         self.delimiter = delimiter
 
     def update(self, **kwargs):
-        for k, arg in kwargs.items():
-            if isinstance(arg, tuple):
-                if k not in self.meters:
-                    self.meters[k] = AverageMeterV2()
-                value, count = arg
-                value = value.cpu().numpy()
-                count = count.cpu().numpy()
-            else:
-                if k not in self.meters:
-                    self.meters[k] = AverageMeter()
-                if isinstance(arg, torch.Tensor):
-                    if arg.numel() == 1:
-                        value = arg.item()
-                        count = 1
-                    else:
-                        value = arg.sum().item()
-                        count = arg.numel()
-                    if k not in self.meters:
-                        self.meters[k] = AverageMeter()
-                    self.meters[k].update(value, count)
-                else:
-                    assert isinstance(arg, (float, int))
-                    value = arg
+        for k, v in kwargs.items():
+            if isinstance(v, tuple):
+                value, count = v
+                if isinstance(value, torch.Tensor):
+                    value = value.cpu().numpy()
+                if isinstance(count, torch.Tensor):
+                    count = count.cpu().numpy()
+            elif isinstance(v, torch.Tensor):
+                if v.numel() == 1:
+                    value = v.item()
                     count = 1
+                else:
+                    value = v.sum().item()
+                    count = v.numel()
+            elif isinstance(v, np.ndarray):
+                if v.size == 1:
+                    value = v.item()
+                    count = 1
+                else:
+                    value = v.sum().item()
+                    count = v.size
+            else:
+                assert isinstance(v, (float, int))
+                value = v
+                count = 1
 
             self.meters[k].update(value, count)

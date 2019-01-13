@@ -21,8 +21,7 @@ class ModelNetH5(Dataset):
         meta_data (list of dict): meta information of data
 
     """
-    URL = " https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip"
-    ROOT_DIR = "/data/modelnet40"
+    url = " https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip"
     cat_file = "shape_names.txt"
     dataset_map = {
         "train": "train_files.txt",
@@ -85,7 +84,7 @@ class ModelNetH5(Dataset):
 
         if self.transform is not None:
             points = self.transform(points)
-            points.transpose_(0, 1)
+            points = points.transpose_(0, 1)
 
         return {
             "points": points,

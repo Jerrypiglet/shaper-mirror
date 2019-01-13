@@ -1,15 +1,24 @@
+"""Build dataloader, dataset and transform
+
+Notes:
+    When using multiple workers to load data, numpy random seeds are same while torch random seeds are different.
+    Thus, we first transform point cloud into torch.Tensor.
+
+"""
+
 import torch
 from torch.utils.data import DataLoader
 
 from . import datasets as D
-from . import transform as T
+from . import transforms as T
 
 
 def build_transform(cfg, is_train=True):
-    # common keyword arguments
+    # Common keyword arguments
     kwargs = {
         "use_normal": cfg.INPUT.USE_NORMAL,
     }
+
     if is_train:
         transform_list = [T.PointCloudToTensor()]
         for aug in cfg.TRAIN.AUGMENTATION:
@@ -19,7 +28,7 @@ def build_transform(cfg, is_train=True):
                 transform_list.append(getattr(T, aug)(**kwargs))
         transform = T.Compose(transform_list)
     else:
-        # testing (might be different with training)
+        # Test (might be different with training)
         transform_list = [T.PointCloudToTensor()]
         for aug in cfg.TEST.AUGMENTATION:
             if isinstance(aug, (list, tuple)):
@@ -55,6 +64,7 @@ def build_dataset(cfg, mode="train"):
         dataset_names = cfg.DATASET.TEST
 
     is_train = mode == "train"
+    # Build transform
     transform = build_transform(cfg, is_train)
     if cfg.TASK == "classification":
         load_seg = False
@@ -63,7 +73,7 @@ def build_dataset(cfg, mode="train"):
         load_seg = True
         seg_transform = build_seg_transform(cfg, is_train)
     else:
-        raise ValueError()
+        raise ValueError("Unsupported task.")
 
     if cfg.DATASET.TYPE == "ModelNetH5":
         dataset = D.ModelNetH5(root_dir=cfg.DATASET.ROOT_DIR,

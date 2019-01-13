@@ -1,4 +1,4 @@
-"""ShapeNet Part Segmentation
+"""ShapeNetCore Part Segmentation
 
 For PointNet, the authors have sampled 2048 points from ShapeNetCore to generate HDF5.
 Notice that their released codes use data only verified by experts, which is same as shapenetcore_benchmark_v0.
@@ -11,9 +11,9 @@ References:
 import os.path as osp
 from collections import OrderedDict
 
-import numpy as np
 import h5py
 import json
+import numpy as np
 
 from torch.utils.data import Dataset
 from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
@@ -36,8 +36,7 @@ class ShapeNet(Dataset):
         The seg_file "overallid_to_catid_partid.json" is copied from HDF5 data.
 
     """
-    URL = "https://shapenet.cs.stanford.edu/ericyi/shapenetcore_partanno_segmentation_benchmark_v0.zip"
-    ROOT_DIR = "../../../data/shapenet"
+    url = "https://shapenet.cs.stanford.edu/ericyi/shapenetcore_partanno_segmentation_benchmark_v0.zip"
     cat_file = "synsetoffset2category.txt"
     seg_file = "overallid_to_catid_partid.json"
     split_dir = "train_test_split"
@@ -155,13 +154,13 @@ class ShapeNet(Dataset):
 
         if self.transform is not None:
             points = self.transform(points)
-            if seg_label is not None and self.seg_transform is not None:
+            if self.load_seg and self.seg_transform is not None:
                 points, seg_label = self.seg_transform(points, seg_label)
-            points.transpose_(0, 1)
+            points = points.transpose_(0, 1)
 
         out_dict["points"] = points
         out_dict["cls_label"] = cls_label
-        if seg_label is not None:
+        if self.load_seg:
             out_dict["seg_label"] = seg_label
 
         return out_dict
@@ -171,12 +170,8 @@ class ShapeNet(Dataset):
 
 
 class ShapeNetNormal(Dataset):
-    """ShapeNetCore dataset, points include normal
-
-    Each class of ShapeNetCore is assigned a catid/offset, like "02691156".
-    Each part is associated with one class.
-    - 16 object categories (airplane, chair, motorbike)
-    - 50 part classes (each object category has 2-6 part classes)
+    """ShapeNetCore dataset, points include normal at the last dimension.
+    Refer to ShapeNet for details of ShapeNetCore.
 
     Attributes:
         classes (list): the names of classes
@@ -187,8 +182,7 @@ class ShapeNetNormal(Dataset):
         The seg_file "overallid_to_catid_partid.json" is copied from HDF5 data.
 
     """
-    URL = "https://shapenet.cs.stanford.edu/media/shapenetcore_partanno_segmentation_benchmark_v0_normal.zip"
-    ROOT_DIR = "../../../data/shapenet_normal"
+    url = "https://shapenet.cs.stanford.edu/media/shapenetcore_partanno_segmentation_benchmark_v0_normal.zip"
     cat_file = "synsetoffset2category.txt"
     seg_file = "overallid_to_catid_partid.json"
     split_dir = "train_test_split"
@@ -293,7 +287,7 @@ class ShapeNetNormal(Dataset):
         seg_label = None
         out_dict = {}
 
-        # normalize first, before crop_or_pad
+        # Normalize first, before crop_or_pad
         if self.normalize:
             points[:, 0:3] = normalize_points(points[:, 0:3])
 
@@ -304,13 +298,13 @@ class ShapeNetNormal(Dataset):
         points = points[:, 0:6]
         if self.transform is not None:
             points = self.transform(points)
-            if seg_label is not None and self.seg_transform is not None:
+            if self.load_seg and self.seg_transform is not None:
                 points, seg_label = self.seg_transform(points, seg_label)
-            points.transpose_(0, 1)
+            points = points.transpose_(0, 1)
 
         out_dict["points"] = points
         out_dict["cls_label"] = cls_label
-        if seg_label is not None:
+        if self.load_seg:
             out_dict["seg_label"] = seg_label
 
         return out_dict
@@ -332,11 +326,9 @@ class ShapeNetH5(Dataset):
 
     TODO:
         Add the description of how points are sampled from raw data.
-        Support tranforms related to seg_labels
 
     """
-    URL = "https://shapenet.cs.stanford.edu/media/shapenet_part_seg_hdf5_data.zip"
-    ROOT_DIR = "../../../data/shapenet_hdf5"
+    url = "https://shapenet.cs.stanford.edu/media/shapenet_part_seg_hdf5_data.zip"
     cat_file = "all_object_categories.txt"
     seg_file = "overallid_to_catid_partid.json"
     dataset_map = {
@@ -404,8 +396,8 @@ class ShapeNetH5(Dataset):
         class_to_catid_map = OrderedDict()
         with open(osp.join(self.root_dir, self.cat_file), 'r') as fid:
             for line in fid:
-                class_name, offset = line.strip().split()
-                class_to_catid_map[class_name] = offset
+                class_name, catid = line.strip().split()
+                class_to_catid_map[class_name] = catid
         return class_to_catid_map
 
     def _load_seg_file(self):
@@ -442,13 +434,13 @@ class ShapeNetH5(Dataset):
 
         if self.transform is not None:
             points = self.transform(points)
-            if seg_label is not None and self.seg_transform is not None:
+            if self.load_seg and self.seg_transform is not None:
                 points, seg_label = self.seg_transform(points, seg_label)
-            points.transpose_(0, 1)
+            points = points.transpose_(0, 1)
 
         out_dict["points"] = points
         out_dict["cls_label"] = cls_label
-        if seg_label is not None:
+        if self.load_seg:
             out_dict["seg_label"] = seg_label
 
         return out_dict
@@ -458,9 +450,9 @@ class ShapeNetH5(Dataset):
 
 
 if __name__ == "__main__":
-    # shapenet = ShapeNet(ShapeNet.ROOT_DIR, ["test"], load_seg=True)
-    # shapenet = ShapeNetH5(ShapeNetH5.ROOT_DIR, ["test"], load_seg=True)
-    shapenet = ShapeNetNormal(ShapeNetNormal.ROOT_DIR, ["test"], load_seg=True)
+    # shapenet = ShapeNet("../../../data/shapenet", ["test"], load_seg=True)
+    # shapenet = ShapeNetH5("../../../data/shapenet_hdf5", ["test"], load_seg=True)
+    shapenet = ShapeNetNormal("../../../data/shapenet_normal", ["test"], load_seg=True)
     print("The number of samples:", shapenet.__len__())
     data = shapenet[0]
     points = data["points"]

@@ -3,7 +3,7 @@ import os.path as osp
 from .metric_logger import AverageMeter, AverageMeterV2
 from tensorboardX import SummaryWriter
 
-_KEYWORDS = ("loss", "acc", "IOU")
+_KEYWORDS = ("loss", "acc",)
 
 
 class TensorboardLogger(object):

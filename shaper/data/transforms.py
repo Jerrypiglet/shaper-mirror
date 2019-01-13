@@ -1,4 +1,4 @@
-"""Helpers to transform point clouds. Especially for data augmentation"""
+"""Helpers to transform point clouds for data augmentation."""
 
 import numpy as np
 import torch
@@ -215,7 +215,7 @@ class PointCloudRandomInputDropout(object):
 class PointCloudShuffle(object):
     def __init__(self, **kwargs):
         super(PointCloudShuffle, self).__init__()
-    
+
     def __call__(self, points, seg_label=None):
         index = torch.randperm(points.size(0))
         if seg_label is None:
@@ -229,6 +229,7 @@ class PointCloudShuffle(object):
 # ---------------------------------------------------------------------------- #
 class PointCloudGenerate(object):
     """Generate dummy point cloud for correctness test."""
+
     def __init__(self, num_points, channels=3):
         self.num_points = num_points
         self.channels = channels
