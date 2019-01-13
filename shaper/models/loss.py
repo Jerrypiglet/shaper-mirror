@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -53,7 +54,7 @@ class DGCNNPartSegLoss(nn.Module):
 
         # regularization over transform matrix
         if self.reg_weight > 0.0:
-            trans_feature = preds["trans_feature"]
+            trans_feature = preds["trans_input"]
             trans_norm = torch.bmm(trans_feature.transpose(2, 1), trans_feature)  # [in, in]
             I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
             reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
