@@ -2,7 +2,9 @@
 
 Notes:
     When using multiple workers to load data, numpy random seeds are same while torch random seeds are different.
-    Thus, we first transform point cloud into torch.Tensor.
+    Thus, we use tensor-based transforms.
+
+    seg_transform is applied after transform, and a channel transpose is applied within the dataset.
 
 """
 

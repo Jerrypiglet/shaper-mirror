@@ -32,9 +32,9 @@ def evaluate_classification(dataset,
     logger = logging.getLogger("shaper.evaluator.cls")
     logger.info("Start evaluating and visualize in {}".format(vis_dir))
 
-    # remove transform
+    # Remove transform
     dataset.transform = None
-    # use valid points
+    # Use all points
     dataset.num_points = -1
     dataset.shuffle_points = False
 
@@ -46,7 +46,7 @@ def evaluate_classification(dataset,
         suffix = "_" + suffix
 
     num_tp_per_class = defaultdict(int)
-    # the number of ground_truth/positive
+    # The number of ground_truth
     num_gt_per_class = defaultdict(int)
 
     for ind in tqdm(range(num_samples)):
@@ -60,8 +60,7 @@ def evaluate_classification(dataset,
 
         if pred_label != gt_label and vis_dir:
             fname = "{:04d}_label_{}_pred_{}" + suffix
-            fname = osp.join(vis_dir, fname).format(
-                ind, class_names[gt_label], class_names[pred_label])
+            fname = osp.join(vis_dir, fname).format(ind, class_names[gt_label], class_names[pred_label])
 
             points = data["points"]
             num_points = len(points)
@@ -74,8 +73,8 @@ def evaluate_classification(dataset,
             if aux_preds is not None and "key_point_inds" in aux_preds:
                 point_colors = np.ones([num_points, 3], dtype=points.dtype)
                 # TODO: remove invalid index
-                cur_keypoint_inds = aux_preds["key_point_inds"][ind]
-                point_colors[cur_keypoint_inds, ...] = [1, 0, 0]
+                key_point_inds = aux_preds["key_point_inds"][ind]
+                point_colors[key_point_inds, ...] = [1, 0, 0]
                 points = np.concatenate((points, point_colors), -1)
 
             np.savetxt(fname + '.xyz', points, fmt="%.4f")

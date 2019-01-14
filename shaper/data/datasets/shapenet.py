@@ -128,6 +128,7 @@ class ShapeNet(Dataset):
             data = {
                 "token": token,
                 "class": class_name,
+                "cls_label": self.class_to_ind_map[class_name],
                 "pts_path": pts_path,
             }
             if self.load_seg:
@@ -139,12 +140,12 @@ class ShapeNet(Dataset):
     def __getitem__(self, index):
         meta_data = self.meta_data[index]
         points = self._load_pts(meta_data["pts_path"])
-        if self.normalize:
-            points = normalize_points(points)
-        class_name = meta_data["class"]
-        cls_label = self.class_to_ind_map[class_name]
+        cls_label = meta_data["cls_label"]
         seg_label = None
         out_dict = {}
+
+        if self.normalize:
+            points = normalize_points(points)
 
         points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
         if self.load_seg:
@@ -274,6 +275,7 @@ class ShapeNetNormal(Dataset):
             data = {
                 "token": token,
                 "class": class_name,
+                "cls_label": self.class_to_ind_map[class_name],
                 "pts_path": pts_path,
             }
             meta_data.append(data)
@@ -282,8 +284,7 @@ class ShapeNetNormal(Dataset):
     def __getitem__(self, index):
         meta_data = self.meta_data[index]
         points = self._load_pts(meta_data["pts_path"])
-        class_name = meta_data["class"]
-        cls_label = self.class_to_ind_map[class_name]
+        cls_label = meta_data["cls_label"]
         seg_label = None
         out_dict = {}
 
@@ -296,6 +297,7 @@ class ShapeNetNormal(Dataset):
             seg_label = points[:, -1].astype(int)
         # Discard the segmentation labels
         points = points[:, 0:6]
+
         if self.transform is not None:
             points = self.transform(points)
             if self.load_seg and self.seg_transform is not None:

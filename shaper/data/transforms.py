@@ -1,4 +1,10 @@
-"""Helpers to transform point clouds for data augmentation."""
+"""Helpers to transform point clouds for data augmentation.
+
+Warnings:
+    All the implemented transform methods use in-place operations, except PointCloudToTensor.
+    x[indices] share the memory with x.
+
+"""
 
 import numpy as np
 import torch
@@ -35,7 +41,8 @@ class ComposeSeg(Compose):
 class PointCloudToTensor(object):
     def __call__(self, points):
         assert isinstance(points, np.ndarray)
-        return torch.as_tensor(points).float()
+        # torch.tensor always copies data
+        return torch.tensor(points, dtype=torch.float)
 
 
 class PointCloudTensorTranspose(object):
