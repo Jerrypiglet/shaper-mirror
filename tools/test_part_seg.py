@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Test point cloud classification models"""
+"""Test point cloud part segmentation models"""
 
 from __future__ import division
 import argparse
@@ -11,12 +11,12 @@ import numpy as np
 import torch
 from torch import nn
 
-from shaper.config.classification import cfg
+from shaper.config.part_segmentation import cfg
 from shaper.config import purge_cfg
 from shaper.models import build_model
 from shaper.data import build_dataloader
 from shaper.data import transforms as T
-from shaper.data.datasets.evaluator import evaluate_classification
+from shaper.data.datasets.evaluator import evaluate_part_segmentation
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.io import mkdir
@@ -75,21 +75,22 @@ def test(cfg, output_dir=""):
     # ---------------------------------------------------------------------------- #
     # Test
     # ---------------------------------------------------------------------------- #
-    cls_logit_all = []
+    seg_logit_all = []
     model.eval()
     loss_fn.eval()
     metric_fn.eval()
 
     if cfg.TEST.VOTE.ENABLE:
+        # Disable inherent shuffle
+        test_dataset.shuffle_points = False
         # Remove old transform
         test_dataset.transform = None
         # Build new transform
         transform_list = [T.PointCloudRotateByAngle(cfg.TEST.VOTE.AXIS, 2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VIEW)
                           for view_ind in range(cfg.TEST.VOTE.NUM_VIEW)]
         if cfg.TEST.VOTE.SHUFFLE:
-            # Some non-deterministic algorithms benefit from shuffle.
+            # Some non-deterministic algorithms might benefit from shuffle.
             set_random_seed(cfg.RNG_SEED)
-            shuffle_transform = T.PointCloudShuffle()
 
         with torch.no_grad():
             start_time = time.time()
@@ -98,25 +99,38 @@ def test(cfg, output_dir=""):
                 data = test_dataset[ind]
                 data_time = time.time() - end
                 points = data["points"]
+                cls_label = data["cls_label"]
+                num_points = points.shape[0]
 
                 # Convert points into tensor
                 # torch.tensor always copy data
                 points_batch = [t(torch.tensor(points, dtype=torch.float)) for t in transform_list]
                 if cfg.TEST.VOTE.SHUFFLE:
-                    points_batch = [shuffle_transform(points) for points in points_batch]
+                    index_batch = [torch.randperm(num_points) for _ in points_batch]
+                    points_batch = [points[index] for points, index in zip(points_batch, index_batch)]
                 points_batch = torch.stack(points_batch, dim=0).transpose_(1, 2).contiguous()
                 points_batch = points_batch.cuda(non_blocking=True)
+                cls_label_batch = torch.tensor([cls_label] * cfg.TEST.VOTE.NUM_VIEW).cuda()
 
-                preds = model({"points": points_batch})
-                cls_logit = preds["cls_logit"].mean(dim=0).cpu().numpy()
-                cls_logit_all.append(cls_logit)
+                preds = model({"points": points_batch, "cls_label": cls_label_batch})
+                seg_logit_batch = preds["seg_logit"].cpu().numpy()
+
+                if cfg.TEST.VOTE.SHUFFLE:
+                    seg_logit_ensemble = np.zeros(seg_logit_batch.shape[1:], dtype=seg_logit_batch.dtype)
+                    for i, index in enumerate(index_batch):
+                        index = index.numpy()
+                        seg_logit_ensemble[:, index] += seg_logit_batch[i]
+                else:
+                    seg_logit_ensemble = np.mean(seg_logit_batch, axis=0)
+
+                seg_logit_all.append(seg_logit_ensemble)
 
                 batch_time = time.time() - end
                 end = time.time()
 
                 if ind % cfg.TEST.LOG_PERIOD == 0:
                     logger.info("iter: {:4d}  time:{:.4f}  data:{:.4f}".format(ind, batch_time, data_time))
-        cls_logit_all = np.stack(cls_logit_all, axis=0)
+        seg_logit_all = np.stack(seg_logit_all, axis=0)
     else:
         test_meters = MetricLogger(delimiter="  ")
         with torch.no_grad():
@@ -129,7 +143,7 @@ def test(cfg, output_dir=""):
 
                 preds = model(data_batch)
 
-                cls_logit_all.append(preds["cls_logit"].cpu().numpy())
+                seg_logit_all.append(preds["seg_logit"].cpu().numpy())
                 loss_dict = loss_fn(preds, data_batch)
                 metric_dict = metric_fn(preds, data_batch)
                 losses = sum(loss_dict.values())
@@ -151,12 +165,11 @@ def test(cfg, output_dir=""):
                             meters=str(test_meters),
                         )
                     )
-            cls_logit_all = np.concatenate(cls_logit_all, axis=0)
         test_time = time.time() - start_time
         logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
+        seg_logit_all = np.concatenate(seg_logit_all, axis=0)
 
-    pred_labels = np.argmax(cls_logit_all, axis=1)
-    evaluate_classification(test_dataset, pred_labels, output_dir=output_dir, vis_dir=vis_dir)
+    evaluate_part_segmentation(test_dataset, seg_logit_all, output_dir=output_dir, vis_dir=vis_dir)
 
 
 def main():
@@ -183,7 +196,7 @@ def main():
     logger.info("Loaded configuration file {}".format(args.config_file))
     logger.info("Running with config:\n{}".format(cfg))
 
-    assert cfg.TASK == "classification"
+    assert cfg.TASK == "part_segmentation"
     test(cfg, output_dir)
 
 

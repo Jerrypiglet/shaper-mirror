@@ -118,7 +118,7 @@ def evaluate_part_segmentation(dataset,
 
     Args:
         dataset (torch.utils.data.Dataset): dataset
-        pred_logits (list of int or np.ndarray): predicted logits
+        pred_logits (list of np.ndarray or np.ndarray): predicted logits
         aux_preds (dict, optional): auxiliary predictions
         output_dir (str, optional): output directory
         vis_dir (str, optional): visualization directory
@@ -128,9 +128,9 @@ def evaluate_part_segmentation(dataset,
     logger = logging.getLogger("shaper.evaluator.part_seg")
     logger.info("Start evaluating and visualize in {}".format(vis_dir))
 
-    # remove transform
+    # Remove transform
     dataset.transform = None
-    # use valid points
+    # Use all points
     dataset.num_points = -1
     dataset.shuffle_points = False
 
@@ -153,16 +153,15 @@ def evaluate_part_segmentation(dataset,
         pred_seg_logit = pred_logits[ind]
 
         # sanity check
-        num_valid_points = len(points)
-        assert len(gt_seg_label) == num_valid_points
-        # assert pred_seg_logit.shape[1] >= num_valid_points
+        assert len(gt_seg_label) == points.shape[0]
+        # assert pred_seg_logit.shape[1] >= points.shape[0]
 
         segids = class_to_seg_map[gt_cls_label]
-        num_valid_points = min(pred_seg_logit.shape[1], num_valid_points)
+        num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
         pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
+        # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
         gt_seg_label = gt_seg_label[:num_valid_points]
 
-        # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
         pred_seg_label = np.argmax(pred_seg_logit, axis=0)
         for ind, segid in enumerate(segids):
             # convert partid to segid

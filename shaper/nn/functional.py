@@ -21,7 +21,7 @@ def pdist(feature):
 
     """
     square_sum = torch.sum(feature ** 2, 1, keepdim=True)
-    square_sum = square_sum + square_sum.transpose(1, 2)
+    square_sum = square_sum.transpose(1, 2) + square_sum
     distance = torch.baddbmm(square_sum, feature.transpose(1, 2), feature, alpha=-2.0)
     return distance
 

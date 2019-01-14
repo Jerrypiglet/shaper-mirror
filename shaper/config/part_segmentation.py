@@ -14,8 +14,32 @@ _C.TRAIN.VAL_METRIC = "seg_acc"
 # -----------------------------------------------------------------------------
 _C.DATASET.NUM_SEG_CLASSES = 0
 
+# ---------------------------------------------------------------------------- #
+# Specific train options
+# ---------------------------------------------------------------------------- #
 # Data augmentation for part segmentation.
 _C.TRAIN.SEG_AUGMENTATION = ()
+
+# ---------------------------------------------------------------------------- #
+# Specific test options
+# ---------------------------------------------------------------------------- #
+# Visualize failure cases. Path to visualize point clouds
+_C.TEST.VIS_DIR = ""
+
+# ---------------------------------------------------------------------------- #
+# Test-time augmentations for point cloud part segmentation
+# Now only support multi-view voting
+# ---------------------------------------------------------------------------- #
+_C.TEST.VOTE = CN()
+
+_C.TEST.VOTE.ENABLE = False
+
+# The axis along which to rotate
+_C.TEST.VOTE.AXIS = "y"
+# The number of views to vote
+_C.TEST.VOTE.NUM_VIEW = 12
+# Whether to shuffle points from different views (especially for PointNet++)
+_C.TEST.VOTE.SHUFFLE = False
 
 # -----------------------------------------------------------------------------
 # PointNet options
@@ -70,21 +94,3 @@ _C.MODEL.PN2MSG.NUM_FP_NEIGHBOURS = (3, 3)
 _C.MODEL.PN2MSG.SEG_CHANNELS = (128,)
 _C.MODEL.PN2MSG.DROPOUT_PROB = 0.5
 _C.MODEL.PN2MSG.USE_XYZ = True
-
-# _C.MODEL.PN2MSG = CN()
-#
-# _C.MODEL.PN2MSG.NUM_CENTROIDS = (64, 32)
-# _C.MODEL.PN2MSG.RADIUS_LIST = ((0.1, ), (0.4, 0.8))
-# _C.MODEL.PN2MSG.NUM_NEIGHBOURS_LIST = ((32, ), (64, 128))
-# _C.MODEL.PN2MSG.SA_CHANNELS_LIST = (
-#     ((32, 32, 64), ),
-#     ((128, 128, 256), (128, 196, 256)))
-# _C.MODEL.PN2MSG.LOCAL_CHANNELS = (256, 512, 1024)
-# _C.MODEL.PN2MSG.FP_CHANNELS = ((256, 256), (256, 128), (128, 128))
-# _C.MODEL.PN2MSG.NUM_FP_NEIGHBOURS = (3, 3, 3)
-# _C.MODEL.PN2MSG.SEG_CHANNELS = (128,)
-# _C.MODEL.PN2MSG.DROPOUT_PROB = 0.5
-# _C.MODEL.PN2MSG.USE_XYZ = True
-
-
-
