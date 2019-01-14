@@ -139,28 +139,6 @@ _C.TEST.AUGMENTATION = ()
 
 _C.TEST.LOG_PERIOD = 10
 
-# Visualize errors. Path to visualize point clouds
-_C.TEST.VIS_DIR = ""
-
-# Visualize key points in point cloud
-_C.TEST.VIS_KEY_PTS = False
-
-# ---------------------------------------------------------------------------- #
-# Test-time augmentations for point cloud classification
-# Now only support multi-view voting
-# ---------------------------------------------------------------------------- #
-_C.TEST.VOTE = CN()
-
-_C.TEST.VOTE.ENABLE = False
-
-# The axis along which to rotate
-_C.TEST.VOTE.AXIS = "y"
-# The number of views to vote
-_C.TEST.VOTE.NUM_VIEW = 12
-# Heuristic used to combine predicted classification scores
-#   Valid options: ("logit", "softmax", "label")
-_C.TEST.VOTE.SCORE_HEUR = ("logit",)
-
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #

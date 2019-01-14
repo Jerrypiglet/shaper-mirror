@@ -9,6 +9,27 @@ _C.TASK = "classification"
 
 _C.TRAIN.VAL_METRIC = "cls_acc"
 
+# ---------------------------------------------------------------------------- #
+# Specific test options
+# ---------------------------------------------------------------------------- #
+# Visualize failure cases. Path to visualize point clouds
+_C.TEST.VIS_DIR = ""
+
+# ---------------------------------------------------------------------------- #
+# Test-time augmentations for point cloud classification
+# Now only support multi-view voting
+# ---------------------------------------------------------------------------- #
+_C.TEST.VOTE = CN()
+
+_C.TEST.VOTE.ENABLE = False
+
+# The axis along which to rotate
+_C.TEST.VOTE.AXIS = "y"
+# The number of views to vote
+_C.TEST.VOTE.NUM_VIEW = 12
+# Whether to shuffle points from different views (especially for PointNet++)
+_C.TEST.VOTE.SHUFFLE = False
+
 # -----------------------------------------------------------------------------
 # PointNet options
 # -----------------------------------------------------------------------------

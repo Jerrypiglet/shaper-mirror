@@ -64,6 +64,7 @@ def main():
     #     logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
+    assert cfg.TASK == "classification"
     train(cfg, output_dir)
 
 
