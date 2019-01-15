@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from shaper.nn import SharedMLP
+from shaper.nn.init import init_bn
 from .functions import pdist, get_knn_inds, get_edge_feature, gather_knn
 
 
@@ -28,6 +29,9 @@ class EdgeConvBlock(nn.Module):
         x = self.mlp(x)
         x, _ = torch.max(x, 3)
         return x
+
+    def init_weights(self, init_fn=None):
+        self.mlp.init_weights(init_fn)
 
 
 class EdgeConvBlockV2(nn.Module):
@@ -80,3 +84,9 @@ class EdgeConvBlockV2(nn.Module):
         edge_feature, _ = torch.max(edge_feature, 3)
 
         return edge_feature
+
+    def init_weights(self, init_fn=None):
+        if init_fn is not None:
+            init_fn(self.conv1)
+            init_fn(self.conv2)
+        init_bn(self.bn)

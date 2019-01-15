@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from shaper.nn import MLP, SharedMLP
 from shaper.models.pointnet2.modules import PointNetSAModuleMSG
-from shaper.nn.init import set_bn
+from shaper.nn.init import xavier_uniform, set_bn
 
 
 class PointNet2MSGCls(nn.Module):
@@ -103,6 +103,10 @@ class PointNet2MSGCls(nn.Module):
         return preds
 
     def init_weights(self):
+        for sa_module in self.sa_modules:
+            sa_module.init_weights(xavier_uniform)
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_global.init_weights(xavier_uniform)
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
         set_bn(self, momentum=0.01)

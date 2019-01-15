@@ -12,6 +12,7 @@ class FarthestPointSampler(nn.Module):
         num_centroids (int): the number of centroids
 
     """
+
     def __init__(self, num_centroids):
         super(FarthestPointSampler, self).__init__()
         self.num_centroids = num_centroids
@@ -145,6 +146,9 @@ class PointNetSAModule(nn.Module):
 
         return new_xyz, new_feature
 
+    def init_weights(self, init_fn=None):
+        self.mlp.init_weights(init_fn)
+
 
 class PointNetSAModuleMSG(nn.Module):
     """PointNet set abstraction module (multi scale)"""
@@ -205,6 +209,10 @@ class PointNetSAModuleMSG(nn.Module):
 
         return new_xyz, torch.cat(new_feature_list, dim=1)
 
+    def init_weights(self, init_fn=None):
+        for mlp in self.mlp:
+            mlp.init_weights(init_fn)
+
 
 class PointnetFPModule(nn.Module):
     """PointNet feature propagation module"""
@@ -224,3 +232,6 @@ class PointnetFPModule(nn.Module):
         new_feature = self.mlp(new_feature)
 
         return new_feature
+
+    def init_weights(self, init_fn=None):
+        self.mlp.init_weights(init_fn)

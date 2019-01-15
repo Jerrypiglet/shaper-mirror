@@ -15,7 +15,7 @@ import torch.nn as nn
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.models.dgcnn.functions import get_edge_feature
 from shaper.models.dgcnn.modules import EdgeConvBlockV2
-from shaper.nn.init import set_bn
+from shaper.nn.init import xavier_uniform, set_bn
 
 
 class TNet(nn.Module):
@@ -73,6 +73,9 @@ class TNet(nn.Module):
         return x
 
     def init_weights(self):
+        self.edge_conv.init_weights(xavier_uniform)
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_global.init_weights(xavier_uniform)
         # Set linear transform be 0
         nn.init.zeros_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
@@ -160,8 +163,11 @@ class DGCNNCls(nn.Module):
         return preds
 
     def init_weights(self):
-        nn.init.xavier_uniform_(self.classifier.weight)
-        nn.init.zeros_(self.classifier.bias)
+        for edge_conv in self.mlp_edge_conv:
+            edge_conv.init_weights(xavier_uniform)
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_global.init_weights(xavier_uniform)
+        xavier_uniform(self.classifier)
         set_bn(self, momentum=0.01)
 
 
@@ -171,12 +177,12 @@ if __name__ == "__main__":
     num_points = 1024
     num_classes = 40
 
-    data = torch.rand(batch_size, in_channels, num_points)
-    transform = TNet()
-    out = transform(data)
+    points = torch.rand(batch_size, in_channels, num_points).cuda()
+    transform = TNet().cuda()
+    out = transform(points)
     print('TNet: ', out.size())
 
-    dgcnn = DGCNNCls(in_channels, num_classes, with_transform=False)
-    out_dict = dgcnn({"points": data})
+    dgcnn = DGCNNCls(in_channels, num_classes, with_transform=False).cuda()
+    out_dict = dgcnn({"points": points})
     for k, v in out_dict.items():
         print('DGCNN:', k, v.shape)
