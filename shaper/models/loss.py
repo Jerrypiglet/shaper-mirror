@@ -9,6 +9,7 @@ class ClsLoss(nn.Module):
 
     Attributes:
         label_smoothing (float or 0): the parameter to smooth labels
+
     """
 
     def __init__(self, label_smoothing=0):
@@ -30,6 +31,7 @@ class ClsLoss(nn.Module):
 
 class PartSegLoss(nn.Module):
     """Part segmentation loss"""
+
     def __init__(self):
         super(PartSegLoss, self).__init__()
 

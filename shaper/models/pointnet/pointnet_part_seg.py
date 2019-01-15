@@ -142,8 +142,6 @@ class PointNetPartSeg(nn.Module):
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
         self.init_weights()
-        # set batch normalization to 0.01 as default
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         x = data_batch["points"]
@@ -198,6 +196,8 @@ class PointNetPartSeg(nn.Module):
         nn.init.zeros_(self.cls_logit.bias)
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
+        # Set batch normalization to 0.01 as default
+        set_bn(self, momentum=0.01)
 
 
 class PointNetPartSegLoss(nn.Module):

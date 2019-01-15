@@ -165,8 +165,6 @@ class PointNetCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
-        # set batch normalization to 0.01 as default
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         x = data_batch["points"]
@@ -192,6 +190,8 @@ class PointNetCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
+        # Set batch normalization to 0.01 as default
+        set_bn(self, momentum=0.01)
 
 
 class PointNetClsLoss(nn.Module):

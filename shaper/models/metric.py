@@ -1,5 +1,6 @@
 """Metric
 
+The metric_fn could be implemented as a nn.Module or an object.
 When a model is trained or evaluated, a metric_fn will be called after each batch.
 The metric_fn should implement __call__, which behaves as a function.
 It is also required to have two methods, "train" and "eval".

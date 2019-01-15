@@ -1,7 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 
-from ..init import init_uniform, init_bn
+from ..init import xavier_uniform, init_bn
 
 
 class Conv1d(nn.Module):
@@ -36,7 +36,7 @@ class Conv1d(nn.Module):
 
     def init_weights(self):
         """default initialization"""
-        init_uniform(self.conv)
+        xavier_uniform(self.conv)
         if self.bn is not None:
             init_bn(self.bn)
 
@@ -76,6 +76,6 @@ class Conv2d(nn.Module):
 
     def init_weights(self):
         """default initialization"""
-        init_uniform(self.conv)
+        xavier_uniform(self.conv)
         if self.bn is not None:
             init_bn(self.bn)

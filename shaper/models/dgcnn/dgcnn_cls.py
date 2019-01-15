@@ -73,7 +73,7 @@ class TNet(nn.Module):
         return x
 
     def init_weights(self):
-        # set linear transform be 0
+        # Set linear transform be 0
         nn.init.zeros_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
 
@@ -127,7 +127,6 @@ class DGCNNCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], self.out_channels, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         end_points = {}
@@ -163,6 +162,7 @@ class DGCNNCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
+        set_bn(self, momentum=0.01)
 
 
 if __name__ == "__main__":

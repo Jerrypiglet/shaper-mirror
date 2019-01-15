@@ -18,16 +18,16 @@ from shaper.nn.init import set_bn
 
 
 class PointNet2SSGPartSeg(nn.Module):
-    """PointNet 2 part segmentation with single-scale grouping
+    """PointNet++ part segmentation with single-scale grouping
 
-    Structure: input -> [PointNetSA]s -> [Local Feature Extraction Layer] -> [Local Feature Propagation Layers]
-                    [PointNetFP]s -> [FC layer]s
+    Structure: input -> [PointNetSA]s -> [Local Set Abstraction Layer]
+        -> [Local Feature Propagation Layer] -> [PointNetFP]s -> [FC layer]s
 
     PointNetSA: PointNet Set Abstraction Layer
-    Local Feature Extraction Layer is a layer that converts the output of SAs to new features
-    Local Feature Propagation Layers will summarize the local feature into one and propagate this feature. Basically
-        this is a maxpooling layer + a feature propagation layer
     PointNetFP: PointNet Feature Propagation Layer
+    Notice different with the original implementation, the last set abstraction is implemented as a local MLP,
+    and the first feature propagation module is also implemented as a local MLP.
+
     """
 
     def __init__(self,
@@ -62,6 +62,7 @@ class PointNet2SSGPartSeg(nn.Module):
             seg_channels (tuple of int): the numbers of channels in segmentation mlp
             dropout_prob (float): the probability to dropout input features
             use_xyz (bool): whether or not to use the xyz position of a points as a feature
+
         """
         super(PointNet2SSGPartSeg, self).__init__()
 
@@ -76,8 +77,8 @@ class PointNet2SSGPartSeg(nn.Module):
         assert len(radius) == num_sa_layers
         assert len(num_neighbours) == num_sa_layers
         assert len(sa_channels) == num_sa_layers
-        assert len(num_fp_neighbours) == num_fp_layers
         assert num_sa_layers == num_fp_layers
+        assert len(num_fp_neighbours) == num_fp_layers
 
         # Set Abstraction Layers
         feature_channels = in_channels - 3
@@ -92,12 +93,12 @@ class PointNet2SSGPartSeg(nn.Module):
             self.sa_modules.append(sa_module)
             feature_channels = sa_channels[ind][-1]
 
-        # Local Feature Extraction Layers
+        # Local Feature Extraction Layer
         if use_xyz:
             feature_channels += 3
         self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
 
-        # Local Feature Propagation Layers
+        # Local Feature Propagation Layer
         inter_channels = [in_channels if use_xyz else in_channels - 3]
         inter_channels[0] += num_classes  # concat with one-hot
         inter_channels.extend([x[-1] for x in sa_channels])
@@ -113,12 +114,11 @@ class PointNet2SSGPartSeg(nn.Module):
             self.fp_modules.append(fp_module)
             feature_channels = fp_channels[ind][-1]
 
-        # Fully Connected Layers
+        # MLP
         self.mlp_seg = SharedMLP(feature_channels, seg_channels, ndim=1, dropout=dropout_prob)
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         points = data_batch["points"]
@@ -135,7 +135,7 @@ class PointNet2SSGPartSeg(nn.Module):
         inter_feature = [points if self.use_xyz else feature]
 
         # One hot class label
-        num_points = points.shape[2]
+        num_points = points.size(2)
         with torch.no_grad():
             cls_label = data_batch["cls_label"]
             I = torch.eye(self.num_classes, dtype=points.dtype, device=points.device)
@@ -149,13 +149,13 @@ class PointNet2SSGPartSeg(nn.Module):
             inter_xyz.append(xyz)
             inter_feature.append(feature)
 
-        # Local Feature Extraction Layers
+        # Local Feature Extraction Layer
         if self.use_xyz:
             feature = torch.cat([xyz, feature], dim=1)
         feature = self.mlp_local(feature)
         global_feature, _ = torch.max(feature, 2)
 
-        # Local Feature Propagation Layers
+        # Local Feature Propagation Layer
         global_feature_expand = global_feature.unsqueeze(2).expand(-1, -1, inter_xyz[-1].size(2))
         feature = torch.cat([global_feature_expand, inter_feature[-1]], dim=1)
         feature = self.mlp_local_fp(feature)
@@ -170,7 +170,7 @@ class PointNet2SSGPartSeg(nn.Module):
             dense_xyz = sparse_xyz
             dense_feature = fp_feature
 
-        # Fully Connected Layers
+        # MLP
         x = self.mlp_seg(dense_feature)
         seg_logit = self.seg_logit(x)
 
@@ -184,6 +184,7 @@ class PointNet2SSGPartSeg(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
+        set_bn(self, momentum=0.01)
 
 
 if __name__ == '__main__':

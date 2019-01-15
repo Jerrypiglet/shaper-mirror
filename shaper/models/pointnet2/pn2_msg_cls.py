@@ -22,9 +22,6 @@ class PointNet2MSGCls(nn.Module):
 
     Structure: input -> [PointNetSA(MSG)]s -> [MLP]s -> MaxPooling -> [MLP]s -> [Linear] -> logits
 
-    Args:
-        Refer to PointNet2SSGCls. Major difference is that all the arguments will be a tuple of original types.
-
     """
 
     def __init__(self,
@@ -40,6 +37,7 @@ class PointNet2MSGCls(nn.Module):
                  global_channels=(512, 256),
                  dropout_prob=0.5,
                  use_xyz=True):
+        """Refer to PointNet2SSGCls. Major difference is that all the arguments will be a tuple of original types."""
         super(PointNet2MSGCls, self).__init__()
 
         self.in_channels = in_channels
@@ -71,7 +69,6 @@ class PointNet2MSGCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         point = data_batch["points"]
@@ -108,6 +105,7 @@ class PointNet2MSGCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
+        set_bn(self, momentum=0.01)
 
 
 if __name__ == '__main__':

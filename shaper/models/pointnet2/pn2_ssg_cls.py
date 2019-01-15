@@ -21,18 +21,7 @@ class PointNet2SSGCls(nn.Module):
     """PointNet2 with single-scale grouping for classification
 
     Structure: input -> [PointNetSA]s -> [MLP]s -> [MaxPooling] -> [MLP]s -> [Linear] -> logits
-
-    Args:
-        in_channels (int): the number of input channels
-        out_channels (int): the number of semantics classes to predict over
-        num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
-        radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
-        num_neighbours (tuple of int): the numbers of neighbours to query for each centroid
-        sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
-        local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
-        global_channels (tuple of int): the numbers of channels to extract global features
-        dropout_prob (float): the probability to dropout input features
-        use_xyz (bool): whether or not to use the xyz position of a points as a feature
+    Notice different with the original implementation, the last set abstraction is implemented as a local MLP.
 
     """
 
@@ -47,6 +36,21 @@ class PointNet2SSGCls(nn.Module):
                  global_channels=(512, 256),
                  dropout_prob=0.5,
                  use_xyz=True):
+        """
+
+        Args:
+            in_channels (int): the number of input channels
+            out_channels (int): the number of semantics classes to predict over
+            num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
+            radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
+            num_neighbours (tuple of int): the numbers of neighbours to query for each centroid
+            sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
+            local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
+            global_channels (tuple of int): the numbers of channels to extract global features
+            dropout_prob (float): the probability to dropout input features
+            use_xyz (bool): whether or not to use the xyz position of a points as a feature
+
+        """
         super(PointNet2SSGCls, self).__init__()
 
         self.in_channels = in_channels
@@ -78,7 +82,6 @@ class PointNet2SSGCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         points = data_batch["points"]
@@ -113,6 +116,7 @@ class PointNet2SSGCls(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
+        set_bn(self, momentum=0.01)
 
 
 if __name__ == '__main__':

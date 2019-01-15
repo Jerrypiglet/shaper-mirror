@@ -13,7 +13,6 @@ from shaper.models import build_model
 from shaper.data import build_dataloader
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
-from shaper.utils.io import mkdir
 
 
 def test_model(model,
@@ -45,6 +44,7 @@ def test_model(model,
     """
     logger = logging.getLogger("shaper.test")
     meters = MetricLogger(delimiter="  ")
+    loss_fn.eval()
     model.eval()
     metric_fn.eval()
 
@@ -63,10 +63,6 @@ def test_model(model,
                 test_result_dict[k].append(v.cpu().numpy())
 
             if with_label:
-                # add label into predictions
-                if "cls_label" in data_batch:
-                    test_result_dict["cls_label"].append(data_batch["cls_label"].cpu().numpy())
-
                 loss_dict = loss_fn(preds, data_batch)
                 metric_dict = metric_fn(preds, data_batch)
 
@@ -117,10 +113,6 @@ def test(cfg, output_dir=""):
     test_dataset = test_data_loader.dataset
 
     # test
-    vis_dir = cfg.TEST.VIS_DIR.replace("@", output_dir)
-    if vis_dir:
-        mkdir(vis_dir)
-
     start_time = time.time()
     test_meters, test_result_dict = test_model(model,
                                                loss_fn,

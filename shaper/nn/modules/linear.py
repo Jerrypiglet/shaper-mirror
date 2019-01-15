@@ -1,6 +1,6 @@
 from torch import nn
 
-from ..init import init_uniform, init_bn
+from ..init import xavier_uniform, init_bn
 
 
 class FC(nn.Module):
@@ -34,6 +34,6 @@ class FC(nn.Module):
 
     def init_weights(self):
         """default initialization"""
-        init_uniform(self.fc)
+        xavier_uniform(self.fc)
         if self.bn is not None:
             init_bn(self.bn)
