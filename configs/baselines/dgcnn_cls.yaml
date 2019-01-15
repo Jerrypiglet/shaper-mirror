@@ -15,10 +15,14 @@ DATASET:
   VAL: ("test",)
   TEST: ("test",)
 SOLVER:
+  TYPE: "Adam"
   BASE_LR: 0.001
+SCHEDULER:
+  TYPE: "StepLR"
+  StepLR:
+    gamma: 0.7
+    step_size: 20
   MAX_EPOCH: 250
-  GAMMA: 0.7
-  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
 TRAIN:
   BATCH_SIZE: 32
   AUGMENTATION: ("PointCloudRotate", "PointCloudJitter", "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
@@ -29,4 +33,3 @@ TEST:
   VOTE:
     ENABLE: True
     NUM_VIEW: 12
-    SCORE_HEUR: ("logit",)

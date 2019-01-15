@@ -16,10 +16,14 @@ DATASET:
   VAL: ("val",)
   TEST: ("test",)
 SOLVER:
+  TYPE: "Adam"
   BASE_LR: 0.001
+SCHEDULER:
+  TYPE: "MultiStepLR"
+  MultiStepLR:
+    gamma: 0.5
+    milestones: (20, 40, 60, 80, 100, 120)
   MAX_EPOCH: 200
-  GAMMA: 0.5
-  STEPS: (20, 40, 60, 80, 100, 120)
 TRAIN:
   BATCH_SIZE: 32
   LOG_PERIOD: 50

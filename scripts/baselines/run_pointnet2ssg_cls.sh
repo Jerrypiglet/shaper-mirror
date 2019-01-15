@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CFG="configs/baselines/pointnet_cls.yaml"
+CFG="configs/baselines/pointnet2ssg_cls.yaml"
 
 # randomness
 for i in 1 2 3 4 5
