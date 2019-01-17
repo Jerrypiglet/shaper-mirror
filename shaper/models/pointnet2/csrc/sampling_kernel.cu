@@ -134,6 +134,10 @@ Output:
 */
 at::Tensor FarthestPointSample(
 	  const at::Tensor points,
+          const at::Tensor mdist,
+          const at::Tensor pos,
+          const at::Tensor distance,
+	  const at::Tensor point,
     const int64_t num_centroids) {
 
 	const auto batch_size = points.size(0);
