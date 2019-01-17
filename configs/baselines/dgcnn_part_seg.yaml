@@ -1,5 +1,6 @@
 TASK:
   "part_segmentation"
+AUTO_RESUME: False
 MODEL:
   TYPE: "DGCNN"
 INPUT:
@@ -16,7 +17,7 @@ DATASET:
   VAL: ("val",)
   TEST: ("test",)
 SOLVER:
-  BASE_LR: 0.001
+  BASE_LR: 0.003
   MAX_EPOCH: 200
   GAMMA: 0.5
   STEPS: (20, 40, 60, 80, 100, 120)
@@ -25,6 +26,6 @@ TRAIN:
   LOG_PERIOD: 50
   VAL_PERIOD: 1
 TEST:
-  BATCH_SIZE: 32
+  BATCH_SIZE: 16
   VOTE:
     ENABLE: False
