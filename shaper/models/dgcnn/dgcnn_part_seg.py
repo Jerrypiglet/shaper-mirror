@@ -1,3 +1,13 @@
+"""DGCNN
+References:
+    @article{dgcnn,
+      title={Dynamic Graph CNN for Learning on Point Clouds},
+      author={Yue Wang, Yongbin Sun, Ziwei Liu, Sanjay E. Sarma, Michael M. Bronstein, Justin M. Solomon},
+      journal={arXiv preprint arXiv:1801.07829},
+      year={2018}
+    }
+"""
+
 import torch
 import torch.nn as nn
 
@@ -65,21 +75,37 @@ class TNet(nn.Module):
         # set linear transform be 0
         nn.init.zeros_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
-
+# -----------------------------------------------------------------------------
+# dgcnn for part segmentation
+# -----------------------------------------------------------------------------
 
 class DGCNNPartSeg(nn.Module):
     """DGCNN for part segmentation
+       Structure: (-> [TNet] -> transform_input) -> [EdgeConvBlock]s -> [Concat EdgeConvBlock features]]
+       -> [local MLP] -> [add classification label info] -> [Concat Features] -> [mlp seg] -> [conv seg] 
+       -> [seg logit] -> logits
+
+       [EdgeConvBlock]: in_feature -> [EdgeFeature] -> [EdgeConv] -> [EdgePool] -> out_features
+
+       Args:
+	   in_channels: (int) dimension of input layer
+	   out_channels: (int) dimension of output layer
+	   num_seg_class: (int) number of segmentation class [shapenet: 50]
+           edge_conv_channels: (tuple of int) numbers of channels of edge convolution layers
+	   inter_channels: (int) number of channels of intermediate features before MaxPool
+           k: (int) number of nearest neighbours for edge feature extractor  
     """
 
     def __init__(self,
                  in_channels,
                  out_channels,
+                 num_class,
                  num_seg_class,
-                 edge_conv_channels=((64, 64), (64, 64), (64,)),
+                 edge_conv_channels=((64, 64), (64, 64), (64, 64)),
                  inter_channels= 1024,
                  global_channels=(256, 256, 128),
                  k=20,
-                 dropout_prob=0.6,
+                 dropout_prob=0.4,
                  with_transform=True):
         super(DGCNNPartSeg, self).__init__()
 
@@ -88,6 +114,7 @@ class DGCNNPartSeg(nn.Module):
         self.k = k
         self.with_transform = with_transform
         self.num_gpu = torch.cuda.device_count()
+        self.num_class = num_class
 
         #input transform
         if self.with_transform:
@@ -97,11 +124,12 @@ class DGCNNPartSeg(nn.Module):
         for out in edge_conv_channels:
             self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out, k))
             in_channels = out[-1]
-        
+       
+        out_channel = edge_conv_channels[0][0] 
+        self.lable_conv = Conv2d(num_class, out_channel, [1,1])
 
-        self.lable_conv = Conv2d(16, 64, [1,1])
-
-        self.mlp_local = Conv1d(sum([item[-1] for item in edge_conv_channels]), inter_channels, 1)
+        mlplocal_input = sum([item[-1] for item in edge_conv_channels])
+        self.mlp_local = Conv1d(mlplocal_input, inter_channels, 1)
 
         mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
         self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob)
@@ -112,42 +140,34 @@ class DGCNNPartSeg(nn.Module):
         set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
-        #specify computing process
         end_points = {}
         x = data_batch["points"]
+        cls_label = data_batch["cls_label"]
 
         num_point = x.shape[2]
-      
-        cls_label = data_batch["cls_label"]
         batch_size = cls_label.size()[0]
-        num_classes = 16
-        # print("output size is {}, data shape is {}, label shape is {}\n".format(self.out_channels, x.size(), cls_label.size()))
-        # print("number of gpu is {}".format(torch.cuda.device_count()))
+        num_classes = self.num_class
+        
         if self.with_transform:
             trans_input = self.transform_input(x)
             x = torch.bmm(trans_input, x)
             end_points['trans_input'] = trans_input
-        # print("the size of x is {}".format(x.size()))
-
 
 	# edge convolution for point cloud         
         features = []
         for edge_conv in self.mlp_edge_conv:
             x = edge_conv(x)
             features.append(x)
-        # print("the size of x after edge conv is {}".format(x.size()))
 
-	# concatenate all the feature from each edge convolutional layer 
         x = torch.cat(features, dim=1)
    
-        # go through local mlp 
+        # local mlp 
         x = self.mlp_local(x)
         x, max_indice = torch.max(x, 2)
 
         end_points['key_point_inds'] = max_indice
 
-        # use classification label
-        # print("the real cls label {}".format(cls_label))
+        # use info from classification label
         with torch.no_grad():
             I = torch.eye(16, dtype=x.dtype, device=x.device)
             one_hot = I[cls_label]
@@ -155,15 +175,15 @@ class DGCNNPartSeg(nn.Module):
 
         one_hot_expand = self.lable_conv(one_hot_expand)
         
-        # print("size of x is {}, size of one_hot_expand is {}".format(x.size(), one_hot_expand.size()))
         # concatenate information from point cloud and label
         one_hot_expand = one_hot_expand.view(batch_size, -1)
         out_max = torch.cat([x, one_hot_expand], dim=1)
         out_max = out_max.unsqueeze(2).expand(-1, -1, num_point)
 
         cat_features = torch.cat(features, dim=1)
-        # print("size of x is {}, size of cat_features is {}".format(out_max.size(), cat_features.size()))
         x = torch.cat([out_max, cat_features], dim=1)
+       
+        # mlp_seg & conv_seg
         x = self.mlp_seg(x)
         x = self.conv_seg(x)
         seg_logit = self.seg_logit(x)
@@ -172,9 +192,6 @@ class DGCNNPartSeg(nn.Module):
         }
         preds.update(end_points)
 
-        # print("seg_logit is \n {}, size is {}".format(seg_logit, seg_logit.size()))
-        # print("#"*50)
-        # print("label is \n {}, size is {}".format(data_batch["seg_label"], data_batch["seg_label"].size()))
         return preds
     
     def init_weights(self):
@@ -192,7 +209,7 @@ if __name__ == "__main__":
     out = transform(data)
     print('TNet: ', out.size())
 
-    dgcnn = DGCNNPartSeg(in_channels, num_classes, with_transform=False)
+    dgcnn = DGCNNPartSeg(in_channels, num_classes, 16, 40, with_transform=False)
     out_dict = dgcnn({"points": data})
     for k, v in out_dict.items():
         print('DGCNN:', k, v.shape)
