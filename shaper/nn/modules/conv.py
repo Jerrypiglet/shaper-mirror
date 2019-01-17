@@ -1,7 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 
-from ..init import init_uniform, init_bn
+from ..init import init_bn
 
 
 class Conv1d(nn.Module):
@@ -34,9 +34,10 @@ class Conv1d(nn.Module):
             x = F.relu(x, inplace=True)
         return x
 
-    def init_weights(self):
+    def init_weights(self, init_fn=None):
         """default initialization"""
-        init_uniform(self.conv)
+        if init_fn is not None:
+            init_fn(self.conv)
         if self.bn is not None:
             init_bn(self.bn)
 
@@ -74,8 +75,9 @@ class Conv2d(nn.Module):
             x = F.relu(x, inplace=True)
         return x
 
-    def init_weights(self):
+    def init_weights(self, init_fn=None):
         """default initialization"""
-        init_uniform(self.conv)
+        if init_fn is not None:
+            init_fn(self.conv)
         if self.bn is not None:
             init_bn(self.bn)

@@ -41,6 +41,11 @@ class MLP(nn.ModuleList):
                 x = self.dropout(x)
         return x
 
+    def init_weights(self, init_fn=None):
+        for m in self.modules():
+            if isinstance(m, FC):
+                m.init_weights(init_fn)
+
 
 class SharedMLP(nn.ModuleList):
     def __init__(self,
@@ -49,7 +54,8 @@ class SharedMLP(nn.ModuleList):
                  ndim=1,
                  dropout=None,
                  bn=True,
-                 bn_momentum=0.1):
+                 bn_momentum=0.1,
+                 init_fn=None):
         """Multilayer perceptron shared on resolution (1D or 2D)
 
         Args:
@@ -87,3 +93,8 @@ class SharedMLP(nn.ModuleList):
             if self.dropout is not None:
                 x = self.dropout(x)
         return x
+
+    def init_weights(self, init_fn=None):
+        for m in self.modules():
+            if isinstance(m, (Conv1d, Conv2d)):
+                m.init_weights(init_fn)

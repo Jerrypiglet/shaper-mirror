@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP
-from shaper.nn.init import set_bn
+from shaper.nn.init import xavier_uniform, set_bn
 
 
 class TNet(nn.Module):
@@ -61,6 +61,9 @@ class TNet(nn.Module):
         return x
 
     def init_weights(self):
+        # Default initialization in original implementation
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_global.init_weights(xavier_uniform)
         # Initialize linear transform to 0
         nn.init.zeros_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
@@ -87,6 +90,7 @@ class Stem(nn.Module):
 
         # feature stem
         self.mlp = SharedMLP(in_channels, stem_channels)
+        self.mlp.init_weights(xavier_uniform)
 
         if self.with_transform:
             # input transform
@@ -165,8 +169,6 @@ class PointNetCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
-        # set batch normalization to 0.01 as default
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         x = data_batch["points"]
@@ -190,8 +192,13 @@ class PointNetCls(nn.Module):
         return preds
 
     def init_weights(self):
+        # Default initialization in original implementation
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_global.init_weights(xavier_uniform)
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
+        # Set batch normalization to 0.01 as default
+        set_bn(self, momentum=0.01)
 
 
 class PointNetClsLoss(nn.Module):

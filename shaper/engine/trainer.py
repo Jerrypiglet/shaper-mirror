@@ -1,3 +1,5 @@
+"""Generalized trainer"""
+
 import logging
 import time
 
@@ -5,12 +7,13 @@ import torch
 from torch import nn
 
 from shaper.models import build_model
-from shaper.solver import build_optimizer
+from shaper.solver import build_optimizer, build_scheduler
 from shaper.nn.freezer import Freezer
 from shaper.data import build_dataloader
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
+from shaper.utils.torch_util import set_random_seed
 
 
 def train_model(model,
@@ -25,7 +28,9 @@ def train_model(model,
     model.train()
     if freezer is not None:
         freezer.freeze()
+    loss_fn.train()
     metric_fn.train()
+
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
         data_time = time.time() - end
@@ -73,7 +78,9 @@ def validate_model(model,
     logger = logging.getLogger("shaper.validate")
     meters = MetricLogger(delimiter="  ")
     model.eval()
+    loss_fn.eval()
     metric_fn.eval()
+
     end = time.time()
     with torch.no_grad():
         for iteration, data_batch in enumerate(data_loader):
@@ -109,20 +116,19 @@ def validate_model(model,
 def train(cfg, output_dir=""):
     logger = logging.getLogger("shaper.trainer")
 
-    # build model
+    set_random_seed(cfg.RNG_SEED)
+    # Build model
     model, loss_fn, metric_fn = build_model(cfg)
     logger.info("Build model:\n{}".format(str(model)))
     model = nn.DataParallel(model).cuda()
 
-    # build optimizer
+    # Build optimizer
     optimizer = build_optimizer(cfg, model)
 
-    # TODO: build lr scheduler
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                     milestones=cfg.SOLVER.STEPS,
-                                                     gamma=cfg.SOLVER.GAMMA)
+    # Build lr scheduler
+    scheduler = build_scheduler(cfg, optimizer)
 
-    # build checkpointer
+    # Build checkpointer
     checkpointer = Checkpointer(model,
                                 optimizer=optimizer,
                                 scheduler=scheduler,
@@ -131,23 +137,26 @@ def train(cfg, output_dir=""):
     checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME)
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD
 
-    # build freezer
+    # Build freezer
     if cfg.TRAIN.FROZEN_PATTERNS:
         freezer = Freezer(model, cfg.TRAIN.FROZEN_PATTERNS)
         freezer.freeze(verbose=True)  # sanity check
     else:
         freezer = None
 
-    # build data loader
+    set_random_seed(cfg.RNG_SEED)
+    # Build data loader
     train_data_loader = build_dataloader(cfg, mode="train")
     val_period = cfg.TRAIN.VAL_PERIOD
     val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
-    # build tensorboard logger (optionally by comment)
+    # Build tensorboard logger (optionally by comment)
     tensorboard_logger = TensorboardLogger(output_dir)
 
-    # train
-    max_epoch = cfg.SOLVER.MAX_EPOCH
+    # ---------------------------------------------------------------------------- #
+    # Epoch-based training
+    # ---------------------------------------------------------------------------- #
+    max_epoch = cfg.SCHEDULER.MAX_EPOCH
     start_epoch = checkpoint_data.get("epoch", 0)
     best_metric_name = "best_{}".format(cfg.TRAIN.VAL_METRIC)
     best_metric = checkpoint_data.get(best_metric_name, None)
@@ -170,13 +179,13 @@ def train(cfg, output_dir=""):
 
         tensorboard_logger.add_scalars(train_meters.meters, cur_epoch, prefix="train")
 
-        # checkpoint
+        # Checkpoint
         if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
             checkpoint_data["epoch"] = cur_epoch
             checkpoint_data[best_metric_name] = best_metric
             checkpointer.save("model_{:03d}".format(cur_epoch), **checkpoint_data)
 
-        # validate
+        # Validate
         if val_period < 1:
             continue
         if cur_epoch % val_period == 0 or cur_epoch == max_epoch:
@@ -191,12 +200,15 @@ def train(cfg, output_dir=""):
             tensorboard_logger.add_scalars(val_meters.meters, cur_epoch, prefix="val")
 
             # best validation
-            cur_metric = val_meters.meters[cfg.TRAIN.VAL_METRIC].global_avg
-            if best_metric is None or cur_metric > best_metric:
-                best_metric = cur_metric
-                checkpoint_data["epoch"] = cur_epoch
-                checkpoint_data[best_metric_name] = best_metric
-                checkpointer.save("model_best", **checkpoint_data)
+            cur_metric = val_meters.meters.get(cfg.TRAIN.VAL_METRIC)
+            # Do not save best-val epoch if no val_metric is given.
+            if cur_metric is not None:
+                cur_metric = cur_metric.global_avg
+                if best_metric is None or cur_metric > best_metric:
+                    best_metric = cur_metric
+                    checkpoint_data["epoch"] = cur_epoch
+                    checkpoint_data[best_metric_name] = best_metric
+                    checkpointer.save("model_best", **checkpoint_data)
 
     logger.info("Best val-{} = {}".format(cfg.TRAIN.VAL_METRIC, best_metric))
 

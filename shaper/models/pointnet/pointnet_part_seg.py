@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from shaper.nn import MLP, SharedMLP, Conv1d
-from shaper.nn.init import set_bn
+from shaper.nn.init import xavier_uniform, set_bn
 from shaper.models.pointnet.pointnet_cls import TNet
 
 
@@ -39,6 +39,7 @@ class Stem(nn.Module):
 
         # feature stem
         self.mlp = SharedMLP(in_channels, stem_channels)
+        self.mlp.init_weights(xavier_uniform)
 
         if self.with_transform:
             # input transform
@@ -142,8 +143,6 @@ class PointNetPartSeg(nn.Module):
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
         self.init_weights()
-        # set batch normalization to 0.01 as default
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         x = data_batch["points"]
@@ -196,10 +195,16 @@ class PointNetPartSeg(nn.Module):
         return preds
 
     def init_weights(self):
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_cls.init_weights(xavier_uniform)
+        self.mlp_seg.init_weights(xavier_uniform)
+        self.conv_seg.init_weights(xavier_uniform)
         nn.init.xavier_uniform_(self.cls_logit.weight)
         nn.init.zeros_(self.cls_logit.bias)
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
+        # Set batch normalization to 0.01 as default
+        set_bn(self, momentum=0.01)
 
 
 class PointNetPartSegLoss(nn.Module):

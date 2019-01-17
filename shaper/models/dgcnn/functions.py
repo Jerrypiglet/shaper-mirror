@@ -19,10 +19,10 @@ def get_knn_inds(pdist, k=20, remove=False):
 
     """
     if remove:
-        _, knn_inds = torch.topk(pdist, k + 1, largest=False)
+        _, knn_inds = torch.topk(pdist, k + 1, largest=False, sorted=False)
         return knn_inds[..., 1:]
     else:
-        _, knn_inds = torch.topk(pdist, k, largest=False)
+        _, knn_inds = torch.topk(pdist, k, largest=False, sorted=False)
         return knn_inds
 
 

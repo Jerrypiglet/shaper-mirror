@@ -5,22 +5,23 @@ MODEL:
   TYPE: "DGCNN"
 INPUT:
   NUM_POINTS: 2048
-#  NUM_POINTS: 3000
 DATASET:
   ROOT_DIR: "data/shapenet_hdf5"
   TYPE: "ShapeNetH5"
-  #  ROOT_DIR: "data/shapenet"
-  #  TYPE: "ShapeNet"
   NUM_CLASSES: 16
   NUM_SEG_CLASSES: 50
   TRAIN: ("train",)
   VAL: ("val",)
   TEST: ("test",)
 SOLVER:
+  TYPE: "Adam"
   BASE_LR: 0.003
-  MAX_EPOCH: 200
-  GAMMA: 0.5
-  STEPS: (20, 40, 60, 80, 100, 120)
+SCHEDULER:
+  TYPE: "StepLR"
+  StepLR:
+    gamma: 0.7
+    step_size: 20
+  MAX_EPOCH: 250
 TRAIN:
   BATCH_SIZE: 16 
   LOG_PERIOD: 50

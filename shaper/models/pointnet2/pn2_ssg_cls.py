@@ -14,25 +14,14 @@ import torch.nn as nn
 
 from shaper.nn import MLP, SharedMLP
 from shaper.models.pointnet2.modules import PointNetSAModule
-from shaper.nn.init import set_bn
+from shaper.nn.init import xavier_uniform, set_bn
 
 
 class PointNet2SSGCls(nn.Module):
-    """PointNet2 with single-scale grouping for classfication
+    """PointNet2 with single-scale grouping for classification
 
     Structure: input -> [PointNetSA]s -> [MLP]s -> [MaxPooling] -> [MLP]s -> [Linear] -> logits
-
-    Args:
-        in_channels (int): the number of input channels
-        out_channels (int): the number of semantics classes to predict over
-        num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
-        radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
-        num_neighbours(tuple of int): the numbers of neighbours to query for each centroid
-        sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
-        local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
-        global_channels (tuple of int): the numbers of channels to extract global features
-        dropout_prob (float): the probability to dropout input features
-        use_xyz (bool): whether or not to use the xyz position of a points as a feature
+    Notice different with the original implementation, the last set abstraction is implemented as a local MLP.
 
     """
 
@@ -47,6 +36,21 @@ class PointNet2SSGCls(nn.Module):
                  global_channels=(512, 256),
                  dropout_prob=0.5,
                  use_xyz=True):
+        """
+
+        Args:
+            in_channels (int): the number of input channels
+            out_channels (int): the number of semantics classes to predict over
+            num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
+            radius (tuple of float): a tuple of radius to query neighbours in each set abstraction module
+            num_neighbours (tuple of int): the numbers of neighbours to query for each centroid
+            sa_channels (tuple of tuple of int): the numbers of channels to within each set abstraction module
+            local_channels (tuple of int): the numbers of channels to extract local features after set abstraction
+            global_channels (tuple of int): the numbers of channels to extract global features
+            dropout_prob (float): the probability to dropout input features
+            use_xyz (bool): whether or not to use the xyz position of a points as a feature
+
+        """
         super(PointNet2SSGCls, self).__init__()
 
         self.in_channels = in_channels
@@ -78,16 +82,15 @@ class PointNet2SSGCls(nn.Module):
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
-        point = data_batch["points"]
+        points = data_batch["points"]
         end_points = {}
 
         # torch.Tensor.narrow; share same memory
-        xyz = point.narrow(1, 0, 3)
-        if point.size(1) > 3:
-            feature = point.narrow(1, 3, point.size(1) - 3)
+        xyz = points.narrow(1, 0, 3)
+        if points.size(1) > 3:
+            feature = points.narrow(1, 3, points.size(1) - 3)
         else:
             feature = None
 
@@ -95,10 +98,8 @@ class PointNet2SSGCls(nn.Module):
             xyz, feature = sa_module(xyz, feature)
 
         if self.use_xyz:
-            x = torch.cat([xyz, feature], dim=1)
-        else:
-            x = feature
-        x = self.mlp_local(x)
+            feature = torch.cat([xyz, feature], dim=1)
+        x = self.mlp_local(feature)
         x, max_indices = torch.max(x, 2)
         end_points['key_point_inds'] = max_indices
         x = self.mlp_global(x)
@@ -113,8 +114,13 @@ class PointNet2SSGCls(nn.Module):
         return preds
 
     def init_weights(self):
+        for sa_module in self.sa_modules:
+            sa_module.init_weights(xavier_uniform)
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_global.init_weights(xavier_uniform)
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.zeros_(self.classifier.bias)
+        set_bn(self, momentum=0.01)
 
 
 if __name__ == '__main__':
@@ -123,11 +129,11 @@ if __name__ == '__main__':
     num_points = 1024
     num_classes = 40
 
-    data = torch.rand(batch_size, in_channels, num_points)
-    data = data.cuda()
+    points = torch.rand(batch_size, in_channels, num_points)
+    points = points.cuda()
 
     pn2ssg = PointNet2SSGCls(in_channels, num_classes)
     pn2ssg.cuda()
-    out_dict = pn2ssg({"points": data})
+    out_dict = pn2ssg({"points": points})
     for k, v in out_dict.items():
         print('PointNet2SSG:', k, v.shape)

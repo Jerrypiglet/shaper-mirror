@@ -10,6 +10,7 @@ class ClsLoss(nn.Module):
 
     Attributes:
         label_smoothing (float or 0): the parameter to smooth labels
+
     """
 
     def __init__(self, label_smoothing=0):
@@ -59,5 +60,20 @@ class DGCNNPartSegLoss(nn.Module):
             I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
             reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
             loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
+        return loss_dict
+
+class PartSegLoss(nn.Module):
+    """Part segmentation loss"""
+
+    def __init__(self):
+        super(PartSegLoss, self).__init__()
+
+    def forward(self, preds, labels):
+        seg_logit = preds["seg_logit"]
+        seg_label = labels["seg_label"]
+        seg_loss = F.cross_entropy(seg_logit, seg_label)
+        loss_dict = {
+            "seg_loss": seg_loss
+        }
 
         return loss_dict

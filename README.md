@@ -24,7 +24,7 @@ so that the package is visible in PYTHONPATH.
 # create anaconda environment
 bash install.sh
 # Remember to add develop so that all the modifications of python files could take effects.
-python setup.py build develop
+python setup.py develop
 ```
 CUDA extensions are written to speed up calculations.
 There are some [resources](#cuda-extension) to learn how to write cuda extensions for pytorch.
@@ -54,15 +54,15 @@ is used to configure both training and testing.
 It is a library developed by Facebook Research and used in projects like Detectron.
 
 ### Train model
-```
-python tools/train_net.py --cfg=configs/baselines/pointnet_cls.yaml
+```bash
+python tools/train_cls.py --cfg=configs/baselines/pointnet_cls.yaml
 ```
 The training logs, model weights, and tensorboard events will be saved to a directory provided in yaml.
 Tensorboard is supported to monitor the training status.
 
 ### Test model
-```
-python tools/test_net.py --cfg=configs/baselines/pointnet_cls.yaml
+```bash
+python tools/test_cls.py --cfg=configs/baselines/pointnet_cls.yaml
 ```
 
 ### Unittest
@@ -120,9 +120,6 @@ In general, ``setup.py`` will build extensions by compiling source files(".cpp",
 - https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html
 
 ## Troubleshooting
-
-### Failure to setup ``shaper``
-Run ``python setup.py build develop`` instead of ``python setup.py install develop``.
 
 ### Failure to find dynamic library(.so) after compiling source files.
 There exist some errors in your source codes.

@@ -23,13 +23,17 @@ _C.MODEL.TYPE = ""
 _C.MODEL.WEIGHT = ""
 
 # -----------------------------------------------------------------------------
-# INPUT (Only support point cloud now)
+# INPUT (Specific for point cloud)
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 
+# Input channels of point cloud
+# channels = 3: (x, y, z)
+# channels = 6: (x, y, z, normal_x, normal_y, normal_z)
 _C.INPUT.IN_CHANNELS = 3
+# -1 for all points
 _C.INPUT.NUM_POINTS = -1
-# Whether to use normal
+# Whether to use normal. Assume points[..,3:6] is normal.
 _C.INPUT.USE_NORMAL = False
 
 # -----------------------------------------------------------------------------
@@ -54,29 +58,21 @@ _C.DATASET.TEST = ()
 _C.DATALOADER = CN()
 # Number of data loading threads
 _C.DATALOADER.NUM_WORKERS = 1
-# Whether to drop last
+# Whether to drop last during training
 _C.DATALOADER.DROP_LAST = True
 
 # ---------------------------------------------------------------------------- #
-# Solver (optimizer, learning schedule)
+# Solver (optimizer)
 # ---------------------------------------------------------------------------- #
 _C.SOLVER = CN()
 
 # Type of optimizer
 _C.SOLVER.TYPE = "Adam"
 
-_C.SOLVER.MAX_EPOCH = 1
-
 # Basic parameters of solvers
 # Notice to change learning rate according to batch size
 _C.SOLVER.BASE_LR = 0.001
-
 _C.SOLVER.WEIGHT_DECAY = 0.0
-
-# training schedule
-_C.SOLVER.GAMMA = 0.1
-_C.SOLVER.STEPS = ()
-
 # Specific parameters of solvers
 _C.SOLVER.SGD = CN()
 _C.SOLVER.SGD.momentum = 0.9
@@ -85,16 +81,33 @@ _C.SOLVER.Adam = CN()
 _C.SOLVER.Adam.betas = (0.9, 0.999)
 
 # ---------------------------------------------------------------------------- #
+# Scheduler (learning rate schedule)
+# ---------------------------------------------------------------------------- #
+_C.SCHEDULER = CN()
+_C.SCHEDULER.TYPE = ""
+
+_C.SCHEDULER.MAX_EPOCH = 1
+
+_C.SCHEDULER.StepLR = CN()
+_C.SCHEDULER.StepLR.step_size = 0
+_C.SCHEDULER.StepLR.gamma = 0.1
+
+_C.SCHEDULER.MultiStepLR = CN()
+_C.SCHEDULER.MultiStepLR.milestones = ()
+_C.SCHEDULER.MultiStepLR.gamma = 0.1
+
+# ---------------------------------------------------------------------------- #
 # Specific train options
 # ---------------------------------------------------------------------------- #
 _C.TRAIN = CN()
 
 _C.TRAIN.BATCH_SIZE = 32
 
+# The period to save a checkpoint
 _C.TRAIN.CHECKPOINT_PERIOD = 1000
 _C.TRAIN.LOG_PERIOD = 10
 
-# Validation
+# The period to validate
 _C.TRAIN.VAL_PERIOD = 1
 # The metric for best validation performance
 _C.TRAIN.VAL_METRIC = ""
@@ -104,6 +117,8 @@ _C.TRAIN.VAL_METRIC = ""
 _C.TRAIN.AUGMENTATION = ()
 
 # Regex patterns of modules and/or parameters to freeze
+# For example, ("bn",) will freeze all batch normalization layers' weight and bias;
+# And ("module:bn",) will freeze all batch normalization layers' running mean and var.
 _C.TRAIN.FROZEN_PATTERNS = ()
 
 # ---------------------------------------------------------------------------- #
@@ -122,28 +137,6 @@ _C.TEST.AUGMENTATION = ()
 
 _C.TEST.LOG_PERIOD = 10
 
-# Visualize errors. Path to visualize point clouds
-_C.TEST.VIS_DIR = ""
-
-# Visualize key points in point cloud
-_C.TEST.VIS_KEY_PTS = False
-
-# ---------------------------------------------------------------------------- #
-# Test-time augmentations for point cloud classification
-# Now only support multi-view voting
-# ---------------------------------------------------------------------------- #
-_C.TEST.VOTE = CN()
-
-_C.TEST.VOTE.ENABLE = False
-
-# The axis along which to rotate
-_C.TEST.VOTE.AXIS = "y"
-# The number of views to vote
-_C.TEST.VOTE.NUM_VIEW = 12
-# Heuristic used to combine predicted classification scores
-#   Valid options: ("logit", "softmax", "label")
-_C.TEST.VOTE.SCORE_HEUR = ("logit",)
-
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
@@ -152,4 +145,5 @@ _C.OUTPUT_DIR = "@"
 
 # For reproducibility...but not really because modern fast GPU libraries use
 # non-deterministic op implementations
-# _C.RNG_SEED = 0
+# -1 means not to set explicitly.
+_C.RNG_SEED = -1

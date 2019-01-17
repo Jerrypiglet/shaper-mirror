@@ -1,6 +1,6 @@
 from torch import nn
 
-from ..init import init_uniform, init_bn
+from ..init import init_bn
 
 
 class FC(nn.Module):
@@ -22,8 +22,6 @@ class FC(nn.Module):
         self.bn = nn.BatchNorm1d(out_channels, momentum=bn_momentum) if bn else None
         self.relu = nn.ReLU(inplace=True) if relu else None
 
-        self.init_weights()
-
     def forward(self, x):
         x = self.fc(x)
         if self.bn is not None:
@@ -32,8 +30,9 @@ class FC(nn.Module):
             x = self.relu(x)
         return x
 
-    def init_weights(self):
+    def init_weights(self, init_fn=None):
         """default initialization"""
-        init_uniform(self.fc)
+        if init_fn is not None:
+            init_fn(self.fc)
         if self.bn is not None:
             init_bn(self.bn)

@@ -32,9 +32,9 @@ def evaluate_classification(dataset,
     logger = logging.getLogger("shaper.evaluator.cls")
     logger.info("Start evaluating and visualize in {}".format(vis_dir))
 
-    # remove transform
+    # Remove transform
     dataset.transform = None
-    # use valid points
+    # Use all points
     dataset.num_points = -1
     dataset.shuffle_points = False
 
@@ -46,7 +46,7 @@ def evaluate_classification(dataset,
         suffix = "_" + suffix
 
     num_tp_per_class = defaultdict(int)
-    # the number of ground_truth/positive
+    # The number of ground_truth
     num_gt_per_class = defaultdict(int)
 
     for ind in tqdm(range(num_samples)):
@@ -60,8 +60,7 @@ def evaluate_classification(dataset,
 
         if pred_label != gt_label and vis_dir:
             fname = "{:04d}_label_{}_pred_{}" + suffix
-            fname = osp.join(vis_dir, fname).format(
-                ind, class_names[gt_label], class_names[pred_label])
+            fname = osp.join(vis_dir, fname).format(ind, class_names[gt_label], class_names[pred_label])
 
             points = data["points"]
             num_points = len(points)
@@ -74,8 +73,8 @@ def evaluate_classification(dataset,
             if aux_preds is not None and "key_point_inds" in aux_preds:
                 point_colors = np.ones([num_points, 3], dtype=points.dtype)
                 # TODO: remove invalid index
-                cur_keypoint_inds = aux_preds["key_point_inds"][ind]
-                point_colors[cur_keypoint_inds, ...] = [1, 0, 0]
+                key_point_inds = aux_preds["key_point_inds"][ind]
+                point_colors[key_point_inds, ...] = [1, 0, 0]
                 points = np.concatenate((points, point_colors), -1)
 
             np.savetxt(fname + '.xyz', points, fmt="%.4f")
@@ -119,7 +118,7 @@ def evaluate_part_segmentation(dataset,
 
     Args:
         dataset (torch.utils.data.Dataset): dataset
-        pred_logits (list of int or np.ndarray): predicted logits
+        pred_logits (list of np.ndarray or np.ndarray): predicted logits
         aux_preds (dict, optional): auxiliary predictions
         output_dir (str, optional): output directory
         vis_dir (str, optional): visualization directory
@@ -129,9 +128,9 @@ def evaluate_part_segmentation(dataset,
     logger = logging.getLogger("shaper.evaluator.part_seg")
     logger.info("Start evaluating and visualize in {}".format(vis_dir))
 
-    # remove transform
+    # Remove transform
     dataset.transform = None
-    # use valid points
+    # Use all points
     dataset.num_points = -1
     dataset.shuffle_points = False
 
@@ -154,13 +153,15 @@ def evaluate_part_segmentation(dataset,
         pred_seg_logit = pred_logits[ind]
 
         # sanity check
-        num_valid_points = len(points)
-        assert len(gt_seg_label) == num_valid_points
-        assert pred_seg_logit.shape[1] >= num_valid_points
+        assert len(gt_seg_label) == points.shape[0]
+        # assert pred_seg_logit.shape[1] >= points.shape[0]
 
         segids = class_to_seg_map[gt_cls_label]
+        num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
         pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
         # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
+        gt_seg_label = gt_seg_label[:num_valid_points]
+
         pred_seg_label = np.argmax(pred_seg_logit, axis=0)
         for ind, segid in enumerate(segids):
             # convert partid to segid
@@ -204,4 +205,4 @@ def evaluate_part_segmentation(dataset,
                            num_inst_per_class[ind]])
         else:
             table.add_row([class_name, 0, 0, 0])
-    logger.info(table)
+    logger.info("class-wise segmentation accuracy.\n{}".format(table))
