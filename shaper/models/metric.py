@@ -76,6 +76,16 @@ class PartSegMetric(nn.Module):
         return metrics
 
 
+class SemSegMetric(nn.Module):
+    def __init__(self, num_seg_classes):
+        super().__init__()
+        self.seg_acc = SegAccuracy()
+
+    def forward(self, preds, labels):
+        metrics = self.seg_acc(preds, labels)
+        return metrics
+
+
 class IntersectionAndUnion(nn.Module):
     """Intersection and union
 

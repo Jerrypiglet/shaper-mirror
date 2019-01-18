@@ -42,33 +42,17 @@ class PointNet2MSGSemSeg(nn.Module):
                  use_xyz=True):
         """
         Args:
-            in_channels (int):
-                asdf
-            num_seg_classes (int):
-                asdf
-            num_centroids (tuple of int):
-                asdf = (1024, 256, 64, 16)
-            radius_list (tuple of tuple of float):
-                asdf = ((0.05, 0.1), (0.1, 0.2), (0.2, 0.4), (0.4, 0.8))
-            num_neighbours_list (tuple of tuple of float):
-                asdf = ((16, 32), (16, 32), (16, 32), (16, 32))
-            sa_channels_list (tuple of tuple of tuple of float):
-                asdf = (((16, 16, 32), (32, 32, 64)),
-                        ((64, 64, 128), (64, 96, 128)),
-                        ((128, 196, 256), (128, 196, 256)),
-                        ((256, 256, 512), (256, 384, 512)))
-            local_channels (tuple of int):
-                asdf = (256, 512, 1024)
-            fp_channels (tuple of tuple of float):
-                asdf = ((128, 128), (256, 256), (512, 512), (512, 512))
-            num_fp_neighbours (tuple of int):
-                asdf = (3, 3, 3, 3)
-            seg_channels (tuple of int):
-                asdf = (128,)
-            dropout_prob (float):
-                asdf = 0.5
-            use_xyz (bool):
-                asdf = True
+            in_channels (int): the number of input channels
+            num_seg_classes (int): the number of segmentation classes
+            num_centroids (tuple of int): the numbers of centroids to sample in each set abstraction module
+            radius_list (tuple of tuple of float): the radii to query neighbours in each set abstraction module
+            num_neighbours (tuple of tuple of int): the numbers of neighbours to query for each centroid
+            sa_channels (tuple of tuple of tuple of int): the numbers of mlp channels within each set abstraction module
+            fp_channels (tuple of tuple of int): the numbers of mlp channels for feature propagation (FP) module
+            num_fp_neighbours (tuple of int): the numbers of nearest neighbors used in FP
+            seg_channels (tuple of int): the numbers of channels in segmentation mlp
+            dropout_prob (float): the probability to dropout input features
+            use_xyz (bool): whether or not to use the xyz position of a points as a feature
         """
         super().__init__()
 

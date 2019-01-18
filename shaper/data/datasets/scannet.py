@@ -3,7 +3,8 @@ import numpy as np
 import os.path as osp
 
 from torch.utils.data import Dataset
-from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
+# from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
+from utils import crop_or_pad_points, normalize_points
 
 
 class ScanNet(Dataset):
@@ -275,7 +276,7 @@ class ScannetWholeScene():
                 points, seg_label = self.seg_transform(points, seg_label)
             points.transpose_(0, 1)
 
-        out_dict = {'points': point_set, 'seg_label': semantic_seg, 'weights': sample_weight}
+        out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
 
 

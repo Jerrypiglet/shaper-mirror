@@ -44,3 +44,17 @@ class PartSegLoss(nn.Module):
         }
 
         return loss_dict
+
+
+class SemSegLoss(nn.Module):
+    """Semantic segmentation loss, with weighted cross entropy"""
+
+    def forward(self, preds, labels):
+        seg_logit = preds["seg_logit"]
+        seg_label = labels["seg_label"]
+        weights = labels.get("label_weights", torch.ones(seg_label.shape[1]))
+        seg_loss = F.cross_entropy(seg_logit, seg_label, weight=weights)
+        loss_dict = {
+            "seg_loss": seg_loss
+        }
+        return loss_dict

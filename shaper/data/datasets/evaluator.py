@@ -206,3 +206,99 @@ def evaluate_part_segmentation(dataset,
         else:
             table.add_row([class_name, 0, 0, 0])
     logger.info("class-wise segmentation accuracy.\n{}".format(table))
+
+
+def evaluate_semantic_segmentation(dataset,
+                                pred_logits,
+                                aux_preds=None,
+                                output_dir="",
+                                vis_dir="",
+                                suffix=""):
+    """Evaluate semantic segmentation results
+
+    Args:
+        dataset (torch.utils.data.Dataset): dataset
+        pred_logits (list of np.ndarray or np.ndarray): predicted logits
+        aux_preds (dict, optional): auxiliary predictions
+        output_dir (str, optional): output directory
+        vis_dir (str, optional): visualization directory
+        suffix (str, optional):
+
+    """
+    logger = logging.getLogger("shaper.evaluator.sem_seg")
+    logger.info("Start evaluating and visualize in {}".format(vis_dir))
+
+    # Remove transform
+    dataset.transform = None
+    # Use all points
+    dataset.num_points = -1
+    dataset.shuffle_points = False
+
+    # aliases
+    num_samples = len(dataset)
+    class_names = dataset.classes
+    assert len(pred_logits) == num_samples
+
+    seg_acc_per_class = defaultdict(float)
+    num_inst_per_class = defaultdict(int)
+    iou_per_class = defaultdict(float)
+
+    for ind in tqdm(range(num_samples)):
+        data = dataset[ind]
+        points = data["points"]
+        # ground truth
+        gt_seg_label = data["seg_label"]
+        # (num_seg_classes, num_points)
+        pred_seg_logit = pred_logits[ind]
+
+        # sanity check
+        assert len(gt_seg_label) == points.shape[0]
+
+        # trim to valid points
+        num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
+        # pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
+        pred_seg_logit = pred_seg_logit[:, :num_valid_points]
+        gt_seg_label = gt_seg_label[:num_valid_points]
+
+        # logits to labels
+        pred_seg_label = np.argmax(pred_seg_logit, axis=0)
+
+        tp_mask = (pred_seg_label == gt_seg_label)
+        seg_label_set = set(gt_seg_label)
+        for label in seg_label_set:
+            # bool array with True iff that point is a true positive and is the specific semantic class
+            tp_per_label_mask = (pred_seg_label == label) * tp_mask
+            seg_acc = np.mean(tp_per_label_mask)
+            seg_acc_per_class[label] += seg_acc
+
+        # iou_per_instance = 0.0
+        # for ind, segid in enumerate(segids):
+        #     gt_mask = (gt_seg_label == segid)
+        #     num_intersection = np.sum(np.logical_and(tp_mask, gt_mask))
+        #     num_pos = np.sum(pred_seg_label == segid)
+        #     num_gt = np.sum(gt_mask)
+        #     num_union = num_pos + num_gt - num_intersection
+        #     iou = num_intersection / num_union if num_union > 0 else 1.0
+        #     iou_per_instance += iou
+        # iou_per_instance /= len(segids)
+        # iou_per_class[gt_cls_label] += iou_per_instance
+
+    # Overall
+    total_seg_acc = sum(seg_acc_per_class.values())
+    overall_acc = total_seg_acc / num_samples
+    logger.info("overall segmentation accuracy={:.2f}%".format(100.0 * overall_acc))
+
+    # total_iou = sum(iou_per_class.values())
+    # overall_iou = total_iou / num_samples
+    # logger.info("overall IOU={:.2f}".format(100.0 * overall_iou))
+
+    # # Per class
+    # table = PrettyTable(["Class", "SegAccuracy", "IOU", "Total"])
+    # for label in set(seg_acc_per_class.keys()):
+    #     seg_acc = seg_acc_per_class[label]
+    #     iou = 0 #iou_per_class[ind] / num_inst_per_class[ind]
+    #     table.add_row([class_name,
+    #                     "{:.2f}".format(100.0 * seg_acc),
+    #                     "{:.2f}".format(100.0 * iou),
+    #                     num_inst_per_class[ind]])
+    # logger.info("class-wise segmentation accuracy.\n{}".format(table))
