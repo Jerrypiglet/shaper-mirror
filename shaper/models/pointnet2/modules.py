@@ -4,7 +4,6 @@ import torch.nn as nn
 from shaper.nn import SharedMLP
 from . import functions as _F
 
-
 class FarthestPointSampler(nn.Module):
     """Farthest point sampling
 

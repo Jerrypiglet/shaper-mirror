@@ -32,3 +32,4 @@ TEST:
     NUM_VIEW: 12
     # Important to shuffle points during ensemble test
     SHUFFLE: True
+~                  

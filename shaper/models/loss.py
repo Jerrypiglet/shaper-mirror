@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -27,7 +28,6 @@ class ClsLoss(nn.Module):
             'cls_loss': cls_loss,
         }
         return loss_dict
-
 
 class PartSegLoss(nn.Module):
     """Part segmentation loss"""
