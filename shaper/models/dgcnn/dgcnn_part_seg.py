@@ -10,7 +10,10 @@ References:
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
+
+from shaper.nn.functional import smooth_cross_entropy
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.models.dgcnn.functions import get_edge_feature
 from shaper.models.dgcnn.modules import EdgeConvBlock
@@ -197,6 +200,39 @@ class DGCNNPartSeg(nn.Module):
     def init_weights(self):
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
+
+class DGCNNPartSegLoss(nn.Module):
+    """DGCNN part segmentation loss with optional regularization loss"""
+
+    def __init__(self, reg_weight, cls_loss_weight, seg_loss_weight):
+        super(DGCNNPartSegLoss, self).__init__()
+        self.reg_weight = reg_weight
+        self.cls_loss_weight = cls_loss_weight
+        self.seg_loss_weight = seg_loss_weight
+        assert self.seg_loss_weight >= 0.0
+
+    def forward(self, preds, labels):
+        seg_logit = preds["seg_logit"]
+        seg_label = labels["seg_label"]
+        seg_loss = F.cross_entropy(seg_logit, seg_label)
+        loss_dict = {
+            "seg_loss": seg_loss * self.seg_loss_weight,
+        }
+
+        if self.cls_loss_weight > 0.0:
+            cls_logit = preds["cls_logit"]
+            cls_label = labels["cls_label"]
+            cls_loss = F.cross_entropy(cls_logit, cls_label)
+            loss_dict["cls_loss"] = cls_loss
+
+        # regularization over transform matrix
+        if self.reg_weight > 0.0:
+            trans_feature = preds["trans_input"]
+            trans_norm = torch.bmm(trans_feature.transpose(2, 1), trans_feature)  # [in, in]
+            I = torch.eye(trans_norm.size(2), dtype=trans_norm.dtype, device=trans_norm.device)
+            reg_loss = F.mse_loss(trans_norm, I.unsqueeze(0).expand_as(trans_norm), reduction="sum")
+            loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
+        return loss_dict
 
 if __name__ == "__main__":
     batch_size = 4

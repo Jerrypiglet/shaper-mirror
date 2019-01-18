@@ -1,8 +1,8 @@
 from .dgcnn_cls import DGCNNCls
-from ..loss import ClsLoss, DGCNNPartSegLoss 
+from ..loss import ClsLoss
 from ..metric import ClsAccuracy, PartSegMetric
 
-from .dgcnn_part_seg import DGCNNPartSeg 
+from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss  
 
 def build_dgcnn(cfg):
     if cfg.TASK == "classification":
