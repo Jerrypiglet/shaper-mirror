@@ -22,7 +22,6 @@ _MODEL_BUILDERS = {
     "PN2SSG": build_pointnet2ssg,
     "PN2MSG": build_pointnet2msg,
     "DGCNN": build_dgcnn,
-    "DGCNN_PART_SET": build_dgcnn
 }
 
 

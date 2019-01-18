@@ -13,7 +13,7 @@ from torch import nn
 
 from shaper.config.part_segmentation import cfg
 from shaper.config import purge_cfg
-from shaper.models import build_model
+from shaper.models.build import build_model
 from shaper.data import build_dataloader
 from shaper.data import transforms as T
 from shaper.data.datasets.evaluator import evaluate_part_segmentation

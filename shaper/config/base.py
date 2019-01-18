@@ -72,7 +72,9 @@ _C.SOLVER.TYPE = "Adam"
 # Basic parameters of solvers
 # Notice to change learning rate according to batch size
 _C.SOLVER.BASE_LR = 0.001
+
 _C.SOLVER.WEIGHT_DECAY = 0.0
+
 # Specific parameters of solvers
 _C.SOLVER.SGD = CN()
 _C.SOLVER.SGD.momentum = 0.9

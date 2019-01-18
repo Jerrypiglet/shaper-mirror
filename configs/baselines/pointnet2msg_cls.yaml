@@ -28,7 +28,8 @@ TRAIN:
 TEST:
   BATCH_SIZE: 16
   VOTE:
-    ENABLE: True
-    NUM_VIEW: 12
-    # Important to shuffle points during ensemble test
-    SHUFFLE: True
+    NUM_VOTE: 12
+    TYPE: "MULTI_VIEW"
+    MULTI_VIEW:
+      # Important to shuffle points during ensemble test
+      SHUFFLE: True

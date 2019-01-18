@@ -12,12 +12,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 from shaper.nn.functional import smooth_cross_entropy
 from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.models.dgcnn.functions import get_edge_feature
 from shaper.models.dgcnn.modules import EdgeConvBlock
 from shaper.nn.init import set_bn
+
 
 class TNet(nn.Module):
     """Transformation Network for DGCNN
@@ -43,7 +43,7 @@ class TNet(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.k = k
-        
+
         self.edge_conv = SharedMLP(2 * in_channels, conv_channels, ndim=2)
         self.mlp_local = SharedMLP(conv_channels[-1], local_channels)
         self.mlp_global = MLP(local_channels[-1], global_channels)
@@ -78,10 +78,11 @@ class TNet(nn.Module):
         # set linear transform be 0
         nn.init.zeros_(self.linear.weight)
         nn.init.zeros_(self.linear.bias)
-# -----------------------------------------------------------------------------
-# dgcnn for part segmentation
-# -----------------------------------------------------------------------------
 
+
+# -----------------------------------------------------------------------------
+# DGCNN for part segmentation
+# -----------------------------------------------------------------------------
 class DGCNNPartSeg(nn.Module):
     """DGCNN for part segmentation
        Structure: (-> [TNet] -> transform_input) -> [EdgeConvBlock]s -> [Concat EdgeConvBlock features]]
@@ -91,12 +92,12 @@ class DGCNNPartSeg(nn.Module):
        [EdgeConvBlock]: in_feature -> [EdgeFeature] -> [EdgeConv] -> [EdgePool] -> out_features
 
        Args:
-	   in_channels: (int) dimension of input layer
-	   out_channels: (int) dimension of output layer
-	   num_seg_class: (int) number of segmentation class [shapenet: 50]
-           edge_conv_channels: (tuple of int) numbers of channels of edge convolution layers
-	   inter_channels: (int) number of channels of intermediate features before MaxPool
-           k: (int) number of nearest neighbours for edge feature extractor  
+           in_channels: (int) dimension of input layer
+           out_channels: (int) dimension of output layer
+           num_seg_class: (int) number of segmentation class [shapenet: 50]
+               edge_conv_channels: (tuple of int) numbers of channels of edge convolution layers
+           inter_channels: (int) number of channels of intermediate features before MaxPool
+               k: (int) number of nearest neighbours for edge feature extractor
     """
 
     def __init__(self,
@@ -105,7 +106,7 @@ class DGCNNPartSeg(nn.Module):
                  num_class,
                  num_seg_class,
                  edge_conv_channels=((64, 64), (64, 64), (64, 64)),
-                 inter_channels= 1024,
+                 inter_channels=1024,
                  global_channels=(256, 256, 128),
                  k=20,
                  dropout_prob=0.4,
@@ -119,17 +120,17 @@ class DGCNNPartSeg(nn.Module):
         self.num_gpu = torch.cuda.device_count()
         self.num_class = num_class
 
-        #input transform
+        # input transform
         if self.with_transform:
             self.transform_input = TNet(in_channels, in_channels, k=k)
-        
+
         self.mlp_edge_conv = nn.ModuleList()
         for out in edge_conv_channels:
             self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out, k))
             in_channels = out[-1]
-       
-        out_channel = edge_conv_channels[0][0] 
-        self.lable_conv = Conv2d(num_class, out_channel, [1,1])
+
+        out_channel = edge_conv_channels[0][0]
+        self.lable_conv = Conv2d(num_class, out_channel, [1, 1])
 
         mlplocal_input = sum([item[-1] for item in edge_conv_channels])
         self.mlp_local = Conv1d(mlplocal_input, inter_channels, 1)
@@ -137,7 +138,7 @@ class DGCNNPartSeg(nn.Module):
         mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
         self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob)
         self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1)
-        self.seg_logit = nn.Conv1d(global_channels[-1], num_seg_class, 1,bias=True)
+        self.seg_logit = nn.Conv1d(global_channels[-1], num_seg_class, 1, bias=True)
 
         self.init_weights()
         set_bn(self, momentum=0.01)
@@ -150,20 +151,20 @@ class DGCNNPartSeg(nn.Module):
         num_point = x.shape[2]
         batch_size = cls_label.size()[0]
         num_classes = self.num_class
-        
+
         if self.with_transform:
             trans_input = self.transform_input(x)
             x = torch.bmm(trans_input, x)
             end_points['trans_input'] = trans_input
 
-	# edge convolution for point cloud         
+        # edge convolution for point cloud
         features = []
         for edge_conv in self.mlp_edge_conv:
             x = edge_conv(x)
             features.append(x)
 
         x = torch.cat(features, dim=1)
-   
+
         # local mlp 
         x = self.mlp_local(x)
         x, max_indice = torch.max(x, 2)
@@ -177,7 +178,7 @@ class DGCNNPartSeg(nn.Module):
             one_hot_expand = one_hot.view(batch_size, num_classes, 1, 1)
 
         one_hot_expand = self.lable_conv(one_hot_expand)
-        
+
         # concatenate information from point cloud and label
         one_hot_expand = one_hot_expand.view(batch_size, -1)
         out_max = torch.cat([x, one_hot_expand], dim=1)
@@ -185,7 +186,7 @@ class DGCNNPartSeg(nn.Module):
 
         cat_features = torch.cat(features, dim=1)
         x = torch.cat([out_max, cat_features], dim=1)
-       
+
         # mlp_seg & conv_seg
         x = self.mlp_seg(x)
         x = self.conv_seg(x)
@@ -196,10 +197,11 @@ class DGCNNPartSeg(nn.Module):
         preds.update(end_points)
 
         return preds
-    
+
     def init_weights(self):
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
+
 
 class DGCNNPartSegLoss(nn.Module):
     """DGCNN part segmentation loss with optional regularization loss"""
@@ -234,6 +236,7 @@ class DGCNNPartSegLoss(nn.Module):
             loss_dict["reg_loss"] = reg_loss * (0.5 * self.reg_weight / trans_norm.size(0))
         return loss_dict
 
+
 if __name__ == "__main__":
     batch_size = 4
     in_channels = 3
@@ -249,4 +252,3 @@ if __name__ == "__main__":
     out_dict = dgcnn({"points": data})
     for k, v in out_dict.items():
         print('DGCNN:', k, v.shape)
-
