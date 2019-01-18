@@ -28,5 +28,3 @@ TRAIN:
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 16
-  VOTE:
-    ENABLE: False

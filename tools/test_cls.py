@@ -112,7 +112,6 @@ def test(cfg, output_dir=""):
                 points = data["points"]
 
                 # Convert points into tensor
-                # torch.tensor always copy data
                 points_batch = [t(points) for t in transform_list]
                 points_batch = torch.stack(points_batch, dim=0).transpose_(1, 2).contiguous()
                 points_batch = points_batch.cuda(non_blocking=True)

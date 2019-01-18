@@ -27,18 +27,24 @@ _C.TRAIN.SEG_AUGMENTATION = ()
 _C.TEST.VIS_DIR = ""
 
 # ---------------------------------------------------------------------------- #
-# Test-time augmentations for point cloud part segmentation
-# Now only support multi-view voting
+# Test-time augmentations for point cloud classification
 # ---------------------------------------------------------------------------- #
 _C.TEST.VOTE = CN()
 
-_C.TEST.VOTE.ENABLE = False
+_C.TEST.VOTE.NUM_VOTE = 0
 
+_C.TEST.VOTE.TYPE = ""
+
+# Multi-view voting
+_C.TEST.VOTE.MULTI_VIEW = CN()
 # The axis along which to rotate
-_C.TEST.VOTE.AXIS = "y"
-# The number of views to vote
-_C.TEST.VOTE.NUM_VIEW = 12
-# Whether to shuffle points from different views (especially for PointNet++)
+_C.TEST.VOTE.MULTI_VIEW.AXIS = "y"
+
+# Data augmentation, different with TEST.AUGMENTATION.
+# Use for voting only
+_C.TEST.VOTE.AUGMENTATION = ()
+
+# Whether to shuffle points from different views (especially for methods like PointNet++)
 _C.TEST.VOTE.SHUFFLE = False
 
 # -----------------------------------------------------------------------------

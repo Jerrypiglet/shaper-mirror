@@ -37,5 +37,3 @@ TRAIN:
 TEST:
   BATCH_SIZE: 32
   # Multi-view ensemble helps a little
-  VOTE:
-    ENABLE: False
