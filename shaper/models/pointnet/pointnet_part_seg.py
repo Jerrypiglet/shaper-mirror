@@ -190,8 +190,6 @@ class PointNetPartSeg(nn.Module):
         }
         preds.update(end_points)
 
-        
-        #print("result is {}, size is {}".format(seg_logit, seg_logit.size()))
         return preds
 
     def init_weights(self):
