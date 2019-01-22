@@ -14,4 +14,5 @@ matplotlib
 # s2cnn
 # cupy
 # requests
-# pynvrtc
+# pynvrtcnatsort
+natsort
