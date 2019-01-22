@@ -1,6 +1,8 @@
 from .pointnet_cls import PointNetCls, PointNetClsLoss
 from .pointnet_part_seg import PointNetPartSeg, PointNetPartSegLoss
-from ..metric import ClsAccuracy, SegAccuracy, PartSegMetric, MetricList
+from .pointnet_sem_seg import PointNetSemSeg
+from ..loss import SemSegLoss
+from ..metric import ClsAccuracy, SegAccuracy, PartSegMetric, SemSegMetric, MetricList
 
 
 def build_pointnet(cfg):
@@ -33,8 +35,19 @@ def build_pointnet(cfg):
                                       cfg.MODEL.POINTNET.CLS_LOSS_WEIGHT,
                                       cfg.MODEL.POINTNET.SEG_LOSS_WEIGHT)
         metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
-        if cfg.MODEL.POINTNET.CLS_LOSS_WEIGHT > 0.0:
-            metric_fn = MetricList([metric_fn, ClsAccuracy()])
+    elif cfg.TASK == "semantic_segmentation":
+        net = PointNetSemSeg(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            num_seg_classes=cfg.DATASET.NUM_SEG_CLASSES,
+            stem_channels=cfg.MODEL.POINTNET.STEM_CHANNELS,
+            local_channels=cfg.MODEL.POINTNET.LOCAL_CHANNELS,
+            global_channels=cfg.MODEL.POINTNET.GLOBAL_CHANNELS,
+            seg_channels=cfg.MODEL.POINTNET.SEG_CHANNELS,
+            dropout_prob=cfg.MODEL.POINTNET.DROPOUT_PROB,
+            with_transform=cfg.MODEL.POINTNET.WITH_TRANSFORM,
+        )
+        loss_fn = SemSegLoss()
+        metric_fn = SemSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError()
 

@@ -1,0 +1,39 @@
+TASK:
+  "semantic_segmentation"
+INPUT:
+  NUM_POINTS: 1024
+  IN_CHANNELS: 9
+MODEL:
+  TYPE: "POINTNET"
+  POINTNET:
+    DROPOUT_PROB_SEG: 0.3
+    STEM_CHANNELS: (64, 64)
+    LOCAL_CHANNELS: (64, 128, 1024)
+    GLOBAL_CHANNELS: (256, 128)
+    MLP_SEG_CHANNELS: (512, 256, 128, 128)
+    WITH_TRANSFORM: False
+DATASET:
+  ROOT_DIR: "data/indoor3d"
+  TYPE: "Indoor3D"
+  NUM_CLASSES: 13
+  TRAIN: ("train",)
+  VAL: ("test",)
+  TEST: ("test",)
+SOLVER:
+  BASE_LR: 0.001
+  MAX_EPOCH: 250
+  GAMMA: 0.7
+  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+TRAIN:
+  BATCH_SIZE: 32
+  AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)
+  LOG_PERIOD: 50
+  CHECKPOINT_PERIOD: 20
+  VAL_PERIOD: 1
+TEST:
+  BATCH_SIZE: 32
+  VOTE:
+    ENABLE: True
+    NUM_VIEW: 12
+    SCORE_HEUR: ("logit",)
+  VIS_DIR: "@/vis_error_key_pts"
