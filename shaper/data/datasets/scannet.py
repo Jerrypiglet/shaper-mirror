@@ -3,8 +3,8 @@ import numpy as np
 import os.path as osp
 
 from torch.utils.data import Dataset
-# from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
-from utils import crop_or_pad_points, normalize_points
+from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
+# from utils import crop_or_pad_points, normalize_points
 
 
 class ScanNet(Dataset):
@@ -115,7 +115,8 @@ class ScanNet(Dataset):
             cur_semantic_seg = semantic_seg[curchoice]
             # if no points found
             if len(cur_semantic_seg) == 0:
-                continue   
+                continue
+            # mask := all coords in window
             mask = np.sum((cur_point_set >= (curmin-0.01)) * (cur_point_set <= (curmax+0.01)), axis=1) == 3
             vidx = np.ceil((cur_point_set[mask,:]-curmin) / (curmax-curmin) * [31.0,31.0,62.0])
             vidx = np.unique(vidx[:,0]*31.0*62.0 + vidx[:,1]*62.0 + vidx[:,2])
@@ -136,16 +137,17 @@ class ScanNet(Dataset):
         if self.normalize:
             point_set = normalize_points(point_set)
         if self.transform is not None:
-            points = self.transform(points)
-            if seg_label is not None and self.seg_transform is not None:
-                points, seg_label = self.seg_transform(points, seg_label)
-            points.transpose_(0, 1)
+            point_set = self.transform(point_set)
+            if semantic_seg is not None and self.seg_transform is not None:
+                # transform weights too?
+                point_set, semantic_seg = self.seg_transform(point_set, semantic_seg)
+            point_set.transpose_(0, 1)
 
         out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
 
 
-class ScannetWholeScene():
+class ScanNetWholeScene():
     """
     ScanNet Whole Scene dataset
 
@@ -271,10 +273,10 @@ class ScannetWholeScene():
         if self.normalize:
             point_set = normalize_points(point_set)
         if self.transform is not None:
-            points = self.transform(points)
-            if seg_label is not None and self.seg_transform is not None:
-                points, seg_label = self.seg_transform(points, seg_label)
-            points.transpose_(0, 1)
+            point_set = self.transform(point_set)
+            if semantic_seg is not None and self.seg_transform is not None:
+                point_set, semantic_seg = self.seg_transform(point_set, semantic_seg)
+            # point_set.transpose_(0, 1)
 
         out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
@@ -331,6 +333,7 @@ class ScannetDatasetVirtualScan():
 if __name__=='__main__':
     from shaper.utils.open3d_visualize import Visualizer
     root_dir = "../../../data/scannet"
+    root_dir = osp.join(osp.realpath(__file__), root_dir)
     
     print("Train ScanNet")
     scannet = ScanNet(root_dir, ['train'])
@@ -338,7 +341,7 @@ if __name__=='__main__':
     data = scannet[0]
     points = data['points']
     seg_label = data['seg_label']
-    weights = data['weights']
+    weights = data['label_weights']
     print("Points:")
     print(points.shape, points.dtype)
     print("Labels")
@@ -353,6 +356,7 @@ if __name__=='__main__':
     scannet = ScanNet(root_dir, ['test'])
     print("The number of samples:", len(scannet))
     data = scannet[0]
+    weights = data['label_weights']
     print("Weights")
     print(weights)
     print(weights.shape, weights.dtype)
@@ -363,7 +367,7 @@ if __name__=='__main__':
     data = scannet[0]
     points = data['points']
     seg_label = data['seg_label']
-    weights = data['weights']
+    weights = data['label_weights']
     print("Points:")
     print(points.shape, points.dtype)
     print("Labels")

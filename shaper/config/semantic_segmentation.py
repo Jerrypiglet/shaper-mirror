@@ -17,7 +17,7 @@ _C.DATASET.NUM_SEG_CLASSES = 0
 # ---------------------------------------------------------------------------- #
 # Specific train options
 # ---------------------------------------------------------------------------- #
-# Data augmentation for part segmentation.
+# Data augmentation for semantic segmentation.
 _C.TRAIN.SEG_AUGMENTATION = ()
 
 # ---------------------------------------------------------------------------- #
@@ -27,7 +27,7 @@ _C.TRAIN.SEG_AUGMENTATION = ()
 _C.TEST.VIS_DIR = ""
 
 # ---------------------------------------------------------------------------- #
-# Test-time augmentations for point cloud part segmentation
+# Test-time augmentations for point cloud semantic segmentation
 # Now only support multi-view voting
 # ---------------------------------------------------------------------------- #
 _C.TEST.VOTE = CN()
@@ -86,9 +86,9 @@ _C.MODEL.PN2MSG.SA_CHANNELS_LIST = (
                         ((16, 16, 32), (32, 32, 64)),
                         ((64, 64, 128), (64, 96, 128)),
                         ((128, 196, 256), (128, 196, 256)),
-                        ((256, 256, 512), (256, 384, 512))),
+                        ((256, 256, 512), (256, 384, 512)))
 _C.MODEL.PN2MSG.FP_CHANNELS = ((128, 128), (256, 256), (512, 512), (512, 512))
-_C.MODEL.PN2MSG.NUM_FP_NEIGHBOURS = 3, 3, 3, 3)
+_C.MODEL.PN2MSG.NUM_FP_NEIGHBOURS = (3, 3, 3, 3)
 _C.MODEL.PN2MSG.SEG_CHANNELS = (128,)
 _C.MODEL.PN2MSG.DROPOUT_PROB = 0.5
 _C.MODEL.PN2MSG.USE_XYZ = True

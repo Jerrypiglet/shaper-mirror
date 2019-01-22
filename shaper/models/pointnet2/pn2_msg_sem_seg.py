@@ -160,6 +160,7 @@ class PointNet2MSGSemSeg(nn.Module):
         # Fully Connected Layers
         x = self.mlp_seg(dense_feature)
         seg_logit = self.seg_logit(x)
+        # seg_logit.transpose_(0, 1)
 
         preds = {"seg_logit": seg_logit}
         # preds.update(end_points)

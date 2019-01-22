@@ -51,7 +51,7 @@ class SegAccuracy(nn.Module):
 
     def forward(self, preds, labels):
         seg_logit = preds["seg_logit"]
-        seg_label = labels["seg_label"]
+        seg_label = labels["seg_label"].long()
         pred_label = seg_logit.argmax(1)
 
         # (batch_size, num_points)

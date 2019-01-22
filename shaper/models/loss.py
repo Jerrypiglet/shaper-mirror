@@ -51,9 +51,12 @@ class SemSegLoss(nn.Module):
 
     def forward(self, preds, labels):
         seg_logit = preds["seg_logit"]
-        seg_label = labels["seg_label"]
+        seg_label = labels["seg_label"].long()
         weights = labels.get("label_weights", torch.ones(seg_label.shape[1]))
-        seg_loss = F.cross_entropy(seg_logit, seg_label, weight=weights)
+        # Instance-wise weighting (similar to tensorflow's sparse_cross_entropy loss);
+        # Pytorch's weighted cross entropy fxn ('weight' kwarg in F.cross_entropy) weights by class, not by instance.
+        seg_loss = F.cross_entropy(seg_logit, seg_label, reduction='none')
+        seg_loss = (seg_loss.float() * weights.float()).mean()
         loss_dict = {
             "seg_loss": seg_loss
         }

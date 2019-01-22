@@ -51,7 +51,6 @@ def build_pointnet2ssg(cfg):
             radius=cfg.MODEL.PN2SSG.RADIUS,
             num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
             sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
-            local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
             fp_channels=cfg.MODEL.PN2SSG.FP_CHANNELS,
             num_fp_neighbours=cfg.MODEL.PN2SSG.NUM_FP_NEIGHBOURS,
             seg_channels=cfg.MODEL.PN2SSG.SEG_CHANNELS,
@@ -108,15 +107,14 @@ def build_pointnet2msg(cfg):
             radius_list=cfg.MODEL.PN2MSG.RADIUS_LIST,
             num_neighbours_list=cfg.MODEL.PN2MSG.NUM_NEIGHBOURS_LIST,
             sa_channels_list=cfg.MODEL.PN2MSG.SA_CHANNELS_LIST,
-            local_channels=cfg.MODEL.PN2MSG.LOCAL_CHANNELS,
             fp_channels=cfg.MODEL.PN2MSG.FP_CHANNELS,
             num_fp_neighbours=cfg.MODEL.PN2MSG.NUM_FP_NEIGHBOURS,
             seg_channels=cfg.MODEL.PN2MSG.SEG_CHANNELS,
             dropout_prob=cfg.MODEL.PN2MSG.DROPOUT_PROB,
             use_xyz=cfg.MODEL.PN2MSG.USE_XYZ
         )
-        loss_fn = PartSegLoss()
-        metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
+        loss_fn = SemSegLoss()
+        metric_fn = SemSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError
 

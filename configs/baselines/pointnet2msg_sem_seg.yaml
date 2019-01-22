@@ -1,7 +1,8 @@
 TASK:
   "semantic_segmentation"
 INPUT:
-  NUM_POINTS: 8192
+  IN_CHANNELS: 3
+  NUM_POINTS: 1024
 MODEL:
   TYPE: "PN2MSG"
 DATASET:
@@ -11,15 +12,17 @@ DATASET:
   TRAIN: ("train",)
   VAL: ("val",)
   TEST: ("test",)
-  LOAD_SEG: True
 SOLVER:
+  TYPE: "Adam"
   BASE_LR: 0.001
-  MAX_EPOCH: 250
-  GAMMA: 0.7
-  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+SCHEDULER:
+  TYPE: "MultiStepLR"
+  MultiStepLR:
+    gamma: 0.5
+    milestones: (20, 40, 60, 80, 100, 120)
+  MAX_EPOCH: 200
 TRAIN:
   BATCH_SIZE: 32
-  AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)
   LOG_PERIOD: 50
   CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
@@ -27,6 +30,4 @@ TEST:
   BATCH_SIZE: 32
   VOTE:
     ENABLE: True
-    NUM_VIEW: 12
-    SCORE_HEUR: ("logit",)
   VIS_DIR: "@/vis_error_key_pts"
