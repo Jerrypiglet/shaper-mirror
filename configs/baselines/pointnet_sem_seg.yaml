@@ -6,24 +6,29 @@ INPUT:
 MODEL:
   TYPE: "POINTNET"
   POINTNET:
-    DROPOUT_PROB_SEG: 0.3
+    DROPOUT_PROB: 0.3
     STEM_CHANNELS: (64, 64)
     LOCAL_CHANNELS: (64, 128, 1024)
     GLOBAL_CHANNELS: (256, 128)
-    MLP_SEG_CHANNELS: (512, 256, 128, 128)
+    SEG_CHANNELS: (512, 256, 128, 128)
     WITH_TRANSFORM: False
 DATASET:
   ROOT_DIR: "data/indoor3d"
   TYPE: "Indoor3D"
-  NUM_CLASSES: 13
+  NUM_SEG_CLASSES: 13
   TRAIN: ("train",)
   VAL: ("test",)
   TEST: ("test",)
 SOLVER:
+  TYPE: "Adam"
   BASE_LR: 0.001
-  MAX_EPOCH: 250
   GAMMA: 0.7
-  STEPS: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+SCHEDULER:
+  TYPE: "MultiStepLR"
+  MultiStepLR:
+    gamma: 0.5
+    milestones: (20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240)
+  MAX_EPOCH: 250
 TRAIN:
   BATCH_SIZE: 32
   AUGMENTATION: ("PointCloudRotate", ("PointCloudJitter", 0.01, 0.05),)

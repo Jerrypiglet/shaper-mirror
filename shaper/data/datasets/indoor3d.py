@@ -34,6 +34,7 @@ class Indoor3D(Dataset):
         test_ind = np.core.defchararray.startswith(rooms, "Area_{}".format(test_area))
         ind = {
             "train": np.logical_not(test_ind),
+            "val": np.logical_not(test_ind),
             "test": test_ind,
         }
         keep_ind = np.zeros_like(rooms, dtype=bool)
@@ -62,11 +63,14 @@ class Indoor3D(Dataset):
 
         if self.transform is not None:
             # XYZ, RGB normalized between 0 and 1, XYZ normalized w.r.t. room
-            points = torch.cat((self.transform(points[:, [0, 1, 2, 6, 7, 8]]), torch.Tensor(points[:, [3, 4, 5]].T)))
+            points = torch.cat(
+                (self.transform(points[:, [0, 1, 2, 6, 7, 8]]), torch.Tensor(points[:, [3, 4, 5]])),
+                dim=-1)
+        points.transpose_(0, 1)
 
         out_dict = {
             "points": points,
-            "seg_labels": seg_labels
+            "seg_label": seg_labels
         }
 
         return out_dict

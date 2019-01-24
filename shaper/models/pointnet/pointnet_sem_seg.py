@@ -57,7 +57,7 @@ class PointNetSemSeg(nn.Module):
 
         self.mlp_seg = SharedMLP(local_channels[-1] + global_channels[-1], seg_channels,
                                  dropout=(None, dropout_prob))
-        self.mlp_seg_logits = SharedMLP(seg_channels[-1], (out_channels,), relu=False, bn=False)
+        self.mlp_seg_logits = Conv1d(seg_channels[-1], out_channels, 1, relu=False, bn=False)
         
         self.init_weights()
 
@@ -74,22 +74,22 @@ class PointNetSemSeg(nn.Module):
         x, end_points = self.stem(x)
 
         # mlp local
-        x_local, _ = self.mlp_local(x)
+        x_local = self.mlp_local(x)
 
         # max pooling and mlp global
         x, max_indices = torch.max(x_local, 2)
         end_points['key_point_inds'] = max_indices
-        x_global, _ = self.mlp_global(x)
+        x_global = self.mlp_global(x)
 
         # concat local and global features
         x = torch.cat([x_local, x_global.unsqueeze(2).expand(-1, -1, x_local.shape[2])], 1)
 
         # mlp for point features
-        x, _ = self.mlp_seg(x)
-        x, _ = self.mlp_seg_logits(x)
+        x = self.mlp_seg(x)
+        x = self.mlp_seg_logits(x)
 
         preds = {
-            'seg_logits': x
+            'seg_logit': x
         }
         preds.update(end_points)
         return preds
