@@ -19,6 +19,8 @@ DATASET:
   TRAIN: ("train",)
   VAL: ("test",)
   TEST: ("test",)
+DATALOADER:
+  NUM_WORKERS: 4
 SOLVER:
   TYPE: "Adam"
   BASE_LR: 0.001

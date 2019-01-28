@@ -11,7 +11,7 @@ References:
 import torch
 import torch.nn as nn
 
-from shaper.nn import SharedMLP
+from shaper.nn import SharedMLP, Conv1d
 from shaper.models.pointnet2.modules import PointNetSAModuleMSG, PointnetFPModule
 from shaper.nn.init import set_bn
 
@@ -112,7 +112,7 @@ class PointNet2MSGSemSeg(nn.Module):
         # Fully Connected Layers
         feature_channels = fp_channels[-1][-1]
         self.mlp_seg = SharedMLP(feature_channels, seg_channels, ndim=1, dropout=dropout_prob)
-        self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
+        self.seg_logit = Conv1d(seg_channels[-1], num_seg_classes, 1, relu=False, bn=False)
 
         self.init_weights()
 
@@ -122,8 +122,8 @@ class PointNet2MSGSemSeg(nn.Module):
         for fp_module in self.fp_modules:
             fp_module.init_weights(xavier_uniform)
         self.mlp_seg.init_weights(xavier_uniform)
-        nn.init.xavier_uniform_(self.seg_logit.weight)
-        nn.init.zeros_(self.seg_logit.bias)
+        self.mlp_local.init_weights(xavier_uniform)
+        self.mlp_seg.init_weights(xavier_uniform)
         set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
