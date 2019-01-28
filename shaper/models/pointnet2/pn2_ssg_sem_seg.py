@@ -111,11 +111,17 @@ class PointNet2SSGSemSeg(nn.Module):
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
         self.init_weights()
-        set_bn(self, momentum=0.01)
 
     def init_weights(self):
+        def init_weights(self):
+        for sa_module in self.sa_modules:
+            sa_module.init_weights(xavier_uniform)
+        for fp_module in self.fp_modules:
+            fp_module.init_weights(xavier_uniform)
+        self.mlp_seg.init_weights(xavier_uniform)
         nn.init.xavier_uniform_(self.seg_logit.weight)
         nn.init.zeros_(self.seg_logit.bias)
+        set_bn(self, momentum=0.01)
 
     def forward(self, data_batch):
         points = data_batch["points"]
