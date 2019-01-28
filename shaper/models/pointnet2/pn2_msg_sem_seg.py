@@ -13,7 +13,7 @@ import torch.nn as nn
 
 from shaper.nn import SharedMLP, Conv1d
 from shaper.models.pointnet2.modules import PointNetSAModuleMSG, PointnetFPModule
-from shaper.nn.init import set_bn
+from shaper.nn.init import set_bn, xavier_uniform
 
 
 class PointNet2MSGSemSeg(nn.Module):
@@ -122,7 +122,7 @@ class PointNet2MSGSemSeg(nn.Module):
         for fp_module in self.fp_modules:
             fp_module.init_weights(xavier_uniform)
         self.mlp_seg.init_weights(xavier_uniform)
-        self.mlp_local.init_weights(xavier_uniform)
+        # self.mlp_local.init_weights(xavier_uniform)
         self.mlp_seg.init_weights(xavier_uniform)
         set_bn(self, momentum=0.01)
 
