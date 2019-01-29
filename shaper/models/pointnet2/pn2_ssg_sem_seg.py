@@ -33,7 +33,7 @@ class PointNet2SSGSemSeg(nn.Module):
                  num_neighbours=(32, 32, 32, 32),
                  sa_channels=((32, 32, 64), (64, 64, 128), (128, 128, 256), (256, 256, 512)),
                  fp_channels=((256, 256), (256, 256), (256, 128), (128, 128, 128)),
-                 num_fp_neighbours=(3, 3, 3),
+                 num_fp_neighbours=(3, 3, 3, 3),
                  seg_channels=(128,),
                  dropout_prob=0.5,
                  use_xyz=True):
@@ -74,7 +74,7 @@ class PointNet2SSGSemSeg(nn.Module):
                 Got {} and {}""".format(num_sa_layers, num_fp_layers)
         assert len(num_fp_neighbours) == num_fp_layers, \
                 """The size of num_fp_neighbours should be equal to the size of the list of fp channels.
-                Got {} and {}""".format(num_sa_layers, num_fp_layers)
+                Got {} and {}""".format(len(num_fp_neighbours), num_fp_layers)
         
 
         # Set Abstraction Layers
@@ -95,11 +95,11 @@ class PointNet2SSGSemSeg(nn.Module):
 
         # Feature Propagation Layers
         inter_channels = [in_channels if use_xyz else in_channels - 3]
-        inter_channels[0] += num_classes  # concat with one-hot
+        # inter_channels[0] += num_classes  # concat with one-hot
         inter_channels.extend([x[-1] for x in sa_channels])
         self.fp_modules = nn.ModuleList()
         for ind in range(num_fp_layers):
-            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-1 - ind],
+            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-2 - ind],
                                          mlp_channels=fp_channels[ind],
                                          num_neighbors=num_fp_neighbours[ind])
             self.fp_modules.append(fp_module)
@@ -150,8 +150,8 @@ class PointNet2SSGSemSeg(nn.Module):
         dense_xyz = xyz
         dense_feature = feature
         for fp_ind, fp_module in enumerate(self.fp_modules):
-            sparse_xyz = inter_xyz[-1 - fp_ind]
-            sparse_feature = inter_feature[-1 - fp_ind]
+            sparse_xyz = inter_xyz[-2 - fp_ind]
+            sparse_feature = inter_feature[-2 - fp_ind]
             fp_feature = fp_module(sparse_xyz, dense_xyz, sparse_feature, dense_feature)
             dense_xyz = sparse_xyz
             dense_feature = fp_feature

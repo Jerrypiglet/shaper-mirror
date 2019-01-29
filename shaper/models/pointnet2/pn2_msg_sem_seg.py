@@ -103,7 +103,7 @@ class PointNet2MSGSemSeg(nn.Module):
         inter_channels.extend([sa_modules.out_channels for sa_modules in self.sa_modules])
         self.fp_modules = nn.ModuleList()
         for ind in range(num_fp_layers):
-            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-1 - ind],
+            fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-2 - ind],
                                          mlp_channels=fp_channels[ind],
                                          num_neighbors=num_fp_neighbours[ind])
             self.fp_modules.append(fp_module)
@@ -156,8 +156,8 @@ class PointNet2MSGSemSeg(nn.Module):
         dense_xyz = xyz
         dense_feature = feature
         for fp_ind, fp_module in enumerate(self.fp_modules):
-            sparse_xyz = inter_xyz[-1 - fp_ind]
-            sparse_feature = inter_feature[-1 - fp_ind]
+            sparse_xyz = inter_xyz[-2 - fp_ind]
+            sparse_feature = inter_feature[-2 - fp_ind]
             fp_feature = fp_module(sparse_xyz, dense_xyz, sparse_feature, dense_feature)
             dense_xyz = sparse_xyz
             dense_feature = fp_feature

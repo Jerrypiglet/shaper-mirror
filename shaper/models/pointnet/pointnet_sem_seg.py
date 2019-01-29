@@ -56,7 +56,7 @@ class PointNetSemSeg(nn.Module):
         self.mlp_global = MLP(local_channels[-1], global_channels)
 
         self.mlp_seg = SharedMLP(local_channels[-1] + global_channels[-1], seg_channels,
-                                 dropout=(None, dropout_prob))
+                                 dropout=dropout_prob)
         self.mlp_seg_logits = Conv1d(seg_channels[-1], out_channels, 1, relu=False, bn=False)
         
         self.init_weights()
