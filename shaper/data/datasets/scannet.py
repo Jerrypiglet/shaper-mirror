@@ -1,10 +1,15 @@
+"""
+Scannet Dataset
+Dataset modified from https://github.com/charlesq34/pointnet2/blob/master/scannet/scannet_dataset.py.
+Download dataset from https://shapenet.cs.stanford.edu/media/scannet_data_pointnet2.zip
+"""
+
 import pickle
 import numpy as np
 import os.path as osp
 
 from torch.utils.data import Dataset
 from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
-# from utils import crop_or_pad_points, normalize_points
 
 
 class ScanNet(Dataset):
@@ -181,6 +186,7 @@ class ScanNetWholeScene():
         self.root_dir = root_dir
         self.dataset_names = dataset_names
         self.num_points = num_points
+        self.npoints = self.num_points
         self.shuffle_points = shuffle_points
         self.normalize = normalize
         self.transform = transform
@@ -266,74 +272,29 @@ class ScanNetWholeScene():
                 semantic_segs.append(np.expand_dims(semantic_seg,0)) # 1xN
                 sample_weights.append(np.expand_dims(sample_weight,0)) # 1xN
 
-        point_set = np.concatenate(tuple(point_sets),axis=0)
-        semantic_seg = np.concatenate(tuple(semantic_segs),axis=0)
-        sample_weight = np.concatenate(tuple(sample_weights),axis=0)
+        point_set = np.concatenate(point_sets,axis=0)
+        semantic_seg = np.concatenate(semantic_segs,axis=0)
+        sample_weight = np.concatenate(sample_weights,axis=0)
 
-        if self.normalize:
-            point_set = normalize_points(point_set)
-        if self.transform is not None:
-            point_set = self.transform(point_set)
-            if semantic_seg is not None and self.seg_transform is not None:
-                point_set, semantic_seg = self.seg_transform(point_set, semantic_seg)
-            # point_set.transpose_(0, 1)
+        for i, (ps, ss) in enumerate(zip(point_set, semantic_seg)):
+            if self.normalize:
+                ps = normalize_points(ps)
+            if self.transform is not None:
+                ps = self.transform(ps)
+                if ss is not None and self.seg_transform is not None:
+                    ps, ss = self.seg_transform(ps, ss)
+                # ps.transpose_(0, 1)
+            point_set[i] = ps
+            semantic_seg[i] = ss
 
         out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
 
 
-class ScannetDatasetVirtualScan():
-    def __init__(self, root, npoints=8192, split='train'):
-        self.npoints = npoints
-        self.root = root
-        self.split = split
-        self.data_filename = os.path.join(self.root, 'scannet_%s.pickle'%(split))
-        with open(self.data_filename,'rb') as fp:
-            self.scene_points_list = pickle.load(fp)
-            self.semantic_labels_list = pickle.load(fp)
-        if split=='train':
-            labelweights = np.zeros(21)
-            for seg in self.semantic_labels_list:
-                tmp,_ = np.histogram(seg,range(22))
-                labelweights += tmp
-            labelweights = labelweights.astype(np.float32)
-            labelweights = labelweights/np.sum(labelweights)
-            self.labelweights = 1/np.log(1.2+labelweights)
-        elif split=='test':
-            self.labelweights = np.ones(21)
-    def __getitem__(self, index):
-        point_set_ini = self.scene_points_list[index]
-        semantic_seg_ini = self.semantic_labels_list[index].astype(np.int32)
-        sample_weight_ini = self.labelweights[semantic_seg_ini]
-        point_sets = list()
-        semantic_segs = list()
-        sample_weights = list()
-        for i in xrange(8):
-            smpidx = scene_util.virtual_scan(point_set_ini,mode=i)
-            if len(smpidx)<300:
-                continue
-            point_set = point_set_ini[smpidx,:]
-            semantic_seg = semantic_seg_ini[smpidx]
-            sample_weight = sample_weight_ini[smpidx]
-            choice = np.random.choice(len(semantic_seg), self.npoints, replace=True)
-            point_set = point_set[choice,:] # Nx3
-            semantic_seg = semantic_seg[choice] # N
-            sample_weight = sample_weight[choice] # N
-            point_sets.append(np.expand_dims(point_set,0)) # 1xNx3
-            semantic_segs.append(np.expand_dims(semantic_seg,0)) # 1xN
-            sample_weights.append(np.expand_dims(sample_weight,0)) # 1xN
-        point_sets = np.concatenate(tuple(point_sets),axis=0)
-        semantic_segs = np.concatenate(tuple(semantic_segs),axis=0)
-        sample_weights = np.concatenate(tuple(sample_weights),axis=0)
-        return point_sets, semantic_segs, sample_weights
-    def __len__(self):
-        return len(self.scene_points_list)
-
-
 if __name__=='__main__':
     from shaper.utils.open3d_visualize import Visualizer
-    root_dir = "../../../data/scannet"
-    root_dir = osp.join(osp.realpath(__file__), root_dir)
+    root_dir = "data/scannet"
+    # root_dir = osp.join(osp.realpath(__file__), root_dir)
     
     print("Train ScanNet")
     scannet = ScanNet(root_dir, ['train'])
@@ -350,7 +311,10 @@ if __name__=='__main__':
     print(weights)
     print(weights.shape, weights.dtype)
 
+    print("Visualizing point cloud...")
     Visualizer.visualize_points(points)
+    print("Visualizing point cloud with labels...")
+    Visualizer.visualize_points_with_labels(points, seg_label, lut=max(seg_label)+1)
 
     print("\nTest ScanNet")
     scannet = ScanNet(root_dir, ['test'])
@@ -361,9 +325,10 @@ if __name__=='__main__':
     print(weights)
     print(weights.shape, weights.dtype)
 
-    print("\nTest ScanNet Whole Scene")
-    scannet = ScanNetWholeScene(root_dir, ['test'])
+    print("\nTest ScanNet Whole Scene (Not normalized)")
+    scannet = ScanNetWholeScene(root_dir, ['test'], normalize=False)
     print("The number of samples:", len(scannet))
+
     data = scannet[0]
     points = data['points']
     seg_label = data['seg_label']
@@ -376,4 +341,11 @@ if __name__=='__main__':
     print(weights)
     print(weights.shape, weights.dtype)
 
+    points = np.concatenate(list(points),axis=0)
+    seg_label = np.concatenate(list(seg_label),axis=0)
+    print(seg_label.shape)
+
+    print("Visualizing point cloud...")
     Visualizer.visualize_points(points)
+    print("Visualizing point cloud with labels...")
+    Visualizer.visualize_points_with_labels(points, seg_label, lut=max(seg_label)+1)

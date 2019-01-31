@@ -26,6 +26,9 @@ class Indoor3D(Dataset):
             f = h5py.File(hdf5_path)
             self.point_clouds.append(f['data'][:])
             self.seg_labels.append(f['label'][:])
+
+        assert len(self.point_clouds) > 0, \
+                "No point clouds (*.h5) found in path {}".format(self.root_dir)
         self.point_clouds = np.concatenate(self.point_clouds, 0)
         self.seg_labels = np.concatenate(self.seg_labels, 0).astype(int)
 
@@ -66,7 +69,12 @@ class Indoor3D(Dataset):
             points = torch.cat(
                 (self.transform(points[:, [0, 1, 2, 6, 7, 8]]), torch.Tensor(points[:, [3, 4, 5]])),
                 dim=-1)
-        points.transpose_(0, 1)
+        if isinstance(points, torch.Tensor):
+            # transpose in place
+            points.transpose_(0, 1)
+        else:
+            # transpose() compatible with both torch.Tensor and np.ndarray
+            points.transpose(0, 1)
 
         out_dict = {
             "points": points,
@@ -80,5 +88,22 @@ class Indoor3D(Dataset):
 
 
 if __name__ == '__main__':
-    dataset = Indoor3D("data/indoor3d", ("train",))
-    dataset.point_clouds
+    from shaper.utils.open3d_visualize import Visualizer
+    root_dir = "data/indoor3d"
+    
+    print("Train Indoor3d")
+    dataset = Indoor3D(root_dir, ("train",))
+    print("The number of samples:", len(dataset))
+
+    data = dataset[1]
+    points = data['points']
+    seg_label = data['seg_label']
+    print("Points:")
+    print(points.shape, points.dtype)
+    print("Labels")
+    print(seg_label.shape, seg_label.dtype)
+
+    print("Visualizing point cloud...")
+    Visualizer.visualize_points(points[:, :3])
+    print("Visualizing point cloud with labels...")
+    Visualizer.visualize_points_with_labels(points[:, :3], seg_label, lut=max(seg_label)+1)
