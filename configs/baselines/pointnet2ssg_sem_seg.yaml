@@ -2,7 +2,7 @@ TASK:
   "semantic_segmentation"
 INPUT:
   IN_CHANNELS: 3
-  NUM_POINTS: 1024
+  NUM_POINTS: 8192
 MODEL:
   TYPE: "PN2SSG"
 DATASET:
@@ -18,7 +18,7 @@ SOLVER:
 SCHEDULER:
   TYPE: "MultiStepLR"
   MultiStepLR:
-    gamma: 0.5
+    gamma: 0.7
     milestones: (20, 40, 60, 80, 100, 120)
   MAX_EPOCH: 200
 TRAIN:
