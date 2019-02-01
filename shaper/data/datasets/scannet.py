@@ -28,6 +28,7 @@ class ScanNet(Dataset):
         "val": "scannet_train.pickle",
         "test": "scannet_test.pickle",
     }
+    num_seg_classes = 21
 
     def __init__(self, root_dir, dataset_names, transform=None,
                  num_points=8192, shuffle_points=False, normalize=True,
@@ -168,6 +169,7 @@ class ScanNetWholeScene():
         "val": "scannet_train.pickle",
         "test": "scannet_test.pickle",
     }
+    num_seg_classes = 21
 
     def __init__(self, root_dir, dataset_names, transform=None,
                  num_points=8192, shuffle_points=False, normalize=True,
@@ -199,7 +201,7 @@ class ScanNetWholeScene():
         for dataset_name in dataset_names:
             self._load_dataset(dataset_name)
         self._load_label_weights()
-
+        
         
     def _load_dataset(self, dataset_name):
         split_fname = osp.join(self.root_dir, self.dataset_map[dataset_name])

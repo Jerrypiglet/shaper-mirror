@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 
 class Indoor3D(Dataset):
     room_file_list_txt = "room_filelist.txt"
+    num_seg_classes = 13
 
     def __init__(self, root_dir, dataset_names, test_area=6, transform=None, num_points=-1, shuffle_points=False):
         self.root_dir = root_dir

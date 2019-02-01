@@ -8,8 +8,10 @@ import numpy as np
 import imageio
 from tqdm import tqdm
 from prettytable import PrettyTable
+import torch
 
 from shaper.utils.pc_util import point_cloud_three_views
+from shaper.models.metric import SemSegMetric, IntersectionAndUnion
 
 
 def evaluate_classification(dataset,
@@ -231,17 +233,17 @@ def evaluate_semantic_segmentation(dataset,
     # Remove transform
     dataset.transform = None
     # Use all points
-    dataset.num_points = -1
     dataset.shuffle_points = False
 
     # aliases
     num_samples = len(dataset)
-    class_names = dataset.classes
     assert len(pred_logits) == num_samples
 
-    seg_acc_per_class = defaultdict(float)
-    num_inst_per_class = defaultdict(int)
-    iou_per_class = defaultdict(float)
+    acc_metric = SemSegMetric(dataset.num_seg_classes)
+    iou_metric = IntersectionAndUnion(dataset.num_seg_classes)
+
+    seg_acc = 0
+    iou = 0
 
     for ind in tqdm(range(num_samples)):
         data = dataset[ind]
@@ -260,45 +262,14 @@ def evaluate_semantic_segmentation(dataset,
         pred_seg_logit = pred_seg_logit[:, :num_valid_points]
         gt_seg_label = gt_seg_label[:num_valid_points]
 
-        # logits to labels
-        pred_seg_label = np.argmax(pred_seg_logit, axis=0)
-
-        tp_mask = (pred_seg_label == gt_seg_label)
-        seg_label_set = set(gt_seg_label)
-        for label in seg_label_set:
-            # bool array with True iff that point is a true positive and is the specific semantic class
-            tp_per_label_mask = (pred_seg_label == label) * tp_mask
-            seg_acc = np.mean(tp_per_label_mask)
-            seg_acc_per_class[label] += seg_acc
-
-        # iou_per_instance = 0.0
-        # for ind, segid in enumerate(segids):
-        #     gt_mask = (gt_seg_label == segid)
-        #     num_intersection = np.sum(np.logical_and(tp_mask, gt_mask))
-        #     num_pos = np.sum(pred_seg_label == segid)
-        #     num_gt = np.sum(gt_mask)
-        #     num_union = num_pos + num_gt - num_intersection
-        #     iou = num_intersection / num_union if num_union > 0 else 1.0
-        #     iou_per_instance += iou
-        # iou_per_instance /= len(segids)
-        # iou_per_class[gt_cls_label] += iou_per_instance
+        pred_seg_logit = {"seg_logit": torch.Tensor(pred_seg_logit).transpose(0, 1).unsqueeze(0)}
+        gt_seg_label = {"seg_label": torch.Tensor(gt_seg_label).unsqueeze(0).long()}
+        seg_acc += acc_metric(pred_seg_logit, gt_seg_label)["seg_acc"].item()
+        iou += iou_metric(pred_seg_logit, gt_seg_label)["IOU"].item()
 
     # Overall
-    total_seg_acc = sum(seg_acc_per_class.values())
-    overall_acc = total_seg_acc / num_samples
+    overall_acc = seg_acc / num_samples
     logger.info("overall segmentation accuracy={:.2f}%".format(100.0 * overall_acc))
 
-    # total_iou = sum(iou_per_class.values())
-    # overall_iou = total_iou / num_samples
-    # logger.info("overall IOU={:.2f}".format(100.0 * overall_iou))
-
-    # # Per class
-    # table = PrettyTable(["Class", "SegAccuracy", "IOU", "Total"])
-    # for label in set(seg_acc_per_class.keys()):
-    #     seg_acc = seg_acc_per_class[label]
-    #     iou = 0 #iou_per_class[ind] / num_inst_per_class[ind]
-    #     table.add_row([class_name,
-    #                     "{:.2f}".format(100.0 * seg_acc),
-    #                     "{:.2f}".format(100.0 * iou),
-    #                     num_inst_per_class[ind]])
-    # logger.info("class-wise segmentation accuracy.\n{}".format(table))
+    overall_iou = iou / num_samples
+    logger.info("overall IOU={:.2f}".format(100.0 * overall_iou))
