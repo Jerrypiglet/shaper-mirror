@@ -285,7 +285,7 @@ class ScanNetWholeScene():
                 ps = self.transform(ps)
                 if ss is not None and self.seg_transform is not None:
                     ps, ss = self.seg_transform(ps, ss)
-                # ps.transpose_(0, 1)
+                ps.transpose_(0, 1)
             point_set[i] = ps
             semantic_seg[i] = ss
 
