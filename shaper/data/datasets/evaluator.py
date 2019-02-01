@@ -262,7 +262,7 @@ def evaluate_semantic_segmentation(dataset,
         pred_seg_logit = pred_seg_logit[:, :num_valid_points]
         gt_seg_label = gt_seg_label[:num_valid_points]
 
-        pred_seg_logit = {"seg_logit": torch.Tensor(pred_seg_logit).transpose(0, 1).unsqueeze(0)}
+        pred_seg_logit = {"seg_logit": torch.Tensor(pred_seg_logit).unsqueeze(0)}
         gt_seg_label = {"seg_label": torch.Tensor(gt_seg_label).unsqueeze(0).long()}
         seg_acc += acc_metric(pred_seg_logit, gt_seg_label)["seg_acc"].item()
         iou += iou_metric(pred_seg_logit, gt_seg_label)["IOU"].item()

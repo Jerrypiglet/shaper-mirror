@@ -8,6 +8,7 @@ import pickle
 import numpy as np
 import os.path as osp
 
+import torch
 from torch.utils.data import Dataset
 from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
 
@@ -274,11 +275,7 @@ class ScanNetWholeScene():
                 semantic_segs.append(np.expand_dims(semantic_seg,0)) # 1xN
                 sample_weights.append(np.expand_dims(sample_weight,0)) # 1xN
 
-        point_set = np.concatenate(point_sets,axis=0)
-        semantic_seg = np.concatenate(semantic_segs,axis=0)
-        sample_weight = np.concatenate(sample_weights,axis=0)
-
-        for i, (ps, ss) in enumerate(zip(point_set, semantic_seg)):
+        for i, (ps, ss) in enumerate(zip(point_sets, semantic_segs)):
             if self.normalize:
                 ps = normalize_points(ps)
             if self.transform is not None:
@@ -286,13 +283,17 @@ class ScanNetWholeScene():
                 if ss is not None and self.seg_transform is not None:
                     ps, ss = self.seg_transform(ps, ss)
                 ps.transpose_(0, 1)
-            point_set[i] = ps
-            semantic_seg[i] = ss
+            point_sets[i] = ps
+            semantic_segs[i] = ss
+
+        point_set = np.concatenate(point_sets,axis=0)
+        semantic_seg = np.concatenate(semantic_segs,axis=0)  
+        sample_weight = np.concatenate(sample_weights,axis=0)     
 
         out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
 
-    def collate_fn(batch):
+    def collate_fn(self, batch):
         return {key: torch.cat([d[key] for d in batch]) for key in batch[0]}
 
 

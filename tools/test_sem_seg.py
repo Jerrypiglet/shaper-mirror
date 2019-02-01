@@ -81,6 +81,8 @@ def test(cfg, output_dir=""):
     metric_fn.eval()
 
     if cfg.TEST.VOTE.ENABLE:
+        assert cfg.DATASET.TYPE != "ScanNetWholeScene", \
+                "Vote not supported for testing on scan net whole scene"
         # Disable inherent shuffle
         test_dataset.shuffle_points = False
         # Remove old transform
