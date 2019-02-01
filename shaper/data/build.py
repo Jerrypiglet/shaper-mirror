@@ -10,6 +10,7 @@ Notes:
 
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import default_collate
 
 from . import datasets as D
 from . import transforms as T
@@ -149,11 +150,15 @@ def build_dataloader(cfg, mode="train"):
 
     is_train = mode == "train"
     dataset = build_dataset(cfg, mode)
+    collate_fn = default_collate
+    if hasattr(dataset, "collate_fn"):
+        collate_fn = dataset.collate_fn
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=is_train,
         drop_last=(is_train and cfg.DATALOADER.DROP_LAST),
         num_workers=cfg.DATALOADER.NUM_WORKERS,
+        collate_fn=collate_fn,
     )
     return data_loader

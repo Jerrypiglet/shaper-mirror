@@ -292,6 +292,9 @@ class ScanNetWholeScene():
         out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
 
+    def collate_fn(batch):
+        return {key: torch.cat([d[key] for d in batch]) for key in batch[0]}
+
 
 if __name__=='__main__':
     from shaper.utils.open3d_visualize import Visualizer
