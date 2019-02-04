@@ -29,5 +29,5 @@ TRAIN:
 TEST:
   BATCH_SIZE: 1
   VOTE:
-    ENABLE: True
+    ENABLE: False
   VIS_DIR: "@/vis_error_key_pts"
