@@ -161,6 +161,11 @@ class ScanNetWholeScene():
     Attributes:
     
     Notes:
+        The scannet whole scene dataset is typically broken up into chunks of size num_points (with a small overlap)
+        to be input into the segmentation model. This was done (eg in Charles's code) by batching together all the
+        chunks of a single whole scene (out of 312 whole scenes; ~10-30 chunks per scene). To be compatible with the
+        rest of shaper, this is dataset now returns each of these chunks individually (so the first ~10-30 items of the
+        dataset will be the first whole scene, etc.).
 
     """
     URL = "https://shapenet.cs.stanford.edu/media/scannet_data_pointnet2.zip"
@@ -199,10 +204,13 @@ class ScanNetWholeScene():
         self.scene_points_list = []
         self.semantic_labels_list = []
         self.label_weights = {}
+        # init self.meta_data, self.scene_points_list, self.semantic_labels_list
         for dataset_name in dataset_names:
             self._load_dataset(dataset_name)
+        # init self.label_weights
         self._load_label_weights()
-        
+        # init self.point_sets, self.semantic_segs, self.sample_weights, self.scene_sizes
+        self._load_chunks()
         
     def _load_dataset(self, dataset_name):
         split_fname = osp.join(self.root_dir, self.dataset_map[dataset_name])
@@ -235,66 +243,74 @@ class ScanNetWholeScene():
             {'train': train_weights, 'test': test_weights, 'default': def_weights}
         )
 
-    def __len__(self):
-        return len(self.scene_points_list)
-
-    def __getitem__(self, index):
-        point_set_ini = self.scene_points_list[index]
-        semantic_seg_ini = self.semantic_labels_list[index].astype(np.int32)
-        coordmax = np.max(point_set_ini, axis=0)
-        coordmin = np.min(point_set_ini, axis=0)
-        nsubvolume_x = np.ceil((coordmax[0]-coordmin[0]) / 1.5).astype(np.int32)
-        nsubvolume_y = np.ceil((coordmax[1]-coordmin[1]) / 1.5).astype(np.int32)
+    def _load_chunks(self):
+        """
+        The scannet whole scene dataset is typically broken up into chunks of size num_points (with a small overlap)
+        to be input into the segmentation model. This was done (eg in Charles's code) by batching together all the
+        chunks of a single whole scene (out of 312 whole scenes; ~10-30 chunks per scene). To be compatible with the
+        rest of shaper, this is dataset now returns each of these chunks individually (so the first ~10-30 items of the
+        dataset will be the first whole scene, etc.).
+        """
+        
         point_sets = list()
         semantic_segs = list()
         sample_weights = list()
-        isvalid = False
-        for i in range(nsubvolume_x):
-            for j in range(nsubvolume_y):
-                curmin = coordmin + [i*1.5, j*1.5, 0]
-                curmax = coordmin + [(i+1)*1.5, (j+1)*1.5, coordmax[2]-coordmin[2]]
-                curchoice = np.sum((point_set_ini >= (curmin-0.2)) * (point_set_ini <= (curmax+0.2)), axis=1) == 3
-                cur_point_set = point_set_ini[curchoice,:]
-                cur_semantic_seg = semantic_seg_ini[curchoice]
-                if len(cur_semantic_seg) == 0:
-                    continue
+        scene_sizes = list()
+        for index in range(len(self.scene_points_list)):
+            point_set_ini = self.scene_points_list[index]
+            semantic_seg_ini = self.semantic_labels_list[index].astype(np.int32)
+            coordmax = np.max(point_set_ini, axis=0)
+            coordmin = np.min(point_set_ini, axis=0)
+            nsubvolume_x = np.ceil((coordmax[0]-coordmin[0]) / 1.5).astype(np.int32)
+            nsubvolume_y = np.ceil((coordmax[1]-coordmin[1]) / 1.5).astype(np.int32)
+            scene_sizes.append(0)
+            for i in range(nsubvolume_x):
+                for j in range(nsubvolume_y):
+                    curmin = coordmin + [i*1.5, j*1.5, 0]
+                    curmax = coordmin + [(i+1)*1.5, (j+1)*1.5, coordmax[2]-coordmin[2]]
+                    curchoice = np.sum((point_set_ini >= (curmin-0.2)) * (point_set_ini <= (curmax+0.2)), axis=1) == 3
+                    cur_point_set = point_set_ini[curchoice,:]
+                    cur_semantic_seg = semantic_seg_ini[curchoice]
+                    if len(cur_semantic_seg) == 0:
+                        continue
+                    mask = np.sum((cur_point_set >= (curmin-0.001)) * (cur_point_set <= (curmax+0.001)), axis=1) == 3
+                    choice = np.random.choice(len(cur_semantic_seg), self.npoints, replace=True)
+                    point_set = cur_point_set[choice, :] # Nx3
+                    semantic_seg = cur_semantic_seg[choice] # N
+                    mask = mask[choice]
+                    if sum(mask) / float(len(mask)) < 0.01:
+                        continue
+                    split = self.meta_data[index]['split']
+                    labelweights = self.label_weights.get(split, self.label_weights['default'])
+                    sample_weight = labelweights[semantic_seg]
+                    sample_weight *= mask
+                    point_sets.append(point_set)
+                    semantic_segs.append(semantic_seg)
+                    sample_weights.append(sample_weight)
+                    scene_sizes[-1] += 1
 
-                mask = np.sum((cur_point_set >= (curmin-0.001)) * (cur_point_set <= (curmax+0.001)), axis=1) == 3
-                choice = np.random.choice(len(cur_semantic_seg), self.npoints, replace=True)
-                point_set = cur_point_set[choice, :] # Nx3
-                semantic_seg = cur_semantic_seg[choice] # N
-                mask = mask[choice]
-                if sum(mask) / float(len(mask)) < 0.01:
-                    continue
+        self.point_sets = point_sets
+        self.semantic_segs = semantic_segs
+        self.sample_weights = sample_weights
+        self.scene_sizes = scene_sizes
 
-                split = self.meta_data[index]['split']
-                labelweights = self.label_weights.get(split, self.label_weights['default'])
-                sample_weight = labelweights[semantic_seg]
-                sample_weight *= mask # N
-                point_sets.append(np.expand_dims(point_set,0)) # 1xNx3
-                semantic_segs.append(np.expand_dims(semantic_seg,0)) # 1xN
-                sample_weights.append(np.expand_dims(sample_weight,0)) # 1xN
+    def __len__(self):
+        return len(self.point_sets)
 
-        for i, (ps, ss) in enumerate(zip(point_sets, semantic_segs)):
-            if self.normalize:
-                ps = normalize_points(ps)
-            if self.transform is not None:
-                ps = self.transform(ps)
-                if ss is not None and self.seg_transform is not None:
-                    ps, ss = self.seg_transform(ps, ss)
-                ps.transpose_(0, 1)
-            point_sets[i] = ps
-            semantic_segs[i] = ss
-
-        point_set = np.concatenate(point_sets,axis=0)
-        semantic_seg = np.concatenate(semantic_segs,axis=0)  
-        sample_weight = np.concatenate(sample_weights,axis=0)     
-
+    def __getitem__(self, index):
+        point_set = self.point_sets[index]
+        semantic_seg = self.semantic_segs[index]
+        sample_weight = self.sample_weights[index]
+        if self.normalize:
+            point_set = normalize_points(point_set)
+        if self.transform is not None:
+            point_set = self.transform(point_set)
+            if semantic_seg is not None and self.seg_transform is not None:
+                # transform weights too?
+                point_set, semantic_seg = self.seg_transform(point_set, semantic_seg)
+            point_set.transpose_(0, 1)  
         out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
         return out_dict
-
-    def collate_fn(self, batch):
-        return {key: torch.cat([d[key] for d in batch]) for key in batch[0]}
 
 
 if __name__=='__main__':
@@ -334,6 +350,7 @@ if __name__=='__main__':
     print("\nTest ScanNet Whole Scene (Not normalized)")
     scannet = ScanNetWholeScene(root_dir, ['test'], normalize=False)
     print("The number of samples:", len(scannet))
+    print("The number of whole scenes:", len(scannet.scene_sizes))
 
     data = scannet[0]
     points = data['points']
@@ -347,9 +364,9 @@ if __name__=='__main__':
     print(weights)
     print(weights.shape, weights.dtype)
 
-    points = np.concatenate(list(points),axis=0)
-    seg_label = np.concatenate(list(seg_label),axis=0)
-    print(seg_label.shape)
+    scene = [scannet[i] for i in range(scannet.scene_sizes[0])]
+    points = np.concatenate([sc['points'] for sc in scene], axis=0)
+    seg_label = np.concatenate([sc['seg_label'] for sc in scene],axis=0)
 
     print("Visualizing point cloud...")
     Visualizer.visualize_points(points)
