@@ -153,19 +153,18 @@ class PointNet2MSGSemSeg(nn.Module):
         # feature = self.mlp_local(feature)
 
         # Feature Propagation Layers
-        dense_xyz = xyz
-        dense_feature = feature
+        sparse_xyz = xyz
+        sparse_feature = feature
         for fp_ind, fp_module in enumerate(self.fp_modules):
-            sparse_xyz = inter_xyz[-2 - fp_ind]
-            sparse_feature = inter_feature[-2 - fp_ind]
-            fp_feature = fp_module(sparse_xyz, dense_xyz, sparse_feature, dense_feature)
-            dense_xyz = sparse_xyz
-            dense_feature = fp_feature
+            dense_xyz = inter_xyz[-2 - fp_ind]
+            dense_feature = inter_feature[-2 - fp_ind]
+            fp_feature = fp_module(dense_xyz, sparse_xyz, dense_feature, sparse_feature)
+            sparse_xyz = dense_xyz
+            sparse_feature = fp_feature
 
         # Fully Connected Layers
-        x = self.mlp_seg(dense_feature)
+        x = self.mlp_seg(sparse_feature)
         seg_logit = self.seg_logit(x)
-        # seg_logit.transpose_(0, 1)
 
         preds = {"seg_logit": seg_logit}
         # preds.update(end_points)
