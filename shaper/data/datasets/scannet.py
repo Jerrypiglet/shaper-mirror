@@ -102,11 +102,11 @@ class ScanNet(Dataset):
         
         coordmax = np.max(point_set,axis=0) # max x,y,z
         coordmin = np.min(point_set,axis=0) # min x,y,z
-        smpmin = np.maximum(coordmax-[1.5,1.5,3.0], coordmin) # ??
-        smpmin[2] = coordmin[2] # ??
-        smpsz = np.minimum(coordmax-smpmin,[1.5,1.5,3.0])
-        smpsz[2] = coordmax[2]-coordmin[2]
-        isvalid = False
+        # smpmin = np.maximum(coordmax-[1.5,1.5,3.0], coordmin) # ??
+        # smpmin[2] = coordmin[2] # ??
+        # smpsz = np.minimum(coordmax-smpmin,[1.5,1.5,3.0])
+        # smpsz[2] = coordmax[2]-coordmin[2]
+        # isvalid = False
 
         for i in range(10):
             curcenter = point_set[np.random.choice(len(semantic_seg),1)[0], :] # choose random pt
@@ -178,7 +178,7 @@ class ScanNetWholeScene():
     num_seg_classes = 21
 
     def __init__(self, root_dir, dataset_names, transform=None,
-                 num_points=8192, shuffle_points=False, normalize=True,
+                 num_points=-1, shuffle_points=False, normalize=True,
                  seg_transform=None):
         """
         Args:
@@ -209,7 +209,8 @@ class ScanNetWholeScene():
             self._load_dataset(dataset_name)
         # init self.label_weights
         self._load_label_weights()
-        # init self.point_sets, self.semantic_segs, self.sample_weights, self.scene_sizes
+        # init self.point_sets, self.semantic_segs, self.sample_weights, self.scene_sizes,
+        #   self.whole_scene_index, self.point_set_indices
         self._load_chunks()
         
     def _load_dataset(self, dataset_name):
@@ -217,11 +218,12 @@ class ScanNetWholeScene():
         with open(split_fname, 'rb') as fp:
             self.scene_points_list.extend( pickle.load(fp, encoding='bytes') )
             self.semantic_labels_list.extend( pickle.load(fp, encoding='bytes') )
+        self.whole_scene_meta_data = []
         for i, pts in enumerate(self.scene_points_list):
-            self.meta_data.append({
-                'offset': i,
+            self.whole_scene_meta_data.append({
                 'size': pts.shape[0],
-                'path': split_fname,
+                'file': split_fname,
+                'index': i,
                 'split': dataset_name,
             })
 
@@ -256,6 +258,8 @@ class ScanNetWholeScene():
         semantic_segs = list()
         sample_weights = list()
         scene_sizes = list()
+        whole_scene_index = list()
+        point_set_indices = list()
         for index in range(len(self.scene_points_list)):
             point_set_ini = self.scene_points_list[index]
             semantic_seg_ini = self.semantic_labels_list[index].astype(np.int32)
@@ -274,25 +278,41 @@ class ScanNetWholeScene():
                     if len(cur_semantic_seg) == 0:
                         continue
                     mask = np.sum((cur_point_set >= (curmin-0.001)) * (cur_point_set <= (curmax+0.001)), axis=1) == 3
-                    choice = np.random.choice(len(cur_semantic_seg), self.npoints, replace=True)
+                    # sample if self.npoints is a positive number; otherwise use all points
+                    if self.npoints > 0:
+                        choice = np.random.choice(len(cur_semantic_seg), self.npoints, replace=True)
+                    else:
+                        choice = np.array(range(len(cur_point_set)))
                     point_set = cur_point_set[choice, :] # Nx3
                     semantic_seg = cur_semantic_seg[choice] # N
                     mask = mask[choice]
                     if sum(mask) / float(len(mask)) < 0.01:
                         continue
-                    split = self.meta_data[index]['split']
+                    split = self.whole_scene_meta_data[index]['split']
                     labelweights = self.label_weights.get(split, self.label_weights['default'])
                     sample_weight = labelweights[semantic_seg]
                     sample_weight *= mask
+
                     point_sets.append(point_set)
                     semantic_segs.append(semantic_seg)
                     sample_weights.append(sample_weight)
+                    whole_scene_index.append(index)
+                    pt_indices = np.where(curchoice)[0][choice]  # turn boolean array into array of indices where bool is true
+                    point_set_indices.append(pt_indices)
                     scene_sizes[-1] += 1
 
         self.point_sets = point_sets
         self.semantic_segs = semantic_segs
         self.sample_weights = sample_weights
+        for pts, scene_index, indices in zip(self.point_sets, whole_scene_index, point_set_indices):
+            self.meta_data.append({
+                'size': pts.shape[0],
+                'scene_index': scene_index,
+                'scene_indices': indices,
+                'split': self.whole_scene_meta_data[scene_index]['split'],
+            })
         self.scene_sizes = scene_sizes
+        self.whole_scene_index = whole_scene_index
 
     def __len__(self):
         return len(self.point_sets)
@@ -301,6 +321,8 @@ class ScanNetWholeScene():
         point_set = self.point_sets[index]
         semantic_seg = self.semantic_segs[index]
         sample_weight = self.sample_weights[index]
+        scene = self.meta_data[index]['scene_index']
+        indices = self.meta_data[index]['scene_indices']
         if self.normalize:
             point_set = normalize_points(point_set)
         if self.transform is not None:
@@ -309,7 +331,8 @@ class ScanNetWholeScene():
                 # transform weights too?
                 point_set, semantic_seg = self.seg_transform(point_set, semantic_seg)
             point_set.transpose_(0, 1)  
-        out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight}
+        out_dict = {'points': point_set, 'seg_label': semantic_seg, 'label_weights': sample_weight, 
+                    'scene': scene, 'indices': indices}
         return out_dict
 
 
@@ -333,8 +356,8 @@ if __name__=='__main__':
     print(weights)
     print(weights.shape, weights.dtype)
 
-    print("Visualizing point cloud...")
-    Visualizer.visualize_points(points)
+    # print("Visualizing point cloud...")
+    # Visualizer.visualize_points(points)
     print("Visualizing point cloud with labels...")
     Visualizer.visualize_points_with_labels(points, seg_label, lut=max(seg_label)+1)
 
@@ -368,7 +391,7 @@ if __name__=='__main__':
     points = np.concatenate([sc['points'] for sc in scene], axis=0)
     seg_label = np.concatenate([sc['seg_label'] for sc in scene],axis=0)
 
-    print("Visualizing point cloud...")
-    Visualizer.visualize_points(points)
+    # print("Visualizing point cloud...")
+    # Visualizer.visualize_points(points)
     print("Visualizing point cloud with labels...")
     Visualizer.visualize_points_with_labels(points, seg_label, lut=max(seg_label)+1)
