@@ -129,7 +129,7 @@ def test(cfg, output_dir=""):
 
                 if ind % cfg.TEST.LOG_PERIOD == 0:
                     logger.info("iter: {:4d}  time:{:.4f}  data:{:.4f}".format(ind, batch_time, data_time))
-        seg_logit_all = np.stack(seg_logit_all, axis=0)
+        # seg_logit_all = np.stack(seg_logit_all, axis=0)
     else:
         test_meters = MetricLogger(delimiter="  ")
         with torch.no_grad():
@@ -166,41 +166,44 @@ def test(cfg, output_dir=""):
                     )
         test_time = time.time() - start_time
         logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
-        seg_logit_all = np.concatenate(seg_logit_all, axis=0)
+        # seg_logit_all = np.concatenate(seg_logit_all, axis=0)
+        seg_logit_all = [lg[0] for lg in seg_logit_all]
 
     # evaluate_semantic_segmentation(test_dataset, seg_logit_all, output_dir=output_dir, vis_dir=vis_dir)
 
     # consolidate semantic predictions and write to file
 
-    gt_all = np.stack([points['seg_label'] for points in test_dataset], axis=0)
-    numpy.savetxt(osp.join(output_dir, 'raw_preds.txt'), np.argmax(seg_logit_all, 1), fmt='%d')
-    numpy.savetxt(osp.join(output_dir, 'raw_logits.txt'), seg_logit_all, fmt='%d')
-    numpy.savetxt(osp.join(output_dir, 'raw_gt.txt'), gt_all, fmt='%d')
+    # gt_all = np.stack([points['seg_label'] for points in test_dataset], axis=0)
+    seg_pred_all = [np.argmax(lg, axis=0) for lg in seg_logit_all]
+    np.savez(osp.join(output_dir, 'raw_preds'), *seg_pred_all)
+    np.savez(osp.join(output_dir, 'raw_logits'), *seg_logit_all)
+    # np.savetxt(osp.join(output_dir, 'raw_gt.txt'), gt_all, fmt='%d')
 
     class_map = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39]
+    eval_inds = list(range(1, len(class_map)+1))
     labels_dict = defaultdict(list)
     i = 0
-    for scene in range(max(test_dataset.whole_scene_index)):
-        while test_dataset.whole_scene_index[i] == scene:
-            points = scannet[i]
-            maxs = list(zip(np.argmax(seg_logit_all[i], 0), np.max(seg_logit_all[i], 0)))
-            for ind, mx in zip(points['indices'][i], maxs):
-                labels_dict[ind].append(mx)
+    for scene_ind, scene in enumerate(test_dataset.scene_points_list):
+        num_chunks = test_dataset.scene_sizes[scene_ind]
+        votes_mat = np.full((num_chunks, scene.shape[0]), -1 * np.inf)
+        preds_mat = np.zeros((num_chunks, scene.shape[0]), dtype=int)
+
+        start_ind = i
+        while i < len(test_dataset.whole_scene_index) and test_dataset.whole_scene_index[i] == scene_ind:
+            points = test_dataset[i]
+            indices = points['indices']
+            votes_mat[i - start_ind, indices] = np.max(seg_logit_all[i][eval_inds], 0)
+            preds_mat[i - start_ind, indices] = np.argmax(seg_logit_all[i][eval_inds], 0)
             i += 1
-        # resolve conflicts (indices with multiple labels)
-        final_preds = []
-        for index, preds in labels_dict.items():
-            if len(set([p[0] for p in preds])) == 1:
-                p = preds[0][0]
-                final_preds.append((index, class_map[p]))
-            else:
-                # this part can be changed for different resolution rules
-                j = max(preds, key=lambda p: p[1])
-                p = preds[j][0]
-                final_preds.append((index, class_map[p]))
-        fname = osp.join(output_dir, 'scannet_preds.txt')
-        with open(fname, 'a') as f:
-            f.write('\n'.join(final_preds))
+
+        top_votes = np.argmax(votes_mat, axis=0)
+        preds = preds_mat[top_votes, np.arange(scene.shape[0])]
+
+        fname = osp.join(output_dir, 'scannet_preds_{}.txt'.format(scene_ind))
+        with open(fname, 'w') as f:
+            for p in preds:
+                f.write(str(class_map[p]))
+                f.write('\n')
         
 
 def main():
