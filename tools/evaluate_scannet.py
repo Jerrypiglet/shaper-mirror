@@ -9,6 +9,7 @@ import time
 from collections import defaultdict
 
 import numpy as np
+from scipy.special import softmax
 import torch
 from torch import nn
 
@@ -175,6 +176,7 @@ def test(cfg, output_dir=""):
 
     # gt_all = np.stack([points['seg_label'] for points in test_dataset], axis=0)
     seg_pred_all = [np.argmax(lg, axis=0) for lg in seg_logit_all]
+    seg_logit_all = [softmax(lg, axis=1) for lg in seg_logit_all]
     np.savez(osp.join(output_dir, 'raw_preds'), *seg_pred_all)
     np.savez(osp.join(output_dir, 'raw_logits'), *seg_logit_all)
     # np.savetxt(osp.join(output_dir, 'raw_gt.txt'), gt_all, fmt='%d')

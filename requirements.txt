@@ -1,7 +1,7 @@
 # Basic tools
 cython
 h5py
-scipy
+scipy==1.2.1
 yacs
 imageio
 tensorboardX
