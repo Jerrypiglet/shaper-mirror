@@ -2,7 +2,8 @@ from .dgcnn_cls import DGCNNCls
 from ..loss import ClsLoss
 from ..metric import ClsAccuracy, PartSegMetric
 
-from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss  
+from .dgcnn_sem_seg import DGCNNSemSeg, DGCNNSegLoss
+from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss
 
 
 def build_dgcnn(cfg):
@@ -20,15 +21,20 @@ def build_dgcnn(cfg):
         loss_fn = ClsLoss(cfg.MODEL.DGCNN.LABEL_SMOOTHING)
         metric_fn = ClsAccuracy()
     elif cfg.TASK == "part_segmentation":
-        net = DGCNNPartSeg(
+        # net = DGCNNPartSeg(
+        #     in_channels=cfg.INPUT.IN_CHANNELS,
+        #     out_channels=cfg.DATASET.NUM_CLASSES,
+        #     num_class = cfg.DATASET.NUM_CLASSES,
+        #     num_seg_class=cfg.DATASET.NUM_SEG_CLASSES,
+        # )
+        # loss_fn = DGCNNPartSegLoss(cfg.MODEL.DGCNN.REG_WEIGHT,
+        #                        cfg.MODEL.DGCNN.CLS_LOSS_WEIGHT,
+        #                        cfg.MODEL.DGCNN.SEG_LOSS_WEIGHT)
+        net = DGCNNSemSeg(
             in_channels=cfg.INPUT.IN_CHANNELS,
-            out_channels=cfg.DATASET.NUM_CLASSES,
-            num_class = cfg.DATASET.NUM_CLASSES,
-            num_seg_class=cfg.DATASET.NUM_SEG_CLASSES,
+            out_channels=cfg.DATASET.NUM_SEG_CLASSES,
         )
-        loss_fn = DGCNNPartSegLoss(cfg.MODEL.DGCNN.REG_WEIGHT,
-                               cfg.MODEL.DGCNN.CLS_LOSS_WEIGHT,
-                               cfg.MODEL.DGCNN.SEG_LOSS_WEIGHT)
+        loss_fn = DGCNNSegLoss()
         metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError()

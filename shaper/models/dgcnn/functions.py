@@ -81,7 +81,7 @@ def construct_edge_feature_gather(feature, knn_inds):
     return edge_feature
 
 
-def construct_edge_feature(feature, knn_inds):
+def construct_edge_feature(feature, knn_inds, use_centroids=True):
     """Construct edge feature for each point (or regarded as a node)
     using gather_knn
 
@@ -99,8 +99,11 @@ def construct_edge_feature(feature, knn_inds):
     # CAUTION: torch.expand
     feature_central = feature.unsqueeze(3).expand(batch_size, channels, num_nodes, k)
     feature_neighbour = gather_knn(feature, knn_inds)
-    # (batch_size, 2 * channels, num_nodes, k)
-    edge_feature = torch.cat((feature_central, feature_neighbour - feature_central), 1)
+    if use_centroids:
+        # (batch_size, 2 * channels, num_nodes, k)
+        edge_feature = torch.cat((feature_central, feature_neighbour - feature_central), 1)
+    else:
+        edge_feature = feature_neighbour - feature_central
 
     return edge_feature
 

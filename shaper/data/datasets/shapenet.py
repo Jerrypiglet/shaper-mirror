@@ -18,6 +18,8 @@ import numpy as np
 from torch.utils.data import Dataset
 from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
 
+import open3d
+
 
 class ShapeNet(Dataset):
     """ShapeNetCore dataset
@@ -430,7 +432,21 @@ class ShapeNetH5(Dataset):
         seg_label = None
         out_dict = {}
 
+        pc = open3d.PointCloud()
+        pc.points = open3d.Vector3dVector(points)
+        pcd_tree = open3d.KDTreeFlann(pc)
+        knn_inds = []
+        K = 20
+        for p in points:
+            [_, knn_ind, _] = pcd_tree.search_knn_vector_3d(p, K)
+            knn_inds.append(knn_ind)
+        knn_inds = np.asarray(knn_inds)
+
+        num_points_ori = points.shape[0]
         points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
+        inv_choice = np.arange(num_points_ori)[choice]
+        knn_ind = inv_choice[knn_inds[choice]]
+
         if self.load_seg:
             seg_label = self.cache_seg_label[index][choice]
 
@@ -444,6 +460,7 @@ class ShapeNetH5(Dataset):
         out_dict["cls_label"] = cls_label
         if self.load_seg:
             out_dict["seg_label"] = seg_label
+            out_dict['knn_ind'] = knn_ind
 
         return out_dict
 

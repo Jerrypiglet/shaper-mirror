@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from shaper.nn import SharedMLP
 from shaper.nn.init import init_bn
-from .functions import pdist, get_knn_inds, get_edge_feature, gather_knn
+from .functions import pdist, get_knn_inds, get_edge_feature, gather_knn, construct_edge_feature
 
 
 class EdgeConvBlock(nn.Module):
@@ -15,17 +15,21 @@ class EdgeConvBlock(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, k):
+    def __init__(self, in_channels, out_channels, k, use_centroids):
         super(EdgeConvBlock, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.k = k
+        self.use_centroids = use_centroids
 
-        self.mlp = SharedMLP(2 * in_channels, out_channels, ndim=2)
+        self.mlp = SharedMLP(in_channels + (in_channels if use_centroids else 0), out_channels, ndim=2)
 
-    def forward(self, x):
-        x = get_edge_feature(x, self.k)
+    def forward(self, x, knn_ind=None):
+        if knn_ind is None:
+            x = get_edge_feature(x, self.k)
+        else:
+            x = construct_edge_feature(x, knn_ind, self.use_centroids)
         x = self.mlp(x)
         x, _ = torch.max(x, 3)
         return x

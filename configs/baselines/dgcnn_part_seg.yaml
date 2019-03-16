@@ -1,6 +1,6 @@
 TASK:
   "part_segmentation"
-AUTO_RESUME: False
+#AUTO_RESUME: False
 MODEL:
   TYPE: "DGCNN"
 INPUT:
