@@ -120,7 +120,7 @@ class PointNet2SSGPartSeg(nn.Module):
             feature_channels = fp_channels[ind][-1]
 
         # MLP
-        self.mlp_seg = SharedMLP(feature_channels, seg_channels, ndim=1, dropout=dropout_prob)
+        self.mlp_seg = SharedMLP(feature_channels, seg_channels, ndim=1, dropout=dropout_prob, bn=use_bn, gn=use_gn)
         self.seg_logit = nn.Conv1d(seg_channels[-1], num_seg_classes, 1, bias=True)
 
         self.init_weights()

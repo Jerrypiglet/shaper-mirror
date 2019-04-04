@@ -2,7 +2,7 @@ from .dgcnn_cls import DGCNNCls
 from ..loss import ClsLoss
 from ..metric import ClsAccuracy, PartSegMetric
 
-from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss  
+from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss
 
 
 def build_dgcnn(cfg):
@@ -25,6 +25,8 @@ def build_dgcnn(cfg):
             out_channels=cfg.DATASET.NUM_CLASSES,
             num_class = cfg.DATASET.NUM_CLASSES,
             num_seg_class=cfg.DATASET.NUM_SEG_CLASSES,
+            use_bn=cfg.MODEL.NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.NORMALIZATION=='GN'
         )
         loss_fn = DGCNNPartSegLoss(cfg.MODEL.DGCNN.REG_WEIGHT,
                                cfg.MODEL.DGCNN.CLS_LOSS_WEIGHT,
@@ -32,5 +34,5 @@ def build_dgcnn(cfg):
         metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError()
-  
+
     return net, loss_fn, metric_fn

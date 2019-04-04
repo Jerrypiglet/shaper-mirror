@@ -37,16 +37,18 @@ class TNet(nn.Module):
                  conv_channels=(64, 128),
                  local_channels=(1024,),
                  global_channels=(512, 256),
-                 k=20):
+                 k=20,
+                 use_bn=True,
+                 use_gn=False):
         super(TNet, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.k = k
 
-        self.edge_conv = SharedMLP(2 * in_channels, conv_channels, ndim=2)
-        self.mlp_local = SharedMLP(conv_channels[-1], local_channels)
-        self.mlp_global = MLP(local_channels[-1], global_channels)
+        self.edge_conv = SharedMLP(2 * in_channels, conv_channels, ndim=2, bn=use_bn, gn=use_gn)
+        self.mlp_local = SharedMLP(conv_channels[-1], local_channels, bn=use_bn, gn=use_gn)
+        self.mlp_global = MLP(local_channels[-1], global_channels, bn=use_bn, gn=use_gn)
 
         self.linear = nn.Linear(global_channels[-1], self.in_channels * out_channels, bias=True)
 
@@ -110,7 +112,9 @@ class DGCNNPartSeg(nn.Module):
                  global_channels=(256, 256, 128),
                  k=20,
                  dropout_prob=0.4,
-                 with_transform=True):
+                 with_transform=True,
+                 use_bn=True,
+                 use_gn=False):
         super(DGCNNPartSeg, self).__init__()
 
         self.in_channels = in_channels
@@ -122,22 +126,22 @@ class DGCNNPartSeg(nn.Module):
 
         # input transform
         if self.with_transform:
-            self.transform_input = TNet(in_channels, in_channels, k=k)
+            self.transform_input = TNet(in_channels, in_channels, k=k, use_bn=use_bn, use_gn=use_gn)
 
         self.mlp_edge_conv = nn.ModuleList()
         for out in edge_conv_channels:
-            self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out, k))
+            self.mlp_edge_conv.append(EdgeConvBlock(in_channels, out, k, use_bn=use_bn, use_gn=use_gn))
             in_channels = out[-1]
 
         out_channel = edge_conv_channels[0][0]
-        self.lable_conv = Conv2d(num_class, out_channel, [1, 1])
+        self.lable_conv = Conv2d(num_class, out_channel, [1, 1], bn=use_bn, gn=use_gn)
 
         mlplocal_input = sum([item[-1] for item in edge_conv_channels])
-        self.mlp_local = Conv1d(mlplocal_input, inter_channels, 1)
+        self.mlp_local = Conv1d(mlplocal_input, inter_channels, 1, bn=use_bn, gn=use_gn)
 
         mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
-        self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob)
-        self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1)
+        self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob, bn=use_bn, gn=use_gn)
+        self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1, bn=use_bn, gn=use_gn)
         self.seg_logit = nn.Conv1d(global_channels[-1], num_seg_class, 1, bias=True)
 
         self.init_weights()

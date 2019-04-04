@@ -15,14 +15,14 @@ class EdgeConvBlock(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, k):
+    def __init__(self, in_channels, out_channels, k, use_bn=True, use_gn=False):
         super(EdgeConvBlock, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.k = k
 
-        self.mlp = SharedMLP(2 * in_channels, out_channels, ndim=2)
+        self.mlp = SharedMLP(2 * in_channels, out_channels, ndim=2, bn=use_bn, gn=use_gn)
 
     def forward(self, x):
         x = get_edge_feature(x, self.k)
@@ -43,7 +43,7 @@ class EdgeConvBlockV2(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, k):
+    def __init__(self, in_channels, out_channels, k, use_bn=True, use_gn=False):
         super(EdgeConvBlockV2, self).__init__()
 
         self.in_channels = in_channels
@@ -53,7 +53,9 @@ class EdgeConvBlockV2(nn.Module):
         self.conv1 = nn.Conv1d(in_channels, out_channels, 1, bias=False)
         self.conv2 = nn.Conv1d(in_channels, out_channels, 1, bias=False)
 
-        self.bn = nn.BatchNorm2d(out_channels)
+        self.bn = nn.BatchNorm2d(out_channels) if use_bn else None
+        assert not (use_bn and use_gn)
+        self.gn = nn.modules.normalization.GroupNorm(num_groups=8, num_channels=out_channels) if use_gn else None
 
     def forward(self, feature):
         batch_size, _, num_points = feature.shape
@@ -77,7 +79,11 @@ class EdgeConvBlockV2(nn.Module):
         # (batch_size, out_channels, num_points, k)
         edge_feature = (local_feature + edge_feature).unsqueeze(3) - neighbour_feature
 
-        edge_feature = self.bn(edge_feature)
+        if self.bn is not None:
+            edge_feature = self.bn(edge_feature)
+        if self.gn is not None:
+            edge_feature = self.gn(edge_feature)
+
         edge_feature = F.relu(edge_feature, inplace=True)
 
         # max pooling over k neighbours
