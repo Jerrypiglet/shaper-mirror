@@ -31,6 +31,6 @@ TRAIN:
   AUGMENTATION: ("PointCloudRotate", "PointCloudJitter",)
   SEG_AUGMENTATION: ("PointCloudShuffle",)
   LOG_PERIOD: 50
-  VAL_PERIOD: 0
+  VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
