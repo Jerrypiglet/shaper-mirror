@@ -86,7 +86,7 @@ class TNet(nn.Module):
 class DGCNNPartSeg(nn.Module):
     """DGCNN for part segmentation
        Structure: (-> [TNet] -> transform_input) -> [EdgeConvBlock]s -> [Concat EdgeConvBlock features]]
-       -> [local MLP] -> [add classification label info] -> [Concat Features] -> [mlp seg] -> [conv seg] 
+       -> [local MLP] -> [add classification label info] -> [Concat Features] -> [mlp seg] -> [conv seg]
        -> [seg logit] -> logits
 
        [EdgeConvBlock]: in_feature -> [EdgeFeature] -> [EdgeConv] -> [EdgePool] -> out_features
@@ -165,7 +165,7 @@ class DGCNNPartSeg(nn.Module):
 
         x = torch.cat(features, dim=1)
 
-        # local mlp 
+        # local mlp
         x = self.mlp_local(x)
         x, max_indice = torch.max(x, 2)
 

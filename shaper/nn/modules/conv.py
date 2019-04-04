@@ -16,12 +16,16 @@ class Conv1d(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, kernel_size,
-                 relu=True, bn=True, bn_momentum=0.1, **kwargs):
+                 relu=True, bn=True, bn_momentum=0.1, gn=False, **kwargs):
+    #def __init__(self, in_channels, out_channels, kernel_size,
+    #             relu=True, bn=True, bn_momentum=0.1, **kwargs):
         super(Conv1d, self).__init__()
 
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size,
                               bias=(not bn), **kwargs)
         self.bn = nn.BatchNorm1d(out_channels, momentum=bn_momentum) if bn else None
+        self.gn = nn.modules.normalization.GroupNorm(num_groups=8, num_channels=out_channels) if gn else None
+        assert not (bn and gn)
         self.relu = nn.ReLU(inplace=True) if relu else None
 
         self.init_weights()
@@ -30,6 +34,8 @@ class Conv1d(nn.Module):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
+        if self.gn is not None:
+            x = self.gn(x)
         if self.relu is not None:
             x = F.relu(x, inplace=True)
         return x
@@ -57,12 +63,14 @@ class Conv2d(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, kernel_size,
-                 relu=True, bn=True, bn_momentum=0.1, **kwargs):
+                 relu=True, bn=True, bn_momentum=0.1, gn=False, **kwargs):
         super(Conv2d, self).__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
                               bias=(not bn), **kwargs)
         self.bn = nn.BatchNorm2d(out_channels, momentum=bn_momentum) if bn else None
+        self.gn = nn.modules.normalization.GroupNorm(num_groups=8, num_channels=out_channels) if gn else None
+        assert not (bn and gn)
         self.relu = nn.ReLU(inplace=True) if relu else None
 
         self.init_weights()
@@ -71,6 +79,8 @@ class Conv2d(nn.Module):
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
+        if self.gn is not None:
+            x = self.gn(x)
         if self.relu is not None:
             x = F.relu(x, inplace=True)
         return x

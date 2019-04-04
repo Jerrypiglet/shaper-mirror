@@ -1,1 +1,2 @@
-python tools/train_net.py --cfg=/configs/baseline/dgcnn_part_seg.yaml -t part_segmentation
+export CUDA_VISIBLE_DEVICES=$1
+python tools/train_part_seg.py --cfg=configs/baselines/dgcnn_part_seg.yaml
