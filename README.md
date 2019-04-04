@@ -31,7 +31,7 @@ There are some [resources](#cuda-extension) to learn how to write cuda extension
 To run models including PointNet++, DGCNN, etc., source files should be compiled.
 ```
 # take DGCNN for example
-cd shaper/models/dgcnn_utils
+cd shaper/models/dgcnn
 python setup.py build_ext --inplace
 ```
 

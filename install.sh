@@ -3,5 +3,9 @@
 conda create -n shaper python=3.6
 source activate shaper
 # install pytorch 1.0 with cuda 9.0
-conda install pytorch torchvision -c pytorch
+conda install pytorch torchvision cudatoolkit=9.0 -c pytorch
+
+
+
+
 pip install -r requirements.txt
