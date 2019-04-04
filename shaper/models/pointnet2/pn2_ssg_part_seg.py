@@ -44,7 +44,9 @@ class PointNet2SSGPartSeg(nn.Module):
                  num_fp_neighbours=(3, 3),
                  seg_channels=(128,),
                  dropout_prob=0.5,
-                 use_xyz=True):
+                 use_xyz=True,
+                 use_bn=True,
+                 use_gn=False):
         """
 
         Args:
@@ -89,20 +91,22 @@ class PointNet2SSGPartSeg(nn.Module):
                                          num_centroids=num_centroids[ind],
                                          radius=radius[ind],
                                          num_neighbours=num_neighbours[ind],
-                                         use_xyz=use_xyz)
+                                         use_xyz=use_xyz,
+                                         use_bn=use_bn,
+                                         use_gn=use_gn)
             self.sa_modules.append(sa_module)
             feature_channels = sa_channels[ind][-1]
 
         # Local Feature Extraction Layer
         if use_xyz:
             feature_channels += 3
-        self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
+        self.mlp_local = SharedMLP(feature_channels, local_channels, bn=use_bn, gn=use_gn)
 
         # Local Feature Propagation Layer
         inter_channels = [in_channels if use_xyz else in_channels - 3]
         inter_channels[0] += num_classes  # concat with one-hot
         inter_channels.extend([x[-1] for x in sa_channels])
-        self.mlp_local_fp = SharedMLP(local_channels[-1] + inter_channels[-1], fp_local_channels, bn=True)
+        self.mlp_local_fp = SharedMLP(local_channels[-1] + inter_channels[-1], fp_local_channels, bn=use_bn, gn=use_gn)
 
         # Feature Propagation Layers
         self.fp_modules = nn.ModuleList()
@@ -110,7 +114,8 @@ class PointNet2SSGPartSeg(nn.Module):
         for ind in range(num_fp_layers):
             fp_module = PointnetFPModule(in_channels=feature_channels + inter_channels[-2 - ind],
                                          mlp_channels=fp_channels[ind],
-                                         num_neighbors=num_fp_neighbours[ind])
+                                         num_neighbors=num_fp_neighbours[ind],
+                                         use_bn=use_bn, use_gn=use_gn)
             self.fp_modules.append(fp_module)
             feature_channels = fp_channels[ind][-1]
 

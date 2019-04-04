@@ -16,3 +16,6 @@ wget https://shapenet.cs.stanford.edu/media/shapenetcore_partanno_segmentation_b
 unzip shapenetcore_partanno_segmentation_benchmark_v0_normal.zip
 rm shapenetcore_partanno_segmentation_benchmark_v0_normal.zip
 mv shapenetcore_partanno_segmentation_benchmark_v0_normal shapenet_normal
+
+
+cp shapenet_hdf5/overallid_to_catid_partid.json shapenet_normal

@@ -37,7 +37,9 @@ def build_pointnet2ssg(cfg):
             num_fp_neighbours=cfg.MODEL.PN2SSG.NUM_FP_NEIGHBOURS,
             seg_channels=cfg.MODEL.PN2SSG.SEG_CHANNELS,
             dropout_prob=cfg.MODEL.PN2SSG.DROPOUT_PROB,
-            use_xyz=cfg.MODEL.PN2SSG.USE_XYZ
+            use_xyz=cfg.MODEL.PN2SSG.USE_XYZ,
+            use_bn=cfg.MODEL.NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.NORMALIZATION=='GN'
         )
         loss_fn = PartSegLoss()
         metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)

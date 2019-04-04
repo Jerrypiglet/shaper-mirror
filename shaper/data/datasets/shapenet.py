@@ -33,7 +33,7 @@ class ShapeNet(Dataset):
         meta_data (list of dict): meta information of data
 
     Notes:
-        The seg_file "overallid_to_catid_partid.json" is copied from HDF5 data.
+        The seg_file "overallid_to_catid_partid.json" is copied from shapenet_hdf5 directory.
 
     """
     url = "https://shapenet.cs.stanford.edu/ericyi/shapenetcore_partanno_segmentation_benchmark_v0.zip"

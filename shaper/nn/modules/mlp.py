@@ -10,7 +10,8 @@ class MLP(nn.ModuleList):
                  mlp_channels,
                  dropout=None,
                  bn=True,
-                 bn_momentum=0.1):
+                 bn_momentum=0.1,
+                 gn=False):
         """Multilayer perceptron
 
         Args:
@@ -27,7 +28,7 @@ class MLP(nn.ModuleList):
 
         for ind, out_channels in enumerate(mlp_channels):
             self.append(FC(in_channels, out_channels,
-                           relu=True, bn=bn, bn_momentum=bn_momentum))
+                           relu=True, bn=bn, bn_momentum=bn_momentum, gn=gn))
             in_channels = out_channels
 
         self.dropout = nn.Dropout(dropout) if dropout else None
@@ -55,6 +56,7 @@ class SharedMLP(nn.ModuleList):
                  dropout=None,
                  bn=True,
                  bn_momentum=0.1,
+                 gn=False,
                  init_fn=None):
         """Multilayer perceptron shared on resolution (1D or 2D)
 
@@ -82,7 +84,7 @@ class SharedMLP(nn.ModuleList):
 
         for ind, out_channels in enumerate(mlp_channels):
             self.append(mlp_module(in_channels, out_channels, 1,
-                                   relu=True, bn=bn, bn_momentum=bn_momentum))
+                                   relu=True, bn=bn, bn_momentum=bn_momentum, gn=gn))
             in_channels = out_channels
 
         self.out_channels = in_channels

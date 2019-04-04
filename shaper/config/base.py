@@ -19,6 +19,8 @@ _C.AUTO_RESUME = True
 
 _C.MODEL = CN()
 _C.MODEL.TYPE = ""
+#Select Normalization
+_C.MODEL.NORMALIZATION = 'BN'
 # Pre-trained weights
 _C.MODEL.WEIGHT = ""
 
@@ -149,3 +151,5 @@ _C.OUTPUT_DIR = "@"
 # non-deterministic op implementations
 # -1 means not to set explicitly.
 _C.RNG_SEED = -1
+
+

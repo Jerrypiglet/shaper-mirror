@@ -107,7 +107,9 @@ class PointNetSAModule(nn.Module):
                  num_centroids,
                  radius,
                  num_neighbours,
-                 use_xyz):
+                 use_xyz,
+                 use_bn=True,
+                 use_gn=False):
         super(PointNetSAModule, self).__init__()
 
         self.in_channels = in_channels
@@ -115,7 +117,7 @@ class PointNetSAModule(nn.Module):
 
         if use_xyz:
             in_channels += 3
-        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=2, bn=True)
+        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=2, bn=use_bn, gn=use_gn)
 
         self.sampler = FarthestPointSampler(num_centroids)
         self.grouper = QueryGrouper(radius, num_neighbours, use_xyz=use_xyz)
@@ -159,7 +161,9 @@ class PointNetSAModuleMSG(nn.Module):
                  num_centroids,
                  radius_list,
                  num_neighbours_list,
-                 use_xyz):
+                 use_xyz,
+                 use_bn=True,
+                 use_gn=False):
         super(PointNetSAModuleMSG, self).__init__()
 
         self.in_channels = in_channels
@@ -177,7 +181,7 @@ class PointNetSAModuleMSG(nn.Module):
         self.grouper = nn.ModuleList()
 
         for ind in range(num_scales):
-            self.mlp.append(SharedMLP(in_channels, mlp_channels_list[ind], ndim=2, bn=True))
+            self.mlp.append(SharedMLP(in_channels, mlp_channels_list[ind], ndim=2, bn=use_bn, use_gn=use_gn))
             self.grouper.append(QueryGrouper(radius_list[ind], num_neighbours_list[ind], use_xyz=use_xyz))
 
     def forward(self, xyz, feature=None):
@@ -220,11 +224,13 @@ class PointnetFPModule(nn.Module):
     def __init__(self,
                  in_channels,
                  mlp_channels,
-                 num_neighbors):
+                 num_neighbors,
+                 use_bn=True,
+                 use_gn=False):
         super(PointnetFPModule, self).__init__()
 
         self.in_channels = in_channels
-        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=1, bn=True)
+        self.mlp = SharedMLP(in_channels, mlp_channels, ndim=1, bn=use_bn, gn=use_gn)
         self.interpolator = FeatureInterpolator(num_neighbors)
 
     def forward(self, query_xyz, key_xyz, query_feature, key_feature):
