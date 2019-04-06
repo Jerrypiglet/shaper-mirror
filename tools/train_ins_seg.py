@@ -6,7 +6,7 @@ import os.path as osp
 
 import torch
 
-from shaper.config.part_segmentation import cfg
+from shaper.config.part_instance_segmentation import cfg
 from shaper.config import purge_cfg
 from shaper.engine.trainer import train
 from shaper.utils.io import mkdir
@@ -58,7 +58,7 @@ def main():
     logger.info("Loaded configuration file {}".format(args.config_file))
     logger.info("Running with config:\n{}".format(cfg))
 
-    assert cfg.TASK == "part_segmentation"
+    assert cfg.TASK == "part_instance_segmentation"
     train(cfg, output_dir)
 
 

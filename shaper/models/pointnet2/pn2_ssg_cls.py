@@ -77,8 +77,8 @@ class PointNet2SSGCls(nn.Module):
 
         if use_xyz:
             feature_channels += 3
-        self.mlp_local = SharedMLP(feature_channels, local_channels, bn=True)
-        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
+        self.mlp_local = SharedMLP(feature_channels, local_channels, bn=use_bn, gn=use_gn)
+        self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob, bn=use_bn, gn=use_gn)
         self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
 
         self.init_weights()

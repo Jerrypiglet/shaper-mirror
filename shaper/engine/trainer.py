@@ -29,7 +29,7 @@ def train_model(model,
     if freezer is not None:
         freezer.freeze()
     loss_fn.train()
-    metric_fn.train()
+    #metric_fn.train()
 
     end = time.time()
     for iteration, data_batch in enumerate(data_loader):
@@ -41,9 +41,9 @@ def train_model(model,
 
         optimizer.zero_grad()
         loss_dict = loss_fn(preds, data_batch)
-        metric_dict = metric_fn(preds, data_batch)
+        #metric_dict = metric_fn(preds, data_batch)
         losses = sum(loss_dict.values())
-        meters.update(loss=losses, **loss_dict, **metric_dict)
+        meters.update(loss=losses, **loss_dict)
         losses.backward()
         optimizer.step()
 
@@ -79,7 +79,7 @@ def validate_model(model,
     meters = MetricLogger(delimiter="  ")
     model.eval()
     loss_fn.eval()
-    metric_fn.eval()
+    #metric_fn.eval()
 
     end = time.time()
     with torch.no_grad():
@@ -91,9 +91,9 @@ def validate_model(model,
             preds = model(data_batch)
 
             loss_dict = loss_fn(preds, data_batch)
-            metric_dict = metric_fn(preds, data_batch)
+            #metric_dict = metric_fn(preds, data_batch)
             losses = sum(loss_dict.values())
-            meters.update(loss=losses, **loss_dict, **metric_dict)
+            meters.update(loss=losses, **loss_dict)
             batch_time = time.time() - end
             end = time.time()
             meters.update(time=batch_time, data=data_time)

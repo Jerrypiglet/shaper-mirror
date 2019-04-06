@@ -74,6 +74,8 @@ def build_dataset(cfg, mode="train"):
     elif cfg.TASK == "part_segmentation":
         load_seg = True
         seg_transform = build_seg_transform(cfg, is_train)
+    elif cfg.TASK == "part_instance_segmentation":
+        seg_transform = build_seg_transform(cfg, is_train)
     else:
         raise ValueError("Unsupported task.")
 
@@ -109,6 +111,13 @@ def build_dataset(cfg, mode="train"):
                                    normalize=True,
                                    load_seg=load_seg,
                                    seg_transform=seg_transform)
+    elif cfg.DATASET.TYPE == "PartNet":
+        dataset = D.PartNetH5(root_dir=cfg.DATASET.ROOT_DIR,
+                               dataset_names=dataset_names,
+                               shuffle_points=False,
+                               num_points=cfg.INPUT.NUM_POINTS,
+                               seg_transform=seg_transform,
+                               transform=transform)
     else:
         raise NotImplementedError()
 
