@@ -79,6 +79,9 @@ class PartNetH5(Dataset):
                 num_samples = f['label'].shape[0]
                 self.cache_points.append(f['pts'][:])
                 self.cache_ins_seg_label.append(f['label'][:])
+            json_file = data_path.replace('.h5','.json')
+            with open(json_file,'r') as jf:
+                self.record = json.load(jf)
             for ind in range(num_samples):
                 self.meta_data.append({
                     "offset": ind,
@@ -103,6 +106,7 @@ class PartNetH5(Dataset):
 
         out_dict["points"] = points
         out_dict["ins_seg_label"] = ins_seg_label
+        out_dict['record']=self.record[index]
 
         return out_dict
 

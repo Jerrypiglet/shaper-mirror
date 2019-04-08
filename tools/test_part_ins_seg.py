@@ -10,6 +10,7 @@ import time
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 from shaper.config.part_instance_segmentation import cfg
 from shaper.config import purge_cfg
@@ -22,6 +23,7 @@ from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.io import mkdir
 from shaper.utils.logger import setup_logger
 from shaper.utils.torch_util import set_random_seed
+
 
 
 def parse_args():
@@ -150,12 +152,12 @@ def test(cfg, output_dir=""):
             for iteration, data_batch in enumerate(test_data_loader):
                 data_time = time.time() - end
 
-                data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items()}
+                data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) == torch.Tensor}
 
                 preds = model(data_batch)
 
-                seg_logit_all.append(preds["mask_output"].cpu().numpy())
-                conf_logit_all.append(preds["global_output"].cpu().numpy())
+                seg_logit_all.append(F.softmax(preds["mask_output"],1).cpu().numpy())
+                conf_logit_all.append(F.sigmoid(preds["global_output"]).cpu().numpy())
                 loss_dict = loss_fn(preds, data_batch)
                 #metric_dict = metric_fn(preds, data_batch)
                 losses = sum(loss_dict.values())

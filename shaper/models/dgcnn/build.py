@@ -1,8 +1,9 @@
 from .dgcnn_cls import DGCNNCls
-from ..loss import ClsLoss
+from ..loss import ClsLoss, PartInsSegLoss
 from ..metric import ClsAccuracy, PartSegMetric
 
 from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss
+from .dgcnn_twobranch import DGCNNTwoBranch
 
 
 def build_dgcnn(cfg):
@@ -32,6 +33,16 @@ def build_dgcnn(cfg):
                                cfg.MODEL.DGCNN.CLS_LOSS_WEIGHT,
                                cfg.MODEL.DGCNN.SEG_LOSS_WEIGHT)
         metric_fn = PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
+    elif cfg.TASK == "part_instance_segmentation":
+        net = DGCNNTwoBranch(
+            in_channels = cfg.INPUT.IN_CHANNELS,
+            num_global_output = cfg.MODEL.NUM_INS_MASKS,
+            num_mask_output = cfg.MODEL.NUM_INS_MASKS,
+            use_bn=cfg.MODEL.NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.NORMALIZATION=='GN'
+        )
+        loss_fn = PartInsSegLoss()
+        metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError()
 

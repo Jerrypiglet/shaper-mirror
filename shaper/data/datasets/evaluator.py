@@ -10,6 +10,8 @@ from tqdm import tqdm
 from prettytable import PrettyTable
 
 from shaper.utils.pc_util import point_cloud_three_views
+from shaper.data.datasets.visualize import gen_visu
+import os
 
 
 def evaluate_classification(dataset,
@@ -212,6 +214,7 @@ def evaluate_part_segmentation(dataset,
 
 def evaluate_part_instance_segmentation(dataset,
                                pred_logits,
+                               conf_logits,
                                aux_preds=None,
                                output_dir="",
                                vis_dir="",
@@ -233,7 +236,7 @@ def evaluate_part_instance_segmentation(dataset,
     # Remove transform
     dataset.transform = None
     # Use all points
-    dataset.num_points = -1
+    #dataset.num_points = -1
     dataset.shuffle_points = False
 
     # aliases
@@ -245,6 +248,7 @@ def evaluate_part_instance_segmentation(dataset,
     iou_per_class = defaultdict(float)
 
     for ind in tqdm(range(num_samples)):
+        continue
         data = dataset[ind]
         points = data["points"]
         gt_seg_label = data["ins_seg_label"]
@@ -252,12 +256,9 @@ def evaluate_part_instance_segmentation(dataset,
         pred_seg_logit = pred_logits[ind]
 
         # sanity check
-        print (gt_seg_label.shape)
-        print (points.shape)
-        assert len(gt_seg_label) == points.shape[0]
+        assert gt_seg_label.shape[1] == points.shape[0]
         # assert pred_seg_logit.shape[1] >= points.shape[0]
 
-        segids = class_to_seg_map[gt_cls_label]
         num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
         pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
         # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
@@ -267,11 +268,6 @@ def evaluate_part_instance_segmentation(dataset,
         for ind, segid in enumerate(segids):
             # convert partid to segid
             pred_seg_label[pred_seg_label == ind] = segid
-
-        tp_mask = (pred_seg_label == gt_seg_label)
-        seg_acc = np.mean(tp_mask)
-        seg_acc_per_class[gt_cls_label] += seg_acc
-        num_inst_per_class[gt_cls_label] += 1
 
         iou_per_instance = 0.0
         for ind, segid in enumerate(segids):
@@ -285,25 +281,28 @@ def evaluate_part_instance_segmentation(dataset,
         iou_per_instance /= len(segids)
         iou_per_class[gt_cls_label] += iou_per_instance
 
-    # Overall
-    total_seg_acc = sum(seg_acc_per_class.values())
-    assert sum(num_inst_per_class.values()) == num_samples
-    overall_acc = total_seg_acc / num_samples
-    logger.info("overall segmentation accuracy={:.2f}%".format(100.0 * overall_acc))
-    total_iou = sum(iou_per_class.values())
-    overall_iou = total_iou / num_samples
-    logger.info("overall IOU={:.2f}".format(100.0 * overall_iou))
 
-    # Per class
-    table = PrettyTable(["Class", "SegAccuracy", "IOU", "Total"])
-    for ind, class_name in enumerate(class_names):
-        if ind in num_inst_per_class:  # seen class
-            seg_acc = seg_acc_per_class[ind] / num_inst_per_class[ind]
-            iou = iou_per_class[ind] / num_inst_per_class[ind]
-            table.add_row([class_name,
-                           "{:.2f}".format(100.0 * seg_acc),
-                           "{:.2f}".format(100.0 * iou),
-                           num_inst_per_class[ind]])
-        else:
-            table.add_row([class_name, 0, 0, 0])
-    logger.info("class-wise segmentation accuracy.\n{}".format(table))
+    gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits)
+
+    # Overall
+    #total_seg_acc = sum(seg_acc_per_class.values())
+    #assert sum(num_inst_per_class.values()) == num_samples
+    #overall_acc = total_seg_acc / num_samples
+    #logger.info("overall segmentation accuracy={:.2f}%".format(100.0 * overall_acc))
+    #total_iou = sum(iou_per_class.values())
+    #overall_iou = total_iou / num_samples
+    #logger.info("overall IOU={:.2f}".format(100.0 * overall_iou))
+
+    ## Per class
+    #table = PrettyTable(["Class", "SegAccuracy", "IOU", "Total"])
+    #for ind, class_name in enumerate(class_names):
+    #    if ind in num_inst_per_class:  # seen class
+    #        seg_acc = seg_acc_per_class[ind] / num_inst_per_class[ind]
+    #        iou = iou_per_class[ind] / num_inst_per_class[ind]
+    #        table.add_row([class_name,
+    #                       "{:.2f}".format(100.0 * seg_acc),
+    #                       "{:.2f}".format(100.0 * iou),
+    #                       num_inst_per_class[ind]])
+    #    else:
+    #        table.add_row([class_name, 0, 0, 0])
+    #logger.info("class-wise segmentation accuracy.\n{}".format(table))

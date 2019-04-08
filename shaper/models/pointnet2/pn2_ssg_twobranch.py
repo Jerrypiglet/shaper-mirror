@@ -193,6 +193,8 @@ class PointNet2SSGTwoBranch(nn.Module):
             sa_module.init_weights(xavier_uniform)
         self.mlp_local.init_weights(xavier_uniform)
         self.mlp_local_fp.init_weights(xavier_uniform)
+        self.mlp_global_output.init_weights(xavier_uniform)
+        self.global_output.init_weights(xavier_uniform)
         for fp_module in self.fp_modules:
             fp_module.init_weights(xavier_uniform)
         self.mlp_seg.init_weights(xavier_uniform)
