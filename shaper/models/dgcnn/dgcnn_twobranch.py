@@ -143,6 +143,7 @@ class DGCNNTwoBranch(nn.Module):
 
         if num_mask_output > 0:
             mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
+            mlp_in_channels = inter_channels +  sum([item[-1] for item in edge_conv_channels])
             self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob, bn=use_bn, gn=use_gn)
             self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1, bn=use_bn, gn=use_gn)
             self.mask_output = nn.Conv1d(global_channels[-1], num_mask_output, 1, bias=True)
@@ -178,12 +179,15 @@ class DGCNNTwoBranch(nn.Module):
 
         if self.num_global_output>0:
             y = self.mlp_global(x)
-            preds['global_output'] = self.classifier(y)
+            preds['global_output'] = self.global_output(y)
 
         if self.num_mask_output > 0 :
 
             end_points['key_point_inds'] = max_indice
 
+            x=x.unsqueeze(2).expand(-1,-1,num_point)
+            cat_features = torch.cat(features, dim=1)
+            x = torch.cat([x, cat_features],dim=1)
 
             # mlp_seg & conv_seg
             x = self.mlp_seg(x)

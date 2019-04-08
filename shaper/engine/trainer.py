@@ -35,7 +35,6 @@ def train_model(model,
     for iteration, data_batch in enumerate(data_loader):
         data_time = time.time() - end
 
-        print ([type(v) for k,v in data_batch.items()])
 
         data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) is torch.Tensor}
 
@@ -88,7 +87,7 @@ def validate_model(model,
         for iteration, data_batch in enumerate(data_loader):
             data_time = time.time() - end
 
-            data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items()}
+            data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) is torch.Tensor}
 
             preds = model(data_batch)
 

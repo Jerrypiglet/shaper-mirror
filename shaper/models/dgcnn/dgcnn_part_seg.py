@@ -166,6 +166,8 @@ class DGCNNPartSeg(nn.Module):
         for edge_conv in self.mlp_edge_conv:
             x = edge_conv(x)
             features.append(x)
+        print (x.shape)
+        exit(0)
 
         x = torch.cat(features, dim=1)
 
