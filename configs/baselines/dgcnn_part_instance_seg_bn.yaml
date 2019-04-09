@@ -12,7 +12,7 @@ DATASET:
   TYPE: "PartNet"
   TRAIN: ("train",)
   VAL: ("val",)
-  TEST: ("test",)
+  TEST: ("train",)
 SOLVER:
   TYPE: "Adam"
   BASE_LR: 0.003
@@ -28,3 +28,4 @@ TRAIN:
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 16
+  VIS_DIR: 'visu_train'

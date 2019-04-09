@@ -1,5 +1,5 @@
 TASK:
-  "part_instance_segmentation"
+  "foveal_part_instance_segmentation"
 AUTO_RESUME: False
 MODEL:
   TYPE: "DGCNN"

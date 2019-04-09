@@ -66,6 +66,10 @@ def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, visu_num=1000 ) :
         out_fn = os.path.join(mesh_dir, cur_fn_prefix+'.png')
         copyfile('/media/ronald/bef0e123-8cc1-48ea-9dec-06f1293b847c/ronald/PartNet/data/shapenetpp_final_system/storage/downloads/%s/parts_render/0.png'%record['anno_id'],out_fn)
 
+        out_fn = os.path.join(info_dir, cur_fn_prefix+'.txt')
+        with open(out_fn,'w') as fout:
+                fout.write('Anno_id: %s' % record['anno_id'] )
+
 
 
         cur_child_dir = os.path.join(child_dir, cur_fn_prefix)

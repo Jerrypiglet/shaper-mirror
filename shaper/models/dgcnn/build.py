@@ -43,6 +43,16 @@ def build_dgcnn(cfg):
         )
         loss_fn = PartInsSegLoss()
         metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
+    elif cfg.TASK == "foveal_part_instance_segmentation":
+        net = DGCNNTwoBranch(
+            in_channels = cfg.INPUT.IN_CHANNELS,
+            num_global_output = 1,
+            num_mask_output = 1,
+            use_bn=cfg.MODEL.NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.NORMALIZATION=='GN'
+        )
+        loss_fn = ProposalLoss()
+        metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError()
 
