@@ -53,22 +53,24 @@ class ProposalLoss(nn.Module):
     """Part segmentation loss"""
 
     def __init__(self):
-        super(PartInsSegLoss, self).__init__()
+        super(ProposalLoss, self).__init__()
 
     def forward(self, preds, labels):
         ins_seg_logit = preds["mask_output"]
         batch_size  = ins_seg_logit.shape[0]
-        num_points = ins_seg_losit.shape[2]
+        num_points = ins_seg_logit.shape[2]
         ins_seg_logit = ins_seg_logit.view((batch_size, num_points))
         ins_seg_label = labels["ins_seg_label"] #B x K x N
 
-        ins_seg_label = torch.max(ins_seg_label, 1)
-        ins_seg_label /= torch.sum(ins_seg_label, dim=1, keepdim=True)
+        ins_seg_label,_ = torch.max(ins_seg_label, 1)
+        ins_seg_label /= (torch.sum(ins_seg_label, 1, True)+1e-8)
 
-        proposal_loss = -1 *  ins_seg_label * F.logsoftmax(ins_seg_logit,1)
+        proposal_loss = -1 *  ins_seg_label * F.log_softmax(ins_seg_logit,1)
 
-        finish_label = torch.max(ins_seg_label, 1)
+        finish_label,_ = torch.max(ins_seg_label, 1)
         finish_logit = preds['global_output'].view((batch_size,))
+
+
 
         conf_loss = F.binary_cross_entropy_with_logits(finish_logit, finish_label)
 

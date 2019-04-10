@@ -58,7 +58,7 @@ def main():
     logger.info("Loaded configuration file {}".format(args.config_file))
     logger.info("Running with config:\n{}".format(cfg))
 
-    assert cfg.TASK == "part_instance_segmentation"
+    assert cfg.TASK == 'foveal_part_instance_segmentation' or cfg.TASK == "part_instance_segmentation"
     train(cfg, output_dir)
 
 

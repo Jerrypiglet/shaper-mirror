@@ -74,7 +74,7 @@ def build_dataset(cfg, mode="train"):
     elif cfg.TASK == "part_segmentation":
         load_seg = True
         seg_transform = build_seg_transform(cfg, is_train)
-    elif cfg.TASK == "part_instance_segmentation":
+    elif "part_instance_segmentation" in cfg.TASK:
         seg_transform = build_seg_transform(cfg, is_train)
     else:
         raise ValueError("Unsupported task.")

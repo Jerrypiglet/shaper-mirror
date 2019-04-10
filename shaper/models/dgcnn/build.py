@@ -1,5 +1,6 @@
 from .dgcnn_cls import DGCNNCls
 from ..loss import ClsLoss, PartInsSegLoss
+from ..foveal_loss import ProposalLoss
 from ..metric import ClsAccuracy, PartSegMetric
 
 from .dgcnn_part_seg import DGCNNPartSeg, DGCNNPartSegLoss
