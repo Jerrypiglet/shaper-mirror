@@ -55,10 +55,10 @@ class PartInsSegLoss(nn.Module):
     def __init__(self):
         super(PartInsSegLoss, self).__init__()
 
-    def forward(self, preds, labels):
+    def forward(self, preds, labels, label_key='ins_seg_label'):
         ins_seg_logit = preds["mask_output"]
         ins_seg_logit = F.softmax(ins_seg_logit,1)
-        ins_seg_label = labels["ins_seg_label"]
+        ins_seg_label = labels[label_key]
         batch_size = ins_seg_logit.shape[0]
         matching_idx = torch.tensor(hungarian_matching(ins_seg_logit, ins_seg_label)).cuda().long() #batch_size x num_gt_ins_mask
         active = (matching_idx>=0).float()

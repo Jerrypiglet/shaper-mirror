@@ -10,6 +10,7 @@ _C.TASK = "part_instance_segmentation"
 _C.TRAIN.VAL_METRIC = "seg_acc"
 
 _C.MODEL.NUM_INS_MASKS = 6
+_C.MODEL.META_DATA = 32
 
 # ---------------------------------------------------------------------------- #
 # Specific train options

@@ -151,9 +151,9 @@ class DGCNNTwoBranch(nn.Module):
         self.init_weights()
         set_bn(self, momentum=0.01)
 
-    def forward(self, data_batch):
+    def forward(self, data_batch, input_key='points'):
         end_points = {}
-        x = data_batch["points"]
+        x = data_batch[input_key]
 
         num_point = x.shape[2]
         batch_size = x.size()[0]

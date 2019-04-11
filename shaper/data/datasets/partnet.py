@@ -61,12 +61,14 @@ class PartNetH5(Dataset):
         self.meta_data=[]
         self.cache_points=[]
         self.cache_ins_seg_label=[]
+        self.cache_point2group = []
 
         for dataset_name in dataset_names:
             self._load_dataset(dataset_name)
 
         self.cache_points = np.concatenate(self.cache_points, axis=0)
         self.cache_ins_seg_label = np.concatenate(self.cache_ins_seg_label, axis=0)
+        self.cache_point2group = np.concatenate(self.cache_point2group, axis=0)
 
 
     def _load_dataset(self, dataset_name):
@@ -79,6 +81,7 @@ class PartNetH5(Dataset):
                 num_samples = f['label'].shape[0]
                 self.cache_points.append(f['pts'][:])
                 self.cache_ins_seg_label.append(f['label'][:])
+                self.cache_point2group.append(f['point2group'][:])
             json_file = data_path.replace('.h5','.json')
             with open(json_file,'r') as jf:
                 self.record = json.load(jf)
@@ -92,10 +95,11 @@ class PartNetH5(Dataset):
     def __getitem__(self, index):
         points = self.cache_points[index]
         ins_seg_label = None
+        ins_seg_label = self.cache_ins_seg_label[index]
         out_dict = {}
 
-        points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
-        ins_seg_label = self.cache_ins_seg_label[index][:,choice]
+        #points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
+        #ins_seg_label = self.cache_ins_seg_label[index][:,choice]
         ins_seg_label = ins_seg_label.astype(np.float32)
 
         if self.transform is not None:
@@ -104,8 +108,13 @@ class PartNetH5(Dataset):
                 points, ins_seg_label = self.seg_transform(points, ins_seg_label)
             points = points.transpose_(0, 1)
 
-        out_dict["points"] = points
-        out_dict["ins_seg_label"] = ins_seg_label
+
+        out_dict['point2group'] = self.cache_point2group[index]
+        out_dict['full_points'] = points
+        out_dict['full_ins_seg_label']= ins_seg_label
+
+        out_dict["points"] = points[:,:self.num_points]
+        out_dict["ins_seg_label"] = ins_seg_label[:,:self.num_points]
         out_dict['record']=self.record[index]
 
         return out_dict

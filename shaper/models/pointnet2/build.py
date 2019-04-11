@@ -4,6 +4,7 @@ from .pn2_ssg_part_seg import PointNet2SSGPartSeg
 from .pn2_msg_part_seg import PointNet2MSGPartSeg
 from .pn2_ssg_twobranch import PointNet2SSGTwoBranch
 from ..loss import ClsLoss, PartSegLoss, PartInsSegLoss
+from ..foveal_loss import ProposalLoss
 from ..metric import ClsAccuracy, PartSegMetric
 
 
@@ -64,6 +65,27 @@ def build_pointnet2ssg(cfg):
             use_gn=cfg.MODEL.NORMALIZATION=='GN'
         )
         loss_fn = PartInsSegLoss()
+        metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
+    elif cfg.TASK == "foveal_part_instance_segmentation":
+        net = PointNet2SSGTwoBranch(
+            in_channels=cfg.INPUT.IN_CHANNELS,
+            num_global_output=1,
+            num_mask_output=1,
+            num_centroids=cfg.MODEL.PN2SSG.NUM_CENTROIDS,
+            radius=cfg.MODEL.PN2SSG.RADIUS,
+            num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
+            sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
+            local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
+            fp_local_channels=cfg.MODEL.PN2SSG.FP_LOCAL_CHANNELS,
+            fp_channels=cfg.MODEL.PN2SSG.FP_CHANNELS,
+            num_fp_neighbours=cfg.MODEL.PN2SSG.NUM_FP_NEIGHBOURS,
+            seg_channels=cfg.MODEL.PN2SSG.SEG_CHANNELS,
+            dropout_prob=cfg.MODEL.PN2SSG.DROPOUT_PROB,
+            use_xyz=cfg.MODEL.PN2SSG.USE_XYZ,
+            use_bn=cfg.MODEL.NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.NORMALIZATION=='GN'
+        )
+        loss_fn = ProposalLoss()
         metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     else:
         raise NotImplementedError
