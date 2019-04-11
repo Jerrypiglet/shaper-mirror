@@ -5,6 +5,7 @@ import time
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from shaper.models.build import build_model
@@ -52,9 +53,12 @@ def train_model(models,
         proposal_preds = proposal_model(data_batch)
 
         proposal_mask = proposal_preds['mask_output'][:,0,:]
+        proposal_mask = F.softmax(proposal_mask,1)
         meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
         num_meta_data = meta_data.shape[1]
         distr = Categorical(proposal_mask)
+        #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
+        # print ('let me tell you', data_batch['point2group'].cuda())
         centroids = distr.sample()
         centroids = centroids.view(batch_size,1, 1)
 
@@ -79,16 +83,18 @@ def train_model(models,
         segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
 
 
-        optimizer.zero_grad()
+        for optimizer in optimizers:
+            optimizer.zero_grad()
         proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
         proposal_losses = sum(proposal_loss_dict.values())
         meters.update(loss=proposal_losses, **proposal_loss_dict)
         segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label')
         segmentation_losses = sum(segmentation_loss_dict.values())
         meters.update(loss=segmentation_losses, **segmentation_loss_dict)
-        proposal_losses.backward()
+        proposal_losses.backward(retain_graph=True)
         segmentation_losses.backward()
-        optimizer.step()
+        for optimizer in optimizers:
+            optimizer.step()
 
         batch_time = time.time() - end
         end = time.time()
@@ -100,14 +106,14 @@ def train_model(models,
                     [
                         "iter: {iter:4d}",
                         "{meters}",
-                        "lr: {lr:.2e}",
-                        "max mem: {memory:.0f}",
+                        #"lr: {lr:.2e}",
+                        #"max mem: {memory:.0f}",
                     ]
                 ).format(
                     iter=iteration,
                     meters=str(meters),
-                    lr=optimizer.param_groups[0]["lr"],
-                    memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
+                    #lr=optimizers[0].param_groups[0]["lr"],
+                    #memory=torch.cuda.max_memory_allocated() / (1024.0 ** 2),
                 )
             )
     return meters

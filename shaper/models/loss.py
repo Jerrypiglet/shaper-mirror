@@ -80,7 +80,7 @@ class PartInsSegLoss(nn.Module):
 
 
         loss_dict = {
-            "ins_seg_loss": -1*torch.sum(iou)/torch.sum(active),
+            "ins_seg_loss": -1*torch.sum(iou)/(1e-12+torch.sum(active)),
             'conf_loss':conf_loss
         }
 

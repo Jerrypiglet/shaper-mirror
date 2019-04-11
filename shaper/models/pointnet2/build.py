@@ -67,10 +67,10 @@ def build_pointnet2ssg(cfg):
         loss_fn = PartInsSegLoss()
         metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     elif cfg.TASK == "foveal_part_instance_segmentation":
-        net = PointNet2SSGTwoBranch(
+        proposal_net = PointNet2SSGTwoBranch(
             in_channels=cfg.INPUT.IN_CHANNELS,
             num_global_output=1,
-            num_mask_output=1,
+            num_mask_output=1+cfg.MODEL.META_DATA,
             num_centroids=cfg.MODEL.PN2SSG.NUM_CENTROIDS,
             radius=cfg.MODEL.PN2SSG.RADIUS,
             num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
@@ -85,8 +85,28 @@ def build_pointnet2ssg(cfg):
             use_bn=cfg.MODEL.NORMALIZATION=='BN',
             use_gn=cfg.MODEL.NORMALIZATION=='GN'
         )
-        loss_fn = ProposalLoss()
+        segmentation_net = PointNet2SSGTwoBranch(
+            in_channels=cfg.INPUT.IN_CHANNELS+cfg.MODEL.META_DATA,
+            num_global_output=cfg.MODEL.NUM_INS_MASKS,
+            num_mask_output=cfg.MODEL.NUM_INS_MASKS,
+            num_centroids=cfg.MODEL.PN2SSG.NUM_CENTROIDS,
+            radius=cfg.MODEL.PN2SSG.RADIUS,
+            num_neighbours=cfg.MODEL.PN2SSG.NUM_NEIGHBOURS,
+            sa_channels=cfg.MODEL.PN2SSG.SA_CHANNELS,
+            local_channels=cfg.MODEL.PN2SSG.LOCAL_CHANNELS,
+            fp_local_channels=cfg.MODEL.PN2SSG.FP_LOCAL_CHANNELS,
+            fp_channels=cfg.MODEL.PN2SSG.FP_CHANNELS,
+            num_fp_neighbours=cfg.MODEL.PN2SSG.NUM_FP_NEIGHBOURS,
+            seg_channels=cfg.MODEL.PN2SSG.SEG_CHANNELS,
+            dropout_prob=cfg.MODEL.PN2SSG.DROPOUT_PROB,
+            use_xyz=cfg.MODEL.PN2SSG.USE_XYZ,
+            use_bn=cfg.MODEL.NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.NORMALIZATION=='GN'
+        )
+        proposal_loss_fn = ProposalLoss()
+        segmentation_loss_fn = PartInsSegLoss()
         metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
+        return [proposal_net, segmentation_net], [proposal_loss_fn, segmentation_loss_fn]
     else:
         raise NotImplementedError
 

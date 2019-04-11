@@ -18,8 +18,9 @@ class ProposalLoss(nn.Module):
 
     def forward(self, preds, labels, label_key='ins_seg_loss'):
         ins_seg_logit = preds["mask_output"]
+        ins_seg_logit = ins_seg_logit[:,0,:]
         batch_size  = ins_seg_logit.shape[0]
-        num_points = ins_seg_logit.shape[2]
+        num_points = ins_seg_logit.shape[1]
         ins_seg_logit = ins_seg_logit.view((batch_size, num_points))
         ins_seg_label = labels["ins_seg_label"] #B x K x N
 

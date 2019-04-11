@@ -131,8 +131,8 @@ class PointNet2SSGTwoBranch(nn.Module):
 
         self.init_weights()
 
-    def forward(self, data_batch):
-        points = data_batch["points"]
+    def forward(self, data_batch, input_key='points'):
+        points = data_batch[input_key]
         end_points = {}
 
         xyz = points.narrow(1, 0, 3)

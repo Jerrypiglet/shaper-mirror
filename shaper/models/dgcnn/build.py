@@ -62,7 +62,8 @@ def build_dgcnn(cfg):
         proposal_loss_fn = ProposalLoss()
         segmentation_loss_fn = PartInsSegLoss()
         metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
+        return [proposal_net, segmentation_net], [proposal_loss_fn, segmentation_loss_fn]
     else:
         raise NotImplementedError()
 
-    return [proposal_net, segmentation_net], [proposal_loss_fn, segmentation_loss_fn]
+    return net, loss_fn, metric_fn
