@@ -1,4 +1,5 @@
 from torch import nn
+import torch.nn.functional as F
 
 from .conv import Conv1d, Conv2d
 from .linear import FC
@@ -8,7 +9,7 @@ class MLP(nn.ModuleList):
     def __init__(self,
                  in_channels,
                  mlp_channels,
-                 dropout=None,
+                 dropout_prob=0.0,
                  bn=True,
                  bn_momentum=0.1,
                  gn=False):
@@ -17,7 +18,7 @@ class MLP(nn.ModuleList):
         Args:
             in_channels (int): the number of channels of input tensor
             mlp_channels (tuple): the numbers of channels of fully connected layers
-            dropout (float or None): dropout ratio
+            dropout_prob (float or None): dropout probability
             bn (bool): whether to use batch normalization
             bn_momentum (float)
 
@@ -25,27 +26,32 @@ class MLP(nn.ModuleList):
         super(MLP, self).__init__()
 
         self.in_channels = in_channels
+        self.out_channels = mlp_channels[-1]
 
         for ind, out_channels in enumerate(mlp_channels):
             self.append(FC(in_channels, out_channels,
                            relu=True, bn=bn, bn_momentum=bn_momentum, gn=gn))
             in_channels = out_channels
 
-        self.dropout = nn.Dropout(dropout) if dropout else None
-
-        self.out_channels = in_channels
+        # Do not use modules due to ModuleList.
+        assert dropout_prob >= 0.0
+        self.dropout_prob = dropout_prob
 
     def forward(self, x):
         for module in self:
+            assert isinstance(module, FC)
             x = module(x)
-            if self.dropout is not None:
-                x = self.dropout(x)
+            if self.training and self.dropout_prob > 0.0:
+                x = F.dropout(x, p=self.dropout_prob, training=True)
         return x
 
     def init_weights(self, init_fn=None):
-        for m in self.modules():
-            if isinstance(m, FC):
-                m.init_weights(init_fn)
+        for module in self:
+            assert isinstance(module, FC)
+            module.init_weights(init_fn)
+
+    def extra_repr(self):
+        return 'dropout_prob={}'.format(self.dropout_prob) if self.dropout_prob > 0.0 else ''
 
 
 class SharedMLP(nn.ModuleList):
@@ -53,18 +59,17 @@ class SharedMLP(nn.ModuleList):
                  in_channels,
                  mlp_channels,
                  ndim=1,
-                 dropout=None,
+                 dropout_prob=0.0,
                  bn=True,
                  bn_momentum=0.1,
-                 gn=False,
-                 init_fn=None):
+                 gn=False):
         """Multilayer perceptron shared on resolution (1D or 2D)
 
         Args:
             in_channels (int): the number of channels of input tensor
             mlp_channels (tuple): the numbers of channels of fully connected layers
             ndim (int): the number of dimensions to share
-            dropout (float or None): dropout ratio
+            dropout_prob (float or None): dropout ratio
             bn (bool): whether to use batch normalization
             bn_momentum (float)
 
@@ -72,31 +77,39 @@ class SharedMLP(nn.ModuleList):
         super(SharedMLP, self).__init__()
 
         self.in_channels = in_channels
+        self.out_channels = mlp_channels[-1]
+        self.ndim = ndim
 
         if ndim == 1:
             mlp_module = Conv1d
-            self.dropout = nn.Dropout(dropout) if dropout else None
         elif ndim == 2:
             mlp_module = Conv2d
-            self.dropout = nn.Dropout2d(dropout) if dropout else None
         else:
-            raise ValueError()
+            raise ValueError('SharedMLP only supports ndim=(1, 2).')
 
         for ind, out_channels in enumerate(mlp_channels):
             self.append(mlp_module(in_channels, out_channels, 1,
                                    relu=True, bn=bn, bn_momentum=bn_momentum, gn=gn))
             in_channels = out_channels
 
-        self.out_channels = in_channels
+        # Do not use modules due to ModuleList.
+        assert dropout_prob >= 0.0
+        self.dropout_prob = dropout_prob
 
     def forward(self, x):
         for module in self:
+            assert isinstance(module, (Conv1d, Conv2d))
             x = module(x)
-            if self.dropout is not None:
-                x = self.dropout(x)
+            if self.training and self.dropout_prob > 0.0:
+                if self.ndim == 1:
+                    x = F.dropout(x, p=self.dropout_prob, training=True)
+                elif self.ndim == 2:
+                    x = F.dropout2d(x, p=self.dropout_prob, training=True)
+                else:
+                    raise ValueError('SharedMLP only supports ndim=(1, 2).')
         return x
 
     def init_weights(self, init_fn=None):
-        for m in self.modules():
-            if isinstance(m, (Conv1d, Conv2d)):
-                m.init_weights(init_fn)
+        for module in self:
+            assert isinstance(module, (Conv1d, Conv2d))
+            module.init_weights(init_fn)

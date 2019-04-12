@@ -8,7 +8,7 @@ class FC(nn.Module):
     optionally followed by batch normalization and relu activation
 
     Attributes:
-        conv (nn.Module): convolution module
+        fc (nn.Module): linear module
         bn (nn.Module): batch normalization module
         relu (nn.Module, optional): relu activation module
 
@@ -17,6 +17,9 @@ class FC(nn.Module):
     def __init__(self, in_channels, out_channels,
                  relu=True, bn=True, bn_momentum=0.1, gn=False):
         super(FC, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
 
         self.fc = nn.Linear(in_channels, out_channels, bias=(not bn))
         self.bn = nn.BatchNorm1d(out_channels, momentum=bn_momentum) if bn else None

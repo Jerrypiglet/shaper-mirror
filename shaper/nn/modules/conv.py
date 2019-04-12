@@ -1,12 +1,11 @@
 from torch import nn
-import torch.nn.functional as F
 
 from ..init import init_bn
 
 
 class Conv1d(nn.Module):
-    """Applies a 1D convolution over an input signal composed of several input planes.
-    optionally followed by batch normalization and relu activation
+    """Applies a 1D convolution over an input signal composed of several input planes
+    optionally followed by batch normalization and relu activation.
 
     Attributes:
         conv (nn.Module): convolution module
@@ -21,8 +20,10 @@ class Conv1d(nn.Module):
     #             relu=True, bn=True, bn_momentum=0.1, **kwargs):
         super(Conv1d, self).__init__()
 
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size,
-                              bias=(not bn), **kwargs)
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, bias=(not bn), **kwargs)
         self.bn = nn.BatchNorm1d(out_channels, momentum=bn_momentum) if bn else None
         self.gn = nn.modules.normalization.GroupNorm(num_groups=8, num_channels=out_channels) if gn else None
         assert not (bn and gn)
@@ -37,7 +38,7 @@ class Conv1d(nn.Module):
         if self.gn is not None:
             x = self.gn(x)
         if self.relu is not None:
-            x = F.relu(x, inplace=True)
+            x = self.relu(x)
         return x
 
     def init_weights(self, init_fn=None):
@@ -57,17 +58,16 @@ class Conv2d(nn.Module):
         bn (nn.Module): batch normalization module
         relu (nn.Module, optional): relu activation module
 
-    Notes:
-        Default momentum for batch normalization is set to be 0.01,
-
     """
 
     def __init__(self, in_channels, out_channels, kernel_size,
                  relu=True, bn=True, bn_momentum=0.1, gn=False, **kwargs):
         super(Conv2d, self).__init__()
 
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
-                              bias=(not bn), **kwargs)
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, bias=(not bn), **kwargs)
         self.bn = nn.BatchNorm2d(out_channels, momentum=bn_momentum) if bn else None
         self.gn = nn.modules.normalization.GroupNorm(num_groups=8, num_channels=out_channels) if gn else None
         assert not (bn and gn)
@@ -82,7 +82,7 @@ class Conv2d(nn.Module):
         if self.gn is not None:
             x = self.gn(x)
         if self.relu is not None:
-            x = F.relu(x, inplace=True)
+            x = self.relu(x)
         return x
 
     def init_weights(self, init_fn=None):
