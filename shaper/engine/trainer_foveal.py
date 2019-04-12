@@ -304,7 +304,7 @@ def train(cfg, output_dir=""):
         if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
             for i in range(len(checkpointers)):
                 checkpoint_datas[i]["epoch"] = cur_epoch
-                checkpointers[i].save("model_{:02d}_{:03d}".format(i,cur_epoch), **checkpoint_datas[i])
+                checkpointers[i].save("model_{:02d}_{:03d}".format(i,cur_epoch), tag_file='last_checkpoint_{:02d}'.format(i),**checkpoint_datas[i])
 
         # Validate
         if val_period < 1:
@@ -319,6 +319,6 @@ def train(cfg, output_dir=""):
 
             tensorboard_logger.add_scalars(val_meters.meters, cur_epoch, prefix="val")
 
-    logger.info("Best val-{} = {}".format(cfg.TRAIN.VAL_METRIC, best_metric))
+    #logger.info("Best val-{} = {}".format(cfg.TRAIN.VAL_METRIC, best_metric))
 
     return model

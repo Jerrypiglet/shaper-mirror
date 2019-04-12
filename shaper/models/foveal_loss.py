@@ -30,6 +30,7 @@ class ProposalLoss(nn.Module):
         proposal_loss = -1 *  ins_seg_label * F.log_softmax(ins_seg_logit,1)
 
         finish_label,_ = torch.max(ins_seg_label, 1)
+        finish_label /= (finish_label+1e-12)
         finish_logit = preds['global_output'].view((batch_size,))
 
 

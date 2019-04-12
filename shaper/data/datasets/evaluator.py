@@ -10,7 +10,7 @@ from tqdm import tqdm
 from prettytable import PrettyTable
 
 from shaper.utils.pc_util import point_cloud_three_views
-from shaper.data.datasets.visualize import gen_visu
+from shaper.data.datasets.visualize import gen_visu, gen_foveal_visu
 import os
 
 

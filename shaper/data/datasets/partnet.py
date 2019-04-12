@@ -81,7 +81,12 @@ class PartNetH5(Dataset):
                 num_samples = f['label'].shape[0]
                 self.cache_points.append(f['pts'][:])
                 self.cache_ins_seg_label.append(f['label'][:])
-                self.cache_point2group.append(f['point2group'+str(self.num_points)][:])
+                print (fname)
+                print (f.keys())
+                if 'point2group'+str(self.num_points) in f.keys():
+                    self.cache_point2group.append(f['point2group'+str(self.num_points)][:])
+                else:
+                    self.cache_point2group.append(f['point2group10000'][:])
             json_file = data_path.replace('.h5','.json')
             with open(json_file,'r') as jf:
                 self.record = json.load(jf)
@@ -107,6 +112,8 @@ class PartNetH5(Dataset):
             if self.seg_transform is not None:
                 points, ins_seg_label = self.seg_transform(points, ins_seg_label)
             points = points.transpose_(0, 1)
+        else:
+            points = np.transpose(points, [1,0])
 
 
         out_dict['point2group'] = self.cache_point2group[index]

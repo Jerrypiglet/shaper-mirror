@@ -23,7 +23,7 @@ class Checkpointer(object):
             logger = logging.getLogger(__name__)
         self.logger = logger
 
-    def save(self, name, **kwargs):
+    def save(self, name, tag_file='last_checkpoint', **kwargs):
         if not self.save_dir:
             return
 
@@ -38,12 +38,12 @@ class Checkpointer(object):
         save_file = os.path.join(self.save_dir, "{}.pth".format(name))
         self.logger.info("Saving checkpoint to {}".format(os.path.abspath(save_file)))
         torch.save(data, save_file)
-        self.tag_last_checkpoint(save_file)
+        self.tag_last_checkpoint(save_file, tag_file)
 
-    def load(self, f=None, resume=True):
-        if resume and self.has_checkpoint():
+    def load(self, f=None, resume=True, tag_file='last_checkpoint'):
+        if resume and self.has_checkpoint(tag_file):
             # override argument with existing checkpoint
-            f = self.get_checkpoint_file()
+            f = self.get_checkpoint_file(tag_file)
         if not f:
             # no checkpoint could be found
             self.logger.info("No checkpoint found. Initializing model from scratch")
@@ -61,12 +61,12 @@ class Checkpointer(object):
         # return any further checkpoint data
         return checkpoint
 
-    def has_checkpoint(self):
-        save_file = os.path.join(self.save_dir, "last_checkpoint")
+    def has_checkpoint(self, tag_file='last_checkpoint'):
+        save_file = os.path.join(self.save_dir, tag_file)
         return os.path.exists(save_file)
 
-    def get_checkpoint_file(self):
-        save_file = os.path.join(self.save_dir, "last_checkpoint")
+    def get_checkpoint_file(self, tag_file='last_checkpoint'):
+        save_file = os.path.join(self.save_dir, tag_file)
         try:
             with open(save_file, "r") as f:
                 last_saved = f.read()
@@ -79,8 +79,8 @@ class Checkpointer(object):
             last_saved = ""
         return last_saved
 
-    def tag_last_checkpoint(self, last_filename):
-        save_file = os.path.join(self.save_dir, "last_checkpoint")
+    def tag_last_checkpoint(self, last_filename, tag_file='last_checkpoint'):
+        save_file = os.path.join(self.save_dir, tag_file)
         # If not absolute path, only save basename
         if not os.path.isabs(last_filename):
             last_filename = os.path.basename(last_filename)

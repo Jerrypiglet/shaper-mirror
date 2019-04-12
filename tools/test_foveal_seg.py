@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.distributions import Categorical
 
 from shaper.config.part_instance_segmentation import cfg
 from shaper.config import purge_cfg
@@ -62,10 +63,10 @@ def test(cfg, output_dir=""):
         if cfg.TEST.WEIGHT:
             # Load weight if specified
             weight_path = cfg.TEST.WEIGHT.replace("@", output_dir)
-            checkpointer.load(weight_path, resume=False)
+            checkpointer.load(weight_path,  resume=False)
         else:
             # Load last checkpoint
-            checkpointer.load(None, resume=True)
+            checkpointer.load(None, tag_file='last_checkpoint_{:02d}'.format(i),resume=True)
 
     # Build data loader
     test_data_loader = build_dataloader(cfg, mode="test")
@@ -79,11 +80,13 @@ def test(cfg, output_dir=""):
     # ---------------------------------------------------------------------------- #
     # Test
     # ---------------------------------------------------------------------------- #
-    proposoal_logit_all=[]
+    proposal_logit_all=[]
     finish_logit_all=[]
-    zoomed_point_all=[]
+    zoomed_points_all=[]
     conf_logit_all=[]
     seg_logit_all=[]
+    proposal_model, segmentation_model = models
+    proposal_loss_fn, segmentation_loss_fn = loss_fns
     proposal_model.eval()
     segmentation_model.eval()
     proposal_loss_fn.eval()
@@ -99,14 +102,23 @@ def test(cfg, output_dir=""):
             data_time = time.time() - end
 
             data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) == torch.Tensor}
+            full_points = data_batch['full_points']
+            points = data_batch['points']
+            full_ins_seg_label = data_batch['full_ins_seg_label']
+            num_point = points.shape[2]
+            batch_size = points.shape[0]
+            num_ins_mask = full_ins_seg_label.shape[1]
+
+
+
             for zoom_iteration in range(1):
 
                 proposal_preds = proposal_model(data_batch)
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
                 proposal_mask = F.softmax(proposal_mask,1)
-                proposal_logit_all.append(proposal_mask.cpu.numpy())
-                conf_logit_all.append(F.sigmoid(proposal_preds['global_output']).cpu().numpy())
+                proposal_logit_all.append(proposal_mask.cpu().numpy())
+                finish_logit_all.append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
                 meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
                 num_meta_data = meta_data.shape[1]
                 distr = Categorical(proposal_mask)
@@ -126,7 +138,7 @@ def test(cfg, output_dir=""):
                 maxnorm = maxnorm ** 0.5
                 maxnorm = maxnorm.view(batch_size, 1, 1)
                 zoomed_points /=maxnorm
-                zoomed_points_all.append(zoomed_points)
+                zoomed_points_all.append(zoomed_points.cpu().numpy())
 
 
 
@@ -143,8 +155,8 @@ def test(cfg, output_dir=""):
 
                 segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
 
-                seg_logit_all.append(F.softmax(preds["mask_output"],1).cpu().numpy())
-                conf_logit_all.append(F.sigmoid(preds["global_output"]).cpu().numpy())
+                seg_logit_all.append(F.softmax(segmentation_preds["mask_output"],1).cpu().numpy())
+                conf_logit_all.append(torch.sigmoid(segmentation_preds["global_output"]).cpu().numpy())
                 #loss_dict = loss_fn(preds, data_batch)
                 #metric_dict = metric_fn(preds, data_batch)
                 #losses = sum(loss_dict.values())
@@ -171,10 +183,10 @@ def test(cfg, output_dir=""):
     seg_logit_all = np.concatenate(seg_logit_all, axis=0)
     conf_logit_all = np.concatenate(conf_logit_all, axis=0)
     finish_logit_all = np.concatenate(finish_logit_all, axis=0)
-    zoomed_point_all = np.concatenate(zoomed_point_all, axis=0)
+    zoomed_points_all = np.concatenate(zoomed_points_all, axis=0)
     proposal_logit_all = np.concatenate(proposal_logit_all, axis=0)
 
-    evaluate_foveal_segmentation(test_dataset, proposal_logit_all, finish_logit_all, zoomed_point_all, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
+    evaluate_foveal_segmentation(test_dataset, proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
 
 
 def main():

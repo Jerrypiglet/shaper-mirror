@@ -48,6 +48,7 @@ def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, visu_num=1000 ) :
         cur_fn_prefix = 'shape-%03d' % i
         data_dict=dataset[i]
         pts = data_dict['points']
+        pts = np.transpose(pts, [1,0])
         pts_flipped = pts.copy()
         pts_flipped[:,0] *= -1
         pts_flipped[:,2] *= -1
@@ -102,7 +103,6 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
     pts n_shape x num_point x 3 float32
     gt_ins_labels n_shape x num_point int32
     '''
-    return
 
     pts_dir = os.path.join(visu_dir, 'pts')
     pts_flipped_dir = os.path.join(visu_dir, 'pts_flipped')
@@ -120,11 +120,16 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
     n_shape = pred_ins_label.shape[0]
     n_shape = min(visu_num, n_shape)
 
+    zoomed_points = np.transpose(zoomed_points, [0,2,1])
+    zoomed_points_flipped = zoomed_points.copy()
+    zoomed_points_flipped[:,:,0]*=-1
+    zoomed_points_flipped[:,:,2]*=-1
 
     for i in bar(range(0,n_shape)):
         cur_fn_prefix = 'shape-%03d' % i
         data_dict=dataset[i]
         pts = data_dict['points']
+        pts = np.transpose(pts, [1,0])
         pts_flipped = pts.copy()
         pts_flipped[:,0] *= -1
         pts_flipped[:,2] *= -1
@@ -135,6 +140,7 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
         merged_gt_ins_label = np.zeros((gt_ins_label.shape[1]))
         for j in range(gt_ins_label.shape[0]):
             merged_gt_ins_label[gt_ins_label[j,:].astype(np.bool_)] = j+1
+
         render_pts_with_label(out_fn, pts, merged_gt_ins_label)
 
         out_fn = os.path.join(pts_flipped_dir, cur_fn_prefix+'.png')
@@ -148,7 +154,6 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
                 fout.write('Anno_id: %s' % record['anno_id'] )
 
 
-
         cur_child_dir = os.path.join(child_dir, cur_fn_prefix)
         mkdir(cur_child_dir)
         child_part_dir = os.path.join(cur_child_dir, 'part')
@@ -157,14 +162,27 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
         mkdir(child_part_flipped_dir)
         child_info_dir = os.path.join(cur_child_dir, 'info')
         mkdir(child_info_dir)
+        child_proposal_dir = os.path.join(cur_child_dir, 'proposal')
+        mkdir(child_proposal_dir)
+        child_proposal_flipped_dir = os.path.join(cur_child_dir, 'proposal_flipped')
+        mkdir(child_proposal_flipped_dir)
+
+
+        out_fn = os.path.join(child_part_dir, 'stage1_proposal.png')
+        render_pts_with_feature(out_fn, pts, proposal_logits[i], normalize=True, fancy_kp=True)
+        out_fn = os.path.join(child_part_flipped_dir, 'stage1_proposal.png')
+        render_pts_with_feature(out_fn, pts_flipped, proposal_logits[i], normalize=True, fancy_kp=True)
+        out_fn = os.path.join(child_info_dir, 'stage1_proposal.txt')
+        with open(out_fn,'w') as fout:
+            fout.write('finish: %f' % finish_logits[i] )
 
         for j in range(pred_ins_label.shape[1]):
-            cur_part_prefix = 'part-%03d' % j
+            cur_part_prefix = 'stage2_part-%03d' % j
             out_fn = os.path.join(child_part_dir, cur_part_prefix+'.png')
-            render_pts_with_feature(out_fn, pts, pred_ins_label[i,j])
+            render_pts_with_feature(out_fn, zoomed_points[i], pred_ins_label[i,j])
 
             out_fn = os.path.join(child_part_flipped_dir, cur_part_prefix+'.png')
-            render_pts_with_feature(out_fn, pts_flipped, pred_ins_label[i,j])
+            render_pts_with_feature(out_fn, zoomed_points_flipped[i], pred_ins_label[i,j])
 
 
             out_fn = os.path.join(child_info_dir, cur_part_prefix+'.txt')

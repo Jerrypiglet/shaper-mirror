@@ -208,7 +208,7 @@ class DGCNNTwoBranch(nn.Module):
         self.conv_seg.init_weights(xavier_uniform)
         nn.init.xavier_uniform_(self.mask_output.weight)
         nn.init.zeros_(self.mask_output.bias)
-        nn.init.xavier_uniform(self.global_output.weight)
+        nn.init.xavier_uniform_(self.global_output.weight)
         nn.init.zeros_(self.global_output.bias)
         set_bn(self, momentum=0.01)
 

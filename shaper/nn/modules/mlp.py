@@ -9,7 +9,7 @@ class MLP(nn.ModuleList):
     def __init__(self,
                  in_channels,
                  mlp_channels,
-                 dropout_prob=0.0,
+                 dropout=0.0,
                  bn=True,
                  bn_momentum=0.1,
                  gn=False):
@@ -18,7 +18,7 @@ class MLP(nn.ModuleList):
         Args:
             in_channels (int): the number of channels of input tensor
             mlp_channels (tuple): the numbers of channels of fully connected layers
-            dropout_prob (float or None): dropout probability
+            dropout (float or None): dropout probability
             bn (bool): whether to use batch normalization
             bn_momentum (float)
 
@@ -34,15 +34,15 @@ class MLP(nn.ModuleList):
             in_channels = out_channels
 
         # Do not use modules due to ModuleList.
-        assert dropout_prob >= 0.0
-        self.dropout_prob = dropout_prob
+        assert dropout >= 0.0
+        self.dropout = dropout
 
     def forward(self, x):
         for module in self:
             assert isinstance(module, FC)
             x = module(x)
-            if self.training and self.dropout_prob > 0.0:
-                x = F.dropout(x, p=self.dropout_prob, training=True)
+            if self.training and self.dropout > 0.0:
+                x = F.dropout(x, p=self.dropout, training=True)
         return x
 
     def init_weights(self, init_fn=None):
@@ -51,7 +51,7 @@ class MLP(nn.ModuleList):
             module.init_weights(init_fn)
 
     def extra_repr(self):
-        return 'dropout_prob={}'.format(self.dropout_prob) if self.dropout_prob > 0.0 else ''
+        return 'dropout={}'.format(self.dropout) if self.dropout > 0.0 else ''
 
 
 class SharedMLP(nn.ModuleList):
@@ -59,7 +59,7 @@ class SharedMLP(nn.ModuleList):
                  in_channels,
                  mlp_channels,
                  ndim=1,
-                 dropout_prob=0.0,
+                 dropout=0.0,
                  bn=True,
                  bn_momentum=0.1,
                  gn=False):
@@ -69,7 +69,7 @@ class SharedMLP(nn.ModuleList):
             in_channels (int): the number of channels of input tensor
             mlp_channels (tuple): the numbers of channels of fully connected layers
             ndim (int): the number of dimensions to share
-            dropout_prob (float or None): dropout ratio
+            dropout (float or None): dropout ratio
             bn (bool): whether to use batch normalization
             bn_momentum (float)
 
@@ -93,18 +93,18 @@ class SharedMLP(nn.ModuleList):
             in_channels = out_channels
 
         # Do not use modules due to ModuleList.
-        assert dropout_prob >= 0.0
-        self.dropout_prob = dropout_prob
+        assert dropout >= 0.0
+        self.dropout = dropout
 
     def forward(self, x):
         for module in self:
             assert isinstance(module, (Conv1d, Conv2d))
             x = module(x)
-            if self.training and self.dropout_prob > 0.0:
+            if self.training and self.dropout > 0.0:
                 if self.ndim == 1:
-                    x = F.dropout(x, p=self.dropout_prob, training=True)
+                    x = F.dropout(x, p=self.dropout, training=True)
                 elif self.ndim == 2:
-                    x = F.dropout2d(x, p=self.dropout_prob, training=True)
+                    x = F.dropout2d(x, p=self.dropout, training=True)
                 else:
                     raise ValueError('SharedMLP only supports ndim=(1, 2).')
         return x

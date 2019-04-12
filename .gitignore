@@ -31,4 +31,4 @@ dist/
 # project dirs
 /data
 /models
-/outputs
+/outputs*
