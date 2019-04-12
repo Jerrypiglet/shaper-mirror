@@ -81,7 +81,7 @@ class PartNetH5(Dataset):
                 num_samples = f['label'].shape[0]
                 self.cache_points.append(f['pts'][:])
                 self.cache_ins_seg_label.append(f['label'][:])
-                self.cache_point2group.append(f['point2group'][:])
+                self.cache_point2group.append(f['point2group'+str(self.num_points)][:])
             json_file = data_path.replace('.h5','.json')
             with open(json_file,'r') as jf:
                 self.record = json.load(jf)

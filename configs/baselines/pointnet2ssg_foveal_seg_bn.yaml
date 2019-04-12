@@ -3,14 +3,14 @@ TASK:
 AUTO_RESUME: False
 MODEL:
   TYPE: "PN2SSG"
-  NORMALIZATION: "GN"
+  NORMALIZATION: "BN"
   NUM_INS_MASKS: 6
   META_DATA: 32
   PN2SSG:
-      NUM_CENTROIDS: (5120,1280)
+      NUM_CENTROIDS: (2500,1250)
 INPUT:
   IN_CHANNELS: 3
-  NUM_POINTS: 10000
+  NUM_POINTS: 2500
 DATASET:
   ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Door/point2group_level2"
   TYPE: "PartNet"
@@ -29,7 +29,7 @@ SCHEDULER:
     milestones: (20, 40, 60, 80, 100, 120)
   MAX_EPOCH: 2000
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 8
   #AUGMENTATION: ("PointCloudRotate", "PointCloudJitter",)
   #SEG_AUGMENTATION: ("PointCloudShuffle",)
   LOG_PERIOD: 50

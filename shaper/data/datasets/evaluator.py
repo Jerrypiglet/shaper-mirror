@@ -284,25 +284,79 @@ def evaluate_part_instance_segmentation(dataset,
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits)
 
-    # Overall
-    #total_seg_acc = sum(seg_acc_per_class.values())
-    #assert sum(num_inst_per_class.values()) == num_samples
-    #overall_acc = total_seg_acc / num_samples
-    #logger.info("overall segmentation accuracy={:.2f}%".format(100.0 * overall_acc))
-    #total_iou = sum(iou_per_class.values())
-    #overall_iou = total_iou / num_samples
-    #logger.info("overall IOU={:.2f}".format(100.0 * overall_iou))
 
-    ## Per class
-    #table = PrettyTable(["Class", "SegAccuracy", "IOU", "Total"])
-    #for ind, class_name in enumerate(class_names):
-    #    if ind in num_inst_per_class:  # seen class
-    #        seg_acc = seg_acc_per_class[ind] / num_inst_per_class[ind]
-    #        iou = iou_per_class[ind] / num_inst_per_class[ind]
-    #        table.add_row([class_name,
-    #                       "{:.2f}".format(100.0 * seg_acc),
-    #                       "{:.2f}".format(100.0 * iou),
-    #                       num_inst_per_class[ind]])
-    #    else:
-    #        table.add_row([class_name, 0, 0, 0])
-    #logger.info("class-wise segmentation accuracy.\n{}".format(table))
+
+def evaluate_foveal_segmentation(dataset,
+                                proposal_logits,
+                                finish_logits,
+                                zoomed_points,
+                               pred_logits,
+                               conf_logits,
+                               aux_preds=None,
+                               output_dir="",
+                               vis_dir="",
+                               suffix=""):
+    """Evaluate part segmentation results
+
+    Args:
+        dataset (torch.utils.data.Dataset): dataset
+        pred_logits (list of np.ndarray or np.ndarray): predicted logits
+        aux_preds (dict, optional): auxiliary predictions
+        output_dir (str, optional): output directory
+        vis_dir (str, optional): visualization directory
+        suffix (str, optional):
+
+    """
+    logger = logging.getLogger("shaper.evaluator.part_seg")
+    logger.info("Start evaluating and visualize in {}".format(vis_dir))
+
+    # Remove transform
+    dataset.transform = None
+    # Use all points
+    #dataset.num_points = -1
+    dataset.shuffle_points = False
+
+    # aliases
+    num_samples = len(dataset)
+    assert len(pred_logits) == num_samples
+
+    seg_acc_per_class = defaultdict(float)
+    num_inst_per_class = defaultdict(int)
+    iou_per_class = defaultdict(float)
+
+    for ind in tqdm(range(num_samples)):
+        continue
+        data = dataset[ind]
+        points = data["points"]
+        gt_seg_label = data["ins_seg_label"]
+        # (num_seg_classes, num_points)
+        pred_seg_logit = pred_logits[ind]
+
+        # sanity check
+        assert gt_seg_label.shape[1] == points.shape[0]
+        # assert pred_seg_logit.shape[1] >= points.shape[0]
+
+        num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
+        pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
+        # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
+        gt_seg_label = gt_seg_label[:num_valid_points]
+
+        pred_seg_label = np.argmax(pred_seg_logit, axis=0)
+        for ind, segid in enumerate(segids):
+            # convert partid to segid
+            pred_seg_label[pred_seg_label == ind] = segid
+
+        iou_per_instance = 0.0
+        for ind, segid in enumerate(segids):
+            gt_mask = (gt_seg_label == segid)
+            num_intersection = np.sum(np.logical_and(tp_mask, gt_mask))
+            num_pos = np.sum(pred_seg_label == segid)
+            num_gt = np.sum(gt_mask)
+            num_union = num_pos + num_gt - num_intersection
+            iou = num_intersection / num_union if num_union > 0 else 1.0
+            iou_per_instance += iou
+        iou_per_instance /= len(segids)
+        iou_per_class[gt_cls_label] += iou_per_instance
+
+
+    gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits)

@@ -22,6 +22,7 @@ def train_model(models,
                 loss_fns,
                 data_loader,
                 optimizers,
+                num_zoom_iteration=1,
                 freezers=None,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
@@ -50,51 +51,66 @@ def train_model(models,
         batch_size = points.shape[0]
         num_ins_mask = full_ins_seg_label.shape[1]
 
-        proposal_preds = proposal_model(data_batch)
+        viewed_mask = torch.zeros(batch_size,num_point)
+        predict_mask = torch.zeros(batch_size, num_point)
 
-        proposal_mask = proposal_preds['mask_output'][:,0,:]
-        proposal_mask = F.softmax(proposal_mask,1)
-        meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
-        num_meta_data = meta_data.shape[1]
-        distr = Categorical(proposal_mask)
-        #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
-        # print ('let me tell you', data_batch['point2group'].cuda())
-        centroids = distr.sample()
-        centroids = centroids.view(batch_size,1, 1)
+        for zoom_iteration in range(num_zoom_iteration):
+            proposal_preds = proposal_model(data_batch)
 
-        gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
+            proposal_mask = proposal_preds['mask_output'][:,0,:]
+            proposal_mask = F.softmax(proposal_mask,1)
+            meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
+            num_meta_data = meta_data.shape[1]
+            distr = Categorical(proposal_mask)
+            #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
+            # print ('let me tell you', data_batch['point2group'].cuda())
+            centroids = distr.sample()
+            centroids = centroids.view(batch_size,1, 1)
 
-        dists = (full_points - gathered_centroids)**2
-        dists = torch.sum(dists, 1)
-        nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
+            gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
 
-        zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
-        zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
-        point2group = data_batch['point2group']
-        point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
-        point2group = point2group.type(torch.long)
-        groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
-        zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+            dists = (full_points - gathered_centroids)**2
+            dists = torch.sum(dists, 1)
+            nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
-        data_batch['zoomed_meta_data']=zoomed_meta_data
-        data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
-        data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
-
-        segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
+            zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
+            ##center zoomed points
+            zoomed_points -= torch.sum(zoomed_points, 2,keepdim=True)/zoomed_points.shape[2]
+            maxnorm, _ = torch.max(torch.sum(zoomed_points**2, 1),1)
+            maxnorm = maxnorm ** 0.5
+            maxnorm = maxnorm.view(batch_size, 1, 1)
+            zoomed_points /=maxnorm
 
 
-        for optimizer in optimizers:
-            optimizer.zero_grad()
-        proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
-        proposal_losses = sum(proposal_loss_dict.values())
-        meters.update(loss=proposal_losses, **proposal_loss_dict)
-        segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label')
-        segmentation_losses = sum(segmentation_loss_dict.values())
-        meters.update(loss=segmentation_losses, **segmentation_loss_dict)
-        proposal_losses.backward(retain_graph=True)
-        segmentation_losses.backward()
-        for optimizer in optimizers:
-            optimizer.step()
+
+            zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
+            point2group = data_batch['point2group']
+            point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
+            point2group = point2group.type(torch.long)
+            groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
+            zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+
+            data_batch['zoomed_meta_data']=zoomed_meta_data
+            data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
+            data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
+
+            segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
+
+            for optimizer in optimizers:
+                optimizer.zero_grad()
+            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
+            proposal_losses = sum(proposal_loss_dict.values())
+            meters.update(loss=proposal_losses, **proposal_loss_dict)
+            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label')
+            segmentation_losses = sum(segmentation_loss_dict.values())
+            meters.update(loss=segmentation_losses, **segmentation_loss_dict)
+            proposal_losses.backward(retain_graph=True)
+            segmentation_losses.backward()
+            for optimizer in optimizers:
+                optimizer.step()
+
+
+
 
         batch_time = time.time() - end
         end = time.time()
@@ -119,16 +135,19 @@ def train_model(models,
     return meters
 
 
-def validate_model(model,
-                   loss_fn,
-                   metric_fn,
+def validate_model(models,
+                   loss_fns,
                    data_loader,
+                   num_zoom_iteration=1,
                    log_period=1):
     logger = logging.getLogger("shaper.validate")
     meters = MetricLogger(delimiter="  ")
-    model.eval()
-    loss_fn.eval()
-    #metric_fn.eval()
+    proposal_model, segmentation_model = models
+    proposal_model.eval()
+    segmentation_model.eval()
+    proposal_loss_fn, segmentation_loss_fn = loss_fns
+    proposal_loss_fn.eval()
+    segmentation_loss_fn.eval()
 
     end = time.time()
     with torch.no_grad():
@@ -136,13 +155,55 @@ def validate_model(model,
             data_time = time.time() - end
 
             data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) is torch.Tensor}
+            full_points = data_batch['full_points']
+            points = data_batch['points']
+            full_ins_seg_label = data_batch['full_ins_seg_label']
+            num_point = points.shape[2]
+            batch_size = points.shape[0]
+            num_ins_mask = full_ins_seg_label.shape[1]
 
-            preds = model(data_batch)
+            for zoom_iteration in range(num_zoom_iteration):
+                proposal_preds = proposal_model(data_batch)
 
-            loss_dict = loss_fn(preds, data_batch)
-            #metric_dict = metric_fn(preds, data_batch)
-            losses = sum(loss_dict.values())
-            meters.update(loss=losses, **loss_dict)
+                proposal_mask = proposal_preds['mask_output'][:,0,:]
+                proposal_mask = F.softmax(proposal_mask,1)
+                meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
+                num_meta_data = meta_data.shape[1]
+                distr = Categorical(proposal_mask)
+                #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
+                # print ('let me tell you', data_batch['point2group'].cuda())
+                centroids = distr.sample()
+                centroids = centroids.view(batch_size,1, 1)
+
+                gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
+
+                dists = (full_points - gathered_centroids)**2
+                dists = torch.sum(dists, 1)
+                nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
+
+                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
+                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
+                point2group = data_batch['point2group']
+                point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
+                point2group = point2group.type(torch.long)
+                groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
+                zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+
+                data_batch['zoomed_meta_data']=zoomed_meta_data
+                data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
+                data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
+
+                segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
+
+                proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
+                proposal_losses = sum(proposal_loss_dict.values())
+                meters.update(loss=proposal_losses, **proposal_loss_dict)
+                segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label')
+                segmentation_losses = sum(segmentation_loss_dict.values())
+                meters.update(loss=segmentation_losses, **segmentation_loss_dict)
+
+
+
             batch_time = time.time() - end
             end = time.time()
             meters.update(time=batch_time, data=data_time)
@@ -243,8 +304,7 @@ def train(cfg, output_dir=""):
         if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
             for i in range(len(checkpointers)):
                 checkpoint_datas[i]["epoch"] = cur_epoch
-                checkpoint_datas[i][best_metric_name] = best_metric
-                checkpointers[i].save("model_{:03d}".format(cur_epoch), **checkpoint_datas[i])
+                checkpointers[i].save("model_{:02d}_{:03d}".format(i,cur_epoch), **checkpoint_datas[i])
 
         # Validate
         if val_period < 1:

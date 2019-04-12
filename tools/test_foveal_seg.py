@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+"""Test point cloud part segmentation models"""
+
+from __future__ import division
+import argparse
+import os.path as osp
+import logging
+import time
+
+import numpy as np
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+from shaper.config.part_instance_segmentation import cfg
+from shaper.config import purge_cfg
+from shaper.models.build import build_model
+from shaper.data.build import build_dataloader, build_transform
+from shaper.data import transforms as T
+from shaper.data.datasets.evaluator import evaluate_foveal_segmentation
+from shaper.utils.checkpoint import Checkpointer
+from shaper.utils.metric_logger import MetricLogger
+from shaper.utils.io import mkdir
+from shaper.utils.logger import setup_logger
+from shaper.utils.torch_util import set_random_seed
+
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="PyTorch 3D Deep Learning Training")
+    parser.add_argument(
+        "--cfg",
+        dest="config_file",
+        default="",
+        metavar="FILE",
+        help="path to config file",
+        type=str,
+    )
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+def test(cfg, output_dir=""):
+    logger = logging.getLogger("shaper.tester")
+
+    # Build model
+    models, loss_fns = build_model(cfg)
+    checkpointers=[]
+    for i in range(len(models)):
+        models[i] = nn.DataParallel(models[i]).cuda()
+
+        # Build checkpointer
+        checkpointer = Checkpointer(models[i], save_dir=output_dir)
+
+        if cfg.TEST.WEIGHT:
+            # Load weight if specified
+            weight_path = cfg.TEST.WEIGHT.replace("@", output_dir)
+            checkpointer.load(weight_path, resume=False)
+        else:
+            # Load last checkpoint
+            checkpointer.load(None, resume=True)
+
+    # Build data loader
+    test_data_loader = build_dataloader(cfg, mode="test")
+    test_dataset = test_data_loader.dataset
+
+    # Prepare visualization
+    vis_dir = cfg.TEST.VIS_DIR.replace("@", output_dir)
+    if vis_dir:
+        mkdir(vis_dir)
+
+    # ---------------------------------------------------------------------------- #
+    # Test
+    # ---------------------------------------------------------------------------- #
+    proposoal_logit_all=[]
+    finish_logit_all=[]
+    zoomed_point_all=[]
+    conf_logit_all=[]
+    seg_logit_all=[]
+    proposal_model.eval()
+    segmentation_model.eval()
+    proposal_loss_fn.eval()
+    segmentation_loss_fn.eval()
+    #metric_fn.eval()
+    set_random_seed(cfg.RNG_SEED)
+
+    test_meters = MetricLogger(delimiter="  ")
+    with torch.no_grad():
+        start_time = time.time()
+        end = start_time
+        for iteration, data_batch in enumerate(test_data_loader):
+            data_time = time.time() - end
+
+            data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) == torch.Tensor}
+            for zoom_iteration in range(1):
+
+                proposal_preds = proposal_model(data_batch)
+
+                proposal_mask = proposal_preds['mask_output'][:,0,:]
+                proposal_mask = F.softmax(proposal_mask,1)
+                proposal_logit_all.append(proposal_mask.cpu.numpy())
+                conf_logit_all.append(F.sigmoid(proposal_preds['global_output']).cpu().numpy())
+                meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
+                num_meta_data = meta_data.shape[1]
+                distr = Categorical(proposal_mask)
+                centroids = distr.sample()
+                centroids = centroids.view(batch_size,1, 1)
+
+                gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
+
+                dists = (full_points - gathered_centroids)**2
+                dists = torch.sum(dists, 1)
+                nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
+
+                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
+                ##center zoomed points
+                zoomed_points -= torch.sum(zoomed_points, 2,keepdim=True)/zoomed_points.shape[2]
+                maxnorm, _ = torch.max(torch.sum(zoomed_points**2, 1),1)
+                maxnorm = maxnorm ** 0.5
+                maxnorm = maxnorm.view(batch_size, 1, 1)
+                zoomed_points /=maxnorm
+                zoomed_points_all.append(zoomed_points)
+
+
+
+                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
+                point2group = data_batch['point2group']
+                point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
+                point2group = point2group.type(torch.long)
+                groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
+                zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+
+                data_batch['zoomed_meta_data']=zoomed_meta_data
+                data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
+                data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
+
+                segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
+
+                seg_logit_all.append(F.softmax(preds["mask_output"],1).cpu().numpy())
+                conf_logit_all.append(F.sigmoid(preds["global_output"]).cpu().numpy())
+                #loss_dict = loss_fn(preds, data_batch)
+                #metric_dict = metric_fn(preds, data_batch)
+                #losses = sum(loss_dict.values())
+                #test_meters.update(loss=losses, **loss_dict)
+
+                #batch_time = time.time() - end
+                #end = time.time()
+                #test_meters.update(time=batch_time, data=data_time)
+
+                #if iteration % cfg.TEST.LOG_PERIOD == 0:
+                #    logger.info(
+                #        test_meters.delimiter.join(
+                #            [
+                #                "iter: {iter:4d}",
+                #                "{meters}",
+                #            ]
+                #        ).format(
+                #            iter=iteration,
+                #            meters=str(test_meters),
+                #        )
+                #    )
+    test_time = time.time() - start_time
+    logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
+    seg_logit_all = np.concatenate(seg_logit_all, axis=0)
+    conf_logit_all = np.concatenate(conf_logit_all, axis=0)
+    finish_logit_all = np.concatenate(finish_logit_all, axis=0)
+    zoomed_point_all = np.concatenate(zoomed_point_all, axis=0)
+    proposal_logit_all = np.concatenate(proposal_logit_all, axis=0)
+
+    evaluate_foveal_segmentation(test_dataset, proposal_logit_all, finish_logit_all, zoomed_point_all, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
+
+
+def main():
+    args = parse_args()
+
+    # Load the configuration
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    purge_cfg(cfg)
+    cfg.freeze()
+
+    output_dir = cfg.OUTPUT_DIR
+    # Replace '@' with config path
+    if output_dir:
+        config_path = osp.splitext(args.config_file)[0]
+        config_path = config_path.replace("configs", "outputs")
+        output_dir = output_dir.replace('@', config_path)
+        mkdir(output_dir)
+
+    logger = setup_logger("shaper", output_dir, prefix="test")
+    logger.info("Using {} GPUs".format(torch.cuda.device_count()))
+    logger.info(args)
+
+    logger.info("Loaded configuration file {}".format(args.config_file))
+    logger.info("Running with config:\n{}".format(cfg))
+
+    assert cfg.TASK == "foveal_part_instance_segmentation"
+    test(cfg, output_dir)
+
+
+if __name__ == "__main__":
+    main()
