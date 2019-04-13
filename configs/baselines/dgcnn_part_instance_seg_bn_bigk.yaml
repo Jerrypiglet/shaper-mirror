@@ -1,0 +1,35 @@
+TASK:
+  "part_instance_segmentation"
+AUTO_RESUME: False
+MODEL:
+  TYPE: "DGCNN"
+  NORMALIZATION: "BN"
+  NUM_INS_MASKS: 6
+  DGCNN:
+      K: 32
+INPUT:
+  NUM_POINTS: 10000
+DATASET:
+  ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Door/point2group_level2" 
+  TYPE: "PartNet"
+  TRAIN: ("train",)
+  VAL: ("val",)
+  TEST: ("test",)
+SOLVER:
+  TYPE: "Adam"
+  BASE_LR: 0.003
+SCHEDULER:
+  TYPE: "StepLR"
+  StepLR:
+    gamma: 0.7
+    step_size: 20
+  MAX_EPOCH: 2500
+TRAIN:
+  BATCH_SIZE: 12
+  CHECKPOINT_PERIOD: 100
+  LOG_PERIOD: 50
+  VAL_PERIOD: 1
+  AUGMENTATION: ("PointCloudRotate",)
+TEST:
+  BATCH_SIZE: 16
+  VIS_DIR: 'visu_test'
