@@ -15,7 +15,7 @@ DATASET:
   TYPE: "PartNet"
   TRAIN: ("train", )
   VAL: ("val",)
-  TEST: ("train",)
+  TEST: ("test",)
 DATALOADER:
   NUM_WORKERS: 8
 SOLVER:
@@ -35,4 +35,4 @@ TRAIN:
   VAL_PERIOD: 10
 TEST:
   BATCH_SIZE: 32
-  VIS_DIR: 'visu_train'
+  VIS_DIR: 'visu_test'

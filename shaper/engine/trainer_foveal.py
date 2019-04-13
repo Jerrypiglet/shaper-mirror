@@ -55,7 +55,10 @@ def train_model(models,
         predict_mask = torch.zeros(batch_size, num_point)
 
         for zoom_iteration in range(num_zoom_iteration):
-            proposal_preds = proposal_model(data_batch)
+
+            data_batch['point_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+
+            proposal_preds = proposal_model(data_batch, 'point_and_masks')
 
             proposal_mask = proposal_preds['mask_output'][:,0,:]
             proposal_mask = F.softmax(proposal_mask,1)
