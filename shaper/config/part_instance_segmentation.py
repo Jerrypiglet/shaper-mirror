@@ -79,6 +79,15 @@ _C.MODEL.DGCNN.CLS_LOSS_WEIGHT = 0.0
 _C.MODEL.DGCNN.SEG_LOSS_WEIGHT = 1.0
 
 
+_C.MODEL.DGCNN.K = 20
+_C.MODEL.DGCNN.EDGE_CONV_CHANNELS = (64, 64, 64)
+_C.MODEL.DGCNN.INTER_CHANNELS = 1024
+_C.MODEL.DGCNN.GLOBAL_CHANNELS = (256, 256, 128)
+
+_C.MODEL.DGCNN.DROPOUT_PROB = 0.4
+
+_C.MODEL.DGCNN.WITH_TRANSFORM = True
+
 # -----------------------------------------------------------------------------
 # PN2SSG options
 # -----------------------------------------------------------------------------
