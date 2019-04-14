@@ -26,8 +26,10 @@ TRAIN:
   LOG_PERIOD: 50
   CHECKPOINT_PERIOD: 20
   VAL_PERIOD: 1
+  AUGMENTATION: (("PointCloudRotate", (0.0, 0.0, 1.0)),)
 TEST:
   BATCH_SIZE: 32
   VOTE:
     ENABLE: True
+    AXIS: "z"
   VIS_DIR: "@/vis_error_key_pts"
