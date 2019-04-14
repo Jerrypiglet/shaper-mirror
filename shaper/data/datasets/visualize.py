@@ -15,6 +15,7 @@ from progressbar import ProgressBar
 from subprocess import call
 from scipy.optimize import linear_sum_assignment
 from shutil import copyfile
+from shaper.data import transforms as T
 
 
 
@@ -48,7 +49,7 @@ def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, visu_num=1000 ) :
         cur_fn_prefix = 'shape-%03d' % i
         data_dict=dataset[i]
         pts = data_dict['points']
-        pts = np.transpose(pts, [1,0])
+        pts = np.transpose(pts,[1,0])
         pts_flipped = pts.copy()
         pts_flipped[:,0] *= -1
         pts_flipped[:,2] *= -1
@@ -130,6 +131,8 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
         data_dict=dataset[i]
         pts = data_dict['points']
         pts = np.transpose(pts, [1,0])
+
+
         pts_flipped = pts.copy()
         pts_flipped[:,0] *= -1
         pts_flipped[:,2] *= -1

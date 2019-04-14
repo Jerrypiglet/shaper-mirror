@@ -3,9 +3,10 @@ TASK:
 AUTO_RESUME: False
 MODEL:
   TYPE: "DGCNN"
-  NORMALIZATION: "GN"
+  NORMALIZATION: "BN"
   NUM_INS_MASKS: 6
   META_DATA: 32
+  K: 32
 INPUT:
   NUM_POINTS: 2500
 DATASET:
@@ -28,6 +29,7 @@ TRAIN:
   CHECKPOINT_PERIOD: 100
   LOG_PERIOD: 50
   VAL_PERIOD: 1
+  AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
 TEST:
   BATCH_SIZE: 16
   VIS_DIR: 'visu_train'

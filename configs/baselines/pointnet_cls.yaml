@@ -25,7 +25,7 @@ SCHEDULER:
   MAX_EPOCH: 250
 TRAIN:
   BATCH_SIZE: 32
-  AUGMENTATION: ("PointCloudRotate", "PointCloudJitter",)
+  AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation","PointCloudScale", "PointCloudTranslate")
   LOG_PERIOD: 50
   VAL_PERIOD: 1
 TEST:

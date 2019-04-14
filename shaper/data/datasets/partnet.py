@@ -107,6 +107,7 @@ class PartNetH5(Dataset):
         #ins_seg_label = self.cache_ins_seg_label[index][:,choice]
         ins_seg_label = ins_seg_label.astype(np.float32)
 
+
         if self.transform is not None:
             points = self.transform(points)
             if self.seg_transform is not None:

@@ -6,12 +6,13 @@ import time
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.distributions import Categorical
+from torch.distributions import Categorical,Normal
 
 from shaper.models.build import build_model
 from shaper.solver import build_optimizer, build_scheduler
 from shaper.nn.freezer import Freezer
 from shaper.data import build_dataloader
+from shaper.data.datasets.utils import normalize_batch_points
 from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
@@ -51,14 +52,14 @@ def train_model(models,
         batch_size = points.shape[0]
         num_ins_mask = full_ins_seg_label.shape[1]
 
-        viewed_mask = torch.zeros(batch_size,num_point)
-        predict_mask = torch.zeros(batch_size, num_point)
+        viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
+        predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
 
         for zoom_iteration in range(num_zoom_iteration):
 
-            data_batch['point_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+            data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
 
-            proposal_preds = proposal_model(data_batch, 'point_and_masks')
+            proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
             proposal_mask = proposal_preds['mask_output'][:,0,:]
             proposal_mask = F.softmax(proposal_mask,1)
@@ -74,23 +75,34 @@ def train_model(models,
 
             dists = (full_points - gathered_centroids)**2
             dists = torch.sum(dists, 1)
-            nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
-
-            zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
-            ##center zoomed points
-            zoomed_points -= torch.sum(zoomed_points, 2,keepdim=True)/zoomed_points.shape[2]
-            maxnorm, _ = torch.max(torch.sum(zoomed_points**2, 1),1)
-            maxnorm = maxnorm ** 0.5
-            maxnorm = maxnorm.view(batch_size, 1, 1)
-            zoomed_points /=maxnorm
 
 
+            crop_size = Normal(1, 0.5).sample()
+            crop_size = max(0, crop_size)
+            crop_size = 2**crop_size * num_point
+            crop_size = int(crop_size)
+            nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
+            zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
 
-            zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
+
+            zoomed_points = zoomed_points.transpose_(2,1)
+            zoomed_points = normalize_batch_points(zoomed_points)
+
+            if data_loader.dataset.transform is not None:
+                for b in range(batch_size):
+                    zoomed_points[b] = data_loader.dataset.transform(zoomed_points[b])
+
+            zoomed_points = zoomed_points.transpose_(2,1)
+            zoomed_points = zoomed_points[:,:, :num_point]
+
+
+            zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+            zoomed_ins_seg_label = zoomed_ins_seg_label[:,:,:num_point]
             point2group = data_batch['point2group']
             point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
             point2group = point2group.type(torch.long)
-            groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
+            groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+            groups=groups[:,:num_point]
             zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
 
             data_batch['zoomed_meta_data']=zoomed_meta_data
@@ -165,8 +177,13 @@ def validate_model(models,
             batch_size = points.shape[0]
             num_ins_mask = full_ins_seg_label.shape[1]
 
+            viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
+            predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
             for zoom_iteration in range(num_zoom_iteration):
-                proposal_preds = proposal_model(data_batch)
+
+                data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+
+                proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
                 proposal_mask = F.softmax(proposal_mask,1)
@@ -182,14 +199,34 @@ def validate_model(models,
 
                 dists = (full_points - gathered_centroids)**2
                 dists = torch.sum(dists, 1)
-                nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
-                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
-                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
+
+                crop_size = Normal(1, 0.5).sample()
+                crop_size = max(0, crop_size)
+                crop_size = 2**crop_size * num_point
+                crop_size = int(crop_size)
+                nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
+                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
+
+
+                zoomed_points = zoomed_points.transpose_(2,1)
+                zoomed_points = normalize_batch_points(zoomed_points)
+
+                if data_loader.dataset.transform is not None:
+                    for b in range(batch_size):
+                        zoomed_points[b] = data_loader.dataset.transform(zoomed_points[b])
+
+                zoomed_points = zoomed_points.transpose_(2,1)
+                zoomed_points = zoomed_points[:,:, :num_point]
+
+
+                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+                zoomed_ins_seg_label = zoomed_ins_seg_label[:,:,:num_point]
                 point2group = data_batch['point2group']
                 point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
                 point2group = point2group.type(torch.long)
-                groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
+                groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+                groups=groups[:,:num_point]
                 zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
 
                 data_batch['zoomed_meta_data']=zoomed_meta_data

@@ -12,15 +12,18 @@ def get_knn_inds(pdist, k=20, remove=False):
     Args:
         pdist (torch.Tensor): tensor (batch_size, num_nodes, num_nodes)
         k (int): the number of nearest neighbour
-        remove (bool): whether to remove itself
+        remove (bool): whether to remove itself and all duplicates
 
     Returns:
         knn_inds (torch.Tensor): (batch_size, num_nodes, k)
 
     """
     if remove:
-        _, knn_inds = torch.topk(pdist, k + 1, largest=False, sorted=False)
-        return knn_inds[..., 1:]
+        pdist[pdist<1e-10] = 1e10
+        _, knn_inds = torch.topk(pdist, k , largest=False, sorted=False)
+        return knn_inds
+        #_, knn_inds = torch.topk(pdist, k + 1, largest=False, sorted=False)
+        #return knn_inds[..., 1:]
     else:
         _, knn_inds = torch.topk(pdist, k, largest=False, sorted=False)
         return knn_inds

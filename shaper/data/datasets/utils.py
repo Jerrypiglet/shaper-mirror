@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 
 def crop_or_pad_points(points, num_points=-1, shuffle=False):
@@ -50,4 +51,29 @@ def normalize_points(points):
     points = points - centroid
     norm = np.max(np.linalg.norm(points, ord=2, axis=1))
     points = points / norm
+    return points
+
+
+
+
+def normalize_batch_points(points):
+    """Normalize point cloud
+
+    Args:
+        points : (b, n, 3)
+
+    Returns:
+        np.ndarray: normalized points
+
+    """
+    assert  points.shape[2] == 3
+    batch_size = points.shape[0]
+    ##center zoomed points
+    points -= torch.sum(points, 1,keepdim=True)/points.shape[1]
+
+    maxnorm, _ = torch.max(torch.sum(points**2, 2),1)
+    maxnorm = maxnorm ** 0.5
+    maxnorm = maxnorm.view(batch_size, 1, 1)
+    points /=maxnorm
+
     return points
