@@ -104,6 +104,7 @@ def train_model(models,
             groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
             groups=groups[:,:num_point]
             zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+            zoomed_meta_data*=0
 
             data_batch['zoomed_meta_data']=zoomed_meta_data
             data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)

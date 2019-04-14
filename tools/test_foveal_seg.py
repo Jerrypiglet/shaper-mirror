@@ -111,9 +111,13 @@ def test(cfg, output_dir=""):
 
 
 
+            viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
+            predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
+
             for zoom_iteration in range(1):
 
-                proposal_preds = proposal_model(data_batch)
+                data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+                proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
                 proposal_mask = F.softmax(proposal_mask,1)
@@ -129,25 +133,34 @@ def test(cfg, output_dir=""):
 
                 dists = (full_points - gathered_centroids)**2
                 dists = torch.sum(dists, 1)
-                nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
-                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
+                crop_size= 2*num_point
+                nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
+
+                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
                 ##center zoomed points
                 zoomed_points -= torch.sum(zoomed_points, 2,keepdim=True)/zoomed_points.shape[2]
                 maxnorm, _ = torch.max(torch.sum(zoomed_points**2, 1),1)
                 maxnorm = maxnorm ** 0.5
                 maxnorm = maxnorm.view(batch_size, 1, 1)
                 zoomed_points /=maxnorm
+
+                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+
+
+                zoomed_points=zoomed_points[:,:,:num_point]
+                zoomed_ins_seg_label = zoomed_ins_seg_label[:,:,:num_point]
+
                 zoomed_points_all.append(zoomed_points.cpu().numpy())
 
 
-
-                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
                 point2group = data_batch['point2group']
                 point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
                 point2group = point2group.type(torch.long)
-                groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
+                groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+                groups=groups[:,:num_point]
                 zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+                zoomed_meta_data*=0
 
                 data_batch['zoomed_meta_data']=zoomed_meta_data
                 data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
