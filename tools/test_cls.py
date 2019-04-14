@@ -13,8 +13,8 @@ from torch import nn
 
 from shaper.config.classification import cfg
 from shaper.config import purge_cfg
-from shaper.models import build_model
-from shaper.data import build_dataloader
+from shaper.models.build import build_model
+from shaper.data.build import build_dataloader, build_transform
 from shaper.data import transforms as T
 from shaper.data.datasets.evaluator import evaluate_classification
 from shaper.utils.checkpoint import Checkpointer
@@ -79,17 +79,29 @@ def test(cfg, output_dir=""):
     model.eval()
     loss_fn.eval()
     metric_fn.eval()
+    set_random_seed(cfg.RNG_SEED)
 
-    if cfg.TEST.VOTE.ENABLE:
+    if cfg.TEST.VOTE.NUM_VOTE > 1:
         # Remove old transform
         test_dataset.transform = None
-        # Build new transform
-        transform_list = [T.PointCloudRotateByAngle(cfg.TEST.VOTE.AXIS, 2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VIEW)
-                          for view_ind in range(cfg.TEST.VOTE.NUM_VIEW)]
-        if cfg.TEST.VOTE.SHUFFLE:
-            # Some non-deterministic algorithms benefit from shuffle.
-            set_random_seed(cfg.RNG_SEED)
-            shuffle_transform = T.PointCloudShuffle()
+        if cfg.TEST.VOTE.TYPE == "AUGMENTATION":
+            tmp_cfg = cfg.clone()
+            tmp_cfg.defrost()
+            tmp_cfg.TEST.AUGMENTATION = tmp_cfg.TEST.VOTE.AUGMENTATION
+            transform_list = [build_transform(tmp_cfg, False)] * cfg.TEST.VOTE.NUM_VOTE
+        elif cfg.TEST.VOTE.TYPE == "MULTI_VIEW":
+            # Build new transform
+            transform_list = []
+            for view_ind in range(cfg.TEST.VOTE.NUM_VOTE):
+                t = [T.PointCloudToTensor(),
+                     T.PointCloudRotateByAngle(cfg.TEST.VOTE.MULTI_VIEW.AXIS,
+                                               2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VOTE)]
+                if cfg.TEST.VOTE.MULTI_VIEW.SHUFFLE:
+                    # Some non-deterministic algorithms benefit from shuffle.
+                    t.append(T.PointCloudShuffle())
+                transform_list.append(T.Compose(t))
+        else:
+            raise NotImplementedError("Unsupported voting method.")
 
         with torch.no_grad():
             start_time = time.time()
@@ -100,10 +112,7 @@ def test(cfg, output_dir=""):
                 points = data["points"]
 
                 # Convert points into tensor
-                # torch.tensor always copy data
-                points_batch = [t(torch.tensor(points, dtype=torch.float)) for t in transform_list]
-                if cfg.TEST.VOTE.SHUFFLE:
-                    points_batch = [shuffle_transform(points) for points in points_batch]
+                points_batch = [t(points) for t in transform_list]
                 points_batch = torch.stack(points_batch, dim=0).transpose_(1, 2).contiguous()
                 points_batch = points_batch.cuda(non_blocking=True)
 

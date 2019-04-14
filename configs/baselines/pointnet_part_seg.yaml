@@ -8,8 +8,8 @@ INPUT:
 DATASET:
   ROOT_DIR: "data/shapenet_hdf5"
   TYPE: "ShapeNetH5"
-  #  ROOT_DIR: "data/shapenet"
-  #  TYPE: "ShapeNet"
+#  ROOT_DIR: "data/shapenet"
+#  TYPE: "ShapeNet"
   NUM_CLASSES: 16
   NUM_SEG_CLASSES: 50
   TRAIN: ("train",)
@@ -30,5 +30,3 @@ TRAIN:
   VAL_PERIOD: 1
 TEST:
   BATCH_SIZE: 32
-  VOTE:
-    ENABLE: False

@@ -29,6 +29,7 @@ class ClsLoss(nn.Module):
         }
         return loss_dict
 
+
 class PartSegLoss(nn.Module):
     """Part segmentation loss"""
 

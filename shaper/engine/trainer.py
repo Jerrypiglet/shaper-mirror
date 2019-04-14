@@ -6,7 +6,7 @@ import time
 import torch
 from torch import nn
 
-from shaper.models import build_model
+from shaper.models.build import build_model
 from shaper.solver import build_optimizer, build_scheduler
 from shaper.nn.freezer import Freezer
 from shaper.data import build_dataloader

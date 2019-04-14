@@ -13,8 +13,8 @@ from torch import nn
 
 from shaper.config.part_segmentation import cfg
 from shaper.config import purge_cfg
-from shaper.models import build_model
-from shaper.data import build_dataloader
+from shaper.models.build import build_model
+from shaper.data.build import build_dataloader, build_transform
 from shaper.data import transforms as T
 from shaper.data.datasets.evaluator import evaluate_part_segmentation
 from shaper.utils.checkpoint import Checkpointer
@@ -79,18 +79,29 @@ def test(cfg, output_dir=""):
     model.eval()
     loss_fn.eval()
     metric_fn.eval()
+    set_random_seed(cfg.RNG_SEED)
 
-    if cfg.TEST.VOTE.ENABLE:
+    if cfg.TEST.VOTE.NUM_VOTE > 1:
         # Disable inherent shuffle
         test_dataset.shuffle_points = False
         # Remove old transform
         test_dataset.transform = None
-        # Build new transform
-        transform_list = [T.PointCloudRotateByAngle(cfg.TEST.VOTE.AXIS, 2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VIEW)
-                          for view_ind in range(cfg.TEST.VOTE.NUM_VIEW)]
-        if cfg.TEST.VOTE.SHUFFLE:
-            # Some non-deterministic algorithms might benefit from shuffle.
-            set_random_seed(cfg.RNG_SEED)
+
+        if cfg.TEST.VOTE.TYPE == "AUGMENTATION":
+            tmp_cfg = cfg.clone()
+            tmp_cfg.defrost()
+            tmp_cfg.TEST.AUGMENTATION = tmp_cfg.TEST.VOTE.AUGMENTATION
+            transform_list = [build_transform(tmp_cfg, False)] * cfg.TEST.VOTE.NUM_VOTE
+        elif cfg.TEST.VOTE.TYPE == "MULTI_VIEW":
+            # Build new transform
+            transform_list = []
+            for view_ind in range(cfg.TEST.VOTE.NUM_VOTE):
+                t = [T.PointCloudToTensor(),
+                     T.PointCloudRotateByAngle(cfg.TEST.VOTE.MULTI_VIEW.AXIS,
+                                               2 * np.pi * view_ind / cfg.TEST.VOTE.NUM_VOTE)]
+                transform_list.append(T.Compose(t))
+        else:
+            raise NotImplementedError("Unsupported voting method.")
 
         with torch.no_grad():
             start_time = time.time()
@@ -103,14 +114,13 @@ def test(cfg, output_dir=""):
                 num_points = points.shape[0]
 
                 # Convert points into tensor
-                # torch.tensor always copy data
-                points_batch = [t(torch.tensor(points, dtype=torch.float)) for t in transform_list]
+                points_batch = [t(points) for t in transform_list]
                 if cfg.TEST.VOTE.SHUFFLE:
                     index_batch = [torch.randperm(num_points) for _ in points_batch]
                     points_batch = [points[index] for points, index in zip(points_batch, index_batch)]
                 points_batch = torch.stack(points_batch, dim=0).transpose_(1, 2).contiguous()
                 points_batch = points_batch.cuda(non_blocking=True)
-                cls_label_batch = torch.tensor([cls_label] * cfg.TEST.VOTE.NUM_VIEW).cuda()
+                cls_label_batch = torch.tensor([cls_label] * cfg.TEST.VOTE.NUM_VOTE).cuda()
 
                 preds = model({"points": points_batch, "cls_label": cls_label_batch})
                 seg_logit_batch = preds["seg_logit"].cpu().numpy()

@@ -31,5 +31,5 @@ TRAIN:
 TEST:
   BATCH_SIZE: 32
   VOTE:
-    ENABLE: True
-    NUM_VIEW: 12
+    NUM_VOTE: 12
+    TYPE: "MULTI_VIEW"
