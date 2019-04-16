@@ -80,11 +80,12 @@ def test(cfg, output_dir=""):
     # ---------------------------------------------------------------------------- #
     # Test
     # ---------------------------------------------------------------------------- #
-    proposal_logit_all=[]
-    finish_logit_all=[]
-    zoomed_points_all=[]
-    conf_logit_all=[]
-    seg_logit_all=[]
+    proposal_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
+    finish_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
+    zoomed_points_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
+    conf_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
+    seg_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
+    viewed_mask_all = [ [] for i in  range(cfg.TEST.NUM_ZOOM_ITERATION)]
     proposal_model, segmentation_model = models
     proposal_loss_fn, segmentation_loss_fn = loss_fns
     proposal_model.eval()
@@ -114,17 +115,21 @@ def test(cfg, output_dir=""):
             viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
             predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
 
-            for zoom_iteration in range(1):
+            for zoom_iteration in range(cfg.TEST.NUM_ZOOM_ITERATION):
 
                 data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+                data_batch['viewed_mask'] = viewed_mask
                 proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
                 proposal_mask = F.softmax(proposal_mask,1)
-                proposal_logit_all.append(proposal_mask.cpu().numpy())
-                finish_logit_all.append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
+                proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
+                finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
                 meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
                 num_meta_data = meta_data.shape[1]
+                m,_ = torch.max(proposal_mask, 1, keepdim=True)
+                proposal_mask[proposal_mask < 0.1*m]=0
+                proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
                 distr = Categorical(proposal_mask)
                 centroids = distr.sample()
                 centroids = centroids.view(batch_size,1, 1)
@@ -151,7 +156,7 @@ def test(cfg, output_dir=""):
                 zoomed_points=zoomed_points[:,:,:num_point]
                 zoomed_ins_seg_label = zoomed_ins_seg_label[:,:,:num_point]
 
-                zoomed_points_all.append(zoomed_points.cpu().numpy())
+                zoomed_points_all[zoom_iteration].append(zoomed_points.cpu().numpy())
 
 
                 point2group = data_batch['point2group']
@@ -168,8 +173,29 @@ def test(cfg, output_dir=""):
 
                 segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
 
-                seg_logit_all.append(F.softmax(segmentation_preds["mask_output"],1).cpu().numpy())
-                conf_logit_all.append(torch.sigmoid(segmentation_preds["global_output"]).cpu().numpy())
+                seg_logit_all[zoom_iteration].append(F.softmax(segmentation_preds["mask_output"],1).cpu().numpy())
+                conf_logit_all[zoom_iteration].append(torch.sigmoid(segmentation_preds["global_output"]).cpu().numpy())
+
+
+                masks = segmentation_preds['mask_output']
+                masks = F.softmax(masks,1)
+                confs = segmentation_preds['global_output']
+                confs = torch.sigmoid(confs)
+                masks *= confs.unsqueeze(-1)
+
+                masks, _ = torch.max(masks, 1)
+
+                predict_mask = predict_mask.squeeze(1)
+                viewed_mask=viewed_mask.squeeze(1)
+                predict_mask = predict_mask.scatter_add(1,groups, masks)
+                viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
+                viewed_mask_all[zoom_iteration].append((viewed_mask.cpu().numpy() > 0).astype(np.int32))
+                viewed_mask = viewed_mask.unsqueeze(1).detach()
+                predict_mask = predict_mask.unsqueeze(1).detach()
+
+
+
+
                 #loss_dict = loss_fn(preds, data_batch)
                 #metric_dict = metric_fn(preds, data_batch)
                 #losses = sum(loss_dict.values())
@@ -193,13 +219,16 @@ def test(cfg, output_dir=""):
                 #    )
     test_time = time.time() - start_time
     logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
-    seg_logit_all = np.concatenate(seg_logit_all, axis=0)
-    conf_logit_all = np.concatenate(conf_logit_all, axis=0)
-    finish_logit_all = np.concatenate(finish_logit_all, axis=0)
-    zoomed_points_all = np.concatenate(zoomed_points_all, axis=0)
-    proposal_logit_all = np.concatenate(proposal_logit_all, axis=0)
+    for zoom_iteration in range(cfg.TEST.NUM_ZOOM_ITERATION):
+        seg_logit_all[zoom_iteration] = np.concatenate(seg_logit_all[zoom_iteration], axis=0)
+        conf_logit_all[zoom_iteration] = np.concatenate(conf_logit_all[zoom_iteration], axis=0)
+        viewed_mask_all[zoom_iteration] = np.concatenate(viewed_mask_all[zoom_iteration], axis=0)
+        finish_logit_all[zoom_iteration] = np.concatenate(finish_logit_all[zoom_iteration], axis=0)
+        zoomed_points_all[zoom_iteration] = np.concatenate(zoomed_points_all[zoom_iteration], axis=0)
+        proposal_logit_all[zoom_iteration] = np.concatenate(proposal_logit_all[zoom_iteration], axis=0)
 
-    evaluate_foveal_segmentation(test_dataset, proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
+
+    evaluate_foveal_segmentation(test_dataset, viewed_mask_all,  proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
 
 
 def main():

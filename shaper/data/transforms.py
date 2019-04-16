@@ -40,7 +40,9 @@ class ComposeSeg(Compose):
 # ---------------------------------------------------------------------------- #
 class PointCloudToTensor(object):
     def __call__(self, points):
-        assert isinstance(points, np.ndarray) or isinstance(points, torch.Tensor)
+        if isinstance(points, torch.Tensor):
+            return points.float().cpu()
+        assert isinstance(points, np.ndarray)
         # torch.tensor always copies data
         return torch.tensor(points, dtype=torch.float)
 

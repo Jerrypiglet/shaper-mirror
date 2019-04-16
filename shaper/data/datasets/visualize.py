@@ -99,7 +99,7 @@ def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, visu_num=1000 ) :
 
 
 
-def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_points, pred_ins_label, conf_label, visu_num=1000 ) :
+def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_logits, zoomed_points_all, pred_ins_label, conf_label, visu_num=1000 ) :
     '''
     pts n_shape x num_point x 3 float32
     gt_ins_labels n_shape x num_point int32
@@ -118,13 +118,10 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
     mkdir(child_dir)
 
     bar = ProgressBar()
-    n_shape = pred_ins_label.shape[0]
+    num_zoom_iteration = len(pred_ins_label)
+    n_shape = pred_ins_label[0].shape[0]
     n_shape = min(visu_num, n_shape)
 
-    zoomed_points = np.transpose(zoomed_points, [0,2,1])
-    zoomed_points_flipped = zoomed_points.copy()
-    zoomed_points_flipped[:,:,0]*=-1
-    zoomed_points_flipped[:,:,2]*=-1
 
     for i in bar(range(0,n_shape)):
         cur_fn_prefix = 'shape-%03d' % i
@@ -171,25 +168,38 @@ def gen_foveal_visu(visu_dir, dataset, proposal_logits, finish_logits, zoomed_po
         mkdir(child_proposal_flipped_dir)
 
 
-        out_fn = os.path.join(child_part_dir, 'stage1_proposal.png')
-        render_pts_with_feature(out_fn, pts, proposal_logits[i], normalize=True, fancy_kp=True)
-        out_fn = os.path.join(child_part_flipped_dir, 'stage1_proposal.png')
-        render_pts_with_feature(out_fn, pts_flipped, proposal_logits[i], normalize=True, fancy_kp=True)
-        out_fn = os.path.join(child_info_dir, 'stage1_proposal.txt')
-        with open(out_fn,'w') as fout:
-            fout.write('finish: %f' % finish_logits[i] )
+        for zoom_iteration in range(num_zoom_iteration):
 
-        for j in range(pred_ins_label.shape[1]):
-            cur_part_prefix = 'stage2_part-%03d' % j
-            out_fn = os.path.join(child_part_dir, cur_part_prefix+'.png')
-            render_pts_with_feature(out_fn, zoomed_points[i], pred_ins_label[i,j])
+            zoomed_points = np.transpose(zoomed_points_all[zoom_iteration], [0,2,1])
+            zoomed_points_flipped = zoomed_points.copy()
+            zoomed_points_flipped[:,:,0]*=-1
+            zoomed_points_flipped[:,:,2]*=-1
 
-            out_fn = os.path.join(child_part_flipped_dir, cur_part_prefix+'.png')
-            render_pts_with_feature(out_fn, zoomed_points_flipped[i], pred_ins_label[i,j])
-
-
-            out_fn = os.path.join(child_info_dir, cur_part_prefix+'.txt')
+            out_fn = os.path.join(child_part_dir, 'iteration%d_stage1_proposal.png'%zoom_iteration)
+            render_pts_with_feature(out_fn, pts, proposal_logits[zoom_iteration][i], normalize=True, fancy_kp=True)
+            out_fn = os.path.join(child_part_flipped_dir, 'iteration%d_stage1_proposal.png'%zoom_iteration)
+            render_pts_with_feature(out_fn, pts_flipped, proposal_logits[zoom_iteration][i], normalize=True, fancy_kp=True)
+            out_fn = os.path.join(child_info_dir, 'iteration%d_stage1_proposal.txt'%zoom_iteration)
             with open(out_fn,'w') as fout:
-                fout.write('conf: %f' % conf_label[i,j] )
+                fout.write('finish: %f' % finish_logits[zoom_iteration][i] )
+
+
+            out_fn = os.path.join(child_part_dir, 'iteration%d_stage1_zoom.png'%zoom_iteration)
+            render_pts_with_label(out_fn, pts, viewed_masks[zoom_iteration][i])
+            out_fn = os.path.join(child_part_flipped_dir, 'iteration%d_stage1_zoom.png'%zoom_iteration)
+            render_pts_with_feature(out_fn, pts_flipped, viewed_masks[zoom_iteration][i])
+
+            for j in range(pred_ins_label[zoom_iteration].shape[1]):
+                cur_part_prefix = 'iteration%d_stage2_part-%03d' % (zoom_iteration, j)
+                out_fn = os.path.join(child_part_dir, cur_part_prefix+'.png')
+                render_pts_with_feature(out_fn, zoomed_points[i], pred_ins_label[zoom_iteration][i,j])
+
+                out_fn = os.path.join(child_part_flipped_dir, cur_part_prefix+'.png')
+                render_pts_with_feature(out_fn, zoomed_points_flipped[i], pred_ins_label[zoom_iteration][i,j])
+
+
+                out_fn = os.path.join(child_info_dir, cur_part_prefix+'.txt')
+                with open(out_fn,'w') as fout:
+                    fout.write('conf: %f' % conf_label[zoom_iteration][i,j] )
 
 

@@ -49,15 +49,15 @@ def build_dgcnn(cfg):
             in_channels = cfg.INPUT.IN_CHANNELS+2,
             num_global_output = 1,
             num_mask_output = 1+cfg.MODEL.META_DATA,
-            use_bn=cfg.MODEL.NORMALIZATION=='BN',
-            use_gn=cfg.MODEL.NORMALIZATION=='GN'
+            use_bn=cfg.MODEL.PROP_NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.PROP_NORMALIZATION=='GN'
         )
         segmentation_net = DGCNNTwoBranch(
             in_channels = cfg.INPUT.IN_CHANNELS+cfg.MODEL.META_DATA,
             num_global_output = cfg.MODEL.NUM_INS_MASKS,
             num_mask_output = cfg.MODEL.NUM_INS_MASKS,
-            use_bn=cfg.MODEL.NORMALIZATION=='BN',
-            use_gn=cfg.MODEL.NORMALIZATION=='GN'
+            use_bn=cfg.MODEL.SEG_NORMALIZATION=='BN',
+            use_gn=cfg.MODEL.SEG_NORMALIZATION=='GN'
         )
         proposal_loss_fn = ProposalLoss()
         segmentation_loss_fn = PartInsSegLoss()

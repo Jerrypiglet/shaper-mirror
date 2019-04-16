@@ -8,6 +8,8 @@ cfg = _C
 _C.TASK = "part_instance_segmentation"
 
 _C.TRAIN.VAL_METRIC = "seg_acc"
+_C.TRAIN.NUM_ZOOM_ITERATION=1
+_C.TEST.NUM_ZOOM_ITERATION=1
 
 _C.MODEL.NUM_INS_MASKS = 6
 _C.MODEL.META_DATA = 32

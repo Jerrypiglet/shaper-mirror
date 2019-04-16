@@ -287,6 +287,7 @@ def evaluate_part_instance_segmentation(dataset,
 
 
 def evaluate_foveal_segmentation(dataset,
+                                viewed_masks,
                                 proposal_logits,
                                 finish_logits,
                                 zoomed_points,
@@ -318,7 +319,6 @@ def evaluate_foveal_segmentation(dataset,
 
     # aliases
     num_samples = len(dataset)
-    assert len(pred_logits) == num_samples
 
     seg_acc_per_class = defaultdict(float)
     num_inst_per_class = defaultdict(int)
@@ -359,4 +359,4 @@ def evaluate_foveal_segmentation(dataset,
         iou_per_class[gt_cls_label] += iou_per_instance
 
 
-    gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits)
+    gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits)

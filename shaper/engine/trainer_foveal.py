@@ -58,6 +58,7 @@ def train_model(models,
         for zoom_iteration in range(num_zoom_iteration):
 
             data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+            data_batch['viewed_mask'] = viewed_mask
 
             proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
@@ -67,7 +68,6 @@ def train_model(models,
             num_meta_data = meta_data.shape[1]
             distr = Categorical(proposal_mask)
             #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
-            # print ('let me tell you', data_batch['point2group'].cuda())
             centroids = distr.sample()
             centroids = centroids.view(batch_size,1, 1)
 
@@ -122,8 +122,26 @@ def train_model(models,
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)
             proposal_losses.backward(retain_graph=True)
             segmentation_losses.backward()
-            for optimizer in optimizers:
-                optimizer.step()
+
+            masks = segmentation_preds['mask_output']
+            masks = F.softmax(masks,1)
+            confs = segmentation_preds['global_output']
+            confs = torch.sigmoid(confs)
+            masks *= confs.unsqueeze(-1)
+
+            masks, _ = torch.max(masks, 1)
+
+            predict_mask = predict_mask.squeeze(1)
+            viewed_mask=viewed_mask.squeeze(1)
+            #predict_mask = predict_mask.scatter(1,groups, masks)
+            viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
+            viewed_mask[viewed_mask>=1]=1
+            viewed_mask = viewed_mask.unsqueeze(1).detach()
+            predict_mask = predict_mask.unsqueeze(1).detach()
+
+
+        for optimizer in optimizers:
+            optimizer.step()
 
 
 
@@ -183,6 +201,7 @@ def validate_model(models,
             for zoom_iteration in range(num_zoom_iteration):
 
                 data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+                data_batch['viewed_mask'] = viewed_mask
 
                 proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
@@ -331,6 +350,7 @@ def train(cfg, output_dir=""):
         train_meters = train_model(models,
                                    loss_fns,
                                    train_data_loader,
+                                   num_zoom_iteration=cfg.TRAIN.NUM_ZOOM_ITERATION,
                                    optimizers=optimizers,
                                    freezers=freezers,
                                    log_period=cfg.TRAIN.LOG_PERIOD,

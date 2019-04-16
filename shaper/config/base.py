@@ -21,6 +21,8 @@ _C.MODEL = CN()
 _C.MODEL.TYPE = ""
 #Select Normalization
 _C.MODEL.NORMALIZATION = 'BN'
+_C.MODEL.PROP_NORMALIZATION = 'BN'
+_C.MODEL.SEG_NORMALIZATION = 'BN'
 # Pre-trained weights
 _C.MODEL.WEIGHT = ""
 
