@@ -60,8 +60,7 @@ def train_model(models,
 
         for zoom_iteration in range(num_zoom_iteration):
 
-            #data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
-            data_batch['points_and_masks'] = torch.cat([points, viewed_mask], 1)
+            data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 
             proposal_preds = proposal_model(data_batch, 'points_and_masks')
@@ -206,7 +205,6 @@ def validate_model(models,
             for zoom_iteration in range(num_zoom_iteration):
 
                 data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
-                data_batch['points_and_masks'] = torch.cat([points, viewed_mask], 1)
                 data_batch['viewed_mask'] = viewed_mask
 
                 proposal_preds = proposal_model(data_batch, 'points_and_masks')
