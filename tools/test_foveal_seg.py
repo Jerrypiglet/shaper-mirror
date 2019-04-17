@@ -187,8 +187,9 @@ def test(cfg, output_dir=""):
 
                 predict_mask = predict_mask.squeeze(1)
                 viewed_mask=viewed_mask.squeeze(1)
-                predict_mask = predict_mask.scatter_add(1,groups, masks)
+                #predict_mask = predict_mask.scatter_add(1,groups, masks)
                 viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
+                viewed_mask[viewed_mask>=1]=1
                 viewed_mask_all[zoom_iteration].append((viewed_mask.cpu().numpy() > 0).astype(np.int32))
                 viewed_mask = viewed_mask.unsqueeze(1).detach()
                 predict_mask = predict_mask.unsqueeze(1).detach()
@@ -196,6 +197,7 @@ def test(cfg, output_dir=""):
 
 
 
+                proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
                 #loss_dict = loss_fn(preds, data_batch)
                 #metric_dict = metric_fn(preds, data_batch)
                 #losses = sum(loss_dict.values())

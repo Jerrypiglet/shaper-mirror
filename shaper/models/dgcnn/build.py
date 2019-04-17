@@ -46,14 +46,14 @@ def build_dgcnn(cfg):
         metric_fn = None#PartSegMetric(cfg.DATASET.NUM_SEG_CLASSES)
     elif cfg.TASK == "foveal_part_instance_segmentation":
         proposal_net = DGCNNTwoBranch(
-            in_channels = cfg.INPUT.IN_CHANNELS+2,
+            in_channels = cfg.INPUT.IN_CHANNELS+1,
             num_global_output = 1,
-            num_mask_output = 1+cfg.MODEL.META_DATA,
+            num_mask_output = 1,
             use_bn=cfg.MODEL.PROP_NORMALIZATION=='BN',
             use_gn=cfg.MODEL.PROP_NORMALIZATION=='GN'
         )
         segmentation_net = DGCNNTwoBranch(
-            in_channels = cfg.INPUT.IN_CHANNELS+cfg.MODEL.META_DATA,
+            in_channels = cfg.INPUT.IN_CHANNELS,
             num_global_output = cfg.MODEL.NUM_INS_MASKS,
             num_mask_output = cfg.MODEL.NUM_INS_MASKS,
             use_bn=cfg.MODEL.SEG_NORMALIZATION=='BN',

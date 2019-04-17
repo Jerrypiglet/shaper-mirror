@@ -55,17 +55,24 @@ def train_model(models,
         viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
         predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
 
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+
         for zoom_iteration in range(num_zoom_iteration):
 
-            data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+            #data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+            data_batch['points_and_masks'] = torch.cat([points, viewed_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 
             proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
             proposal_mask = proposal_preds['mask_output'][:,0,:]
             proposal_mask = F.softmax(proposal_mask,1)
-            meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
-            num_meta_data = meta_data.shape[1]
+            #meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
+            #num_meta_data = meta_data.shape[1]
+            m,_ = torch.max(proposal_mask, 1, keepdim=True)
+            proposal_mask[proposal_mask < 0.1*m]=0
+            proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
             distr = Categorical(proposal_mask)
             #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
             centroids = distr.sample()
@@ -103,25 +110,23 @@ def train_model(models,
             point2group = point2group.type(torch.long)
             groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
             groups=groups[:,:num_point]
-            zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
-            zoomed_meta_data*=0
+            #zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+            #zoomed_meta_data*=0
 
-            data_batch['zoomed_meta_data']=zoomed_meta_data
-            data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
+            #data_batch['zoomed_meta_data']=zoomed_meta_data
+            data_batch['zoomed_points']=zoomed_points#torch.cat([zoomed_points,zoomed_meta_data], 1)
             data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
 
             segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
 
-            for optimizer in optimizers:
-                optimizer.zero_grad()
-            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
+            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration))
             proposal_losses = sum(proposal_loss_dict.values())
             meters.update(loss=proposal_losses, **proposal_loss_dict)
-            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label')
+            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix='_'+str(zoom_iteration))
             segmentation_losses = sum(segmentation_loss_dict.values())
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)
             proposal_losses.backward(retain_graph=True)
-            segmentation_losses.backward()
+            segmentation_losses.backward(retain_graph = zoom_iteration < num_zoom_iteration-1)
 
             masks = segmentation_preds['mask_output']
             masks = F.softmax(masks,1)
@@ -133,7 +138,7 @@ def train_model(models,
 
             predict_mask = predict_mask.squeeze(1)
             viewed_mask=viewed_mask.squeeze(1)
-            #predict_mask = predict_mask.scatter(1,groups, masks)
+            predict_mask = predict_mask.scatter_add(1,groups, masks)
             viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
             viewed_mask[viewed_mask>=1]=1
             viewed_mask = viewed_mask.unsqueeze(1).detach()
@@ -201,14 +206,18 @@ def validate_model(models,
             for zoom_iteration in range(num_zoom_iteration):
 
                 data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+                data_batch['points_and_masks'] = torch.cat([points, viewed_mask], 1)
                 data_batch['viewed_mask'] = viewed_mask
 
                 proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
                 proposal_mask = F.softmax(proposal_mask,1)
-                meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
-                num_meta_data = meta_data.shape[1]
+                #meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
+                #num_meta_data = meta_data.shape[1]
+                m,_ = torch.max(proposal_mask, 1, keepdim=True)
+                proposal_mask[proposal_mask < 0.1*m]=0
+                proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
                 distr = Categorical(proposal_mask)
                 #distr = Categorical (torch.tensor([0.25,0.25,0.5]))
                 # print ('let me tell you', data_batch['point2group'].cuda())
@@ -247,10 +256,10 @@ def validate_model(models,
                 point2group = point2group.type(torch.long)
                 groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
                 groups=groups[:,:num_point]
-                zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+                #zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
 
-                data_batch['zoomed_meta_data']=zoomed_meta_data
-                data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
+                #data_batch['zoomed_meta_data']=zoomed_meta_data
+                data_batch['zoomed_points']=zoomed_points#torch.cat([zoomed_points,zoomed_meta_data], 1)
                 data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
 
                 segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
