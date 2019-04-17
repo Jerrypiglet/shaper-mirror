@@ -43,8 +43,6 @@ class ProposalLoss(nn.Module):
         finish_label /= (finish_label+1e-12)
         finish_logit = preds['global_output'].view((batch_size,))
 
-        print('debug finish', torch.sigmoid(finish_logit[:]), finish_label[:])
-        print ('viewed mask', torch.sum(viewed_mask[:2,0,:],1))
 
 
         conf_loss = F.binary_cross_entropy_with_logits(finish_logit, finish_label)
