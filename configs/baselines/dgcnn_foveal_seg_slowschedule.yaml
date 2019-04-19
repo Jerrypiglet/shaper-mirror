@@ -6,7 +6,7 @@ MODEL:
   PROP_NORMALIZATION: "BN"
   SEG_NORMALIZATION: "BN"
   NUM_INS_MASKS: 6
-  META_DATA: 16
+  META_DATA: 32
   DGCNN:
       K: 32
 INPUT:
@@ -16,24 +16,24 @@ DATASET:
   TYPE: "PartNet"
   TRAIN: ("train",)
   VAL: ("val",)
-  TEST: ("test",)
+  TEST: ("train",)
 SOLVER:
   TYPE: "Adam"
   BASE_LR: 0.003
 SCHEDULER:
   TYPE: "StepLR"
   StepLR:
-    gamma: 0.7
-    step_size: 20
+    gamma: 0.9
+    step_size: 100
   MAX_EPOCH: 2500
 TRAIN:
   BATCH_SIZE: 12
   CHECKPOINT_PERIOD: 100
   LOG_PERIOD: 50
-  VAL_PERIOD: 0
+  VAL_PERIOD: 1
   AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
-  NUM_ZOOM_ITERATION: 2
+  NUM_ZOOM_ITERATION: 4
 TEST:
   BATCH_SIZE: 1
   NUM_ZOOM_ITERATION: 4
-  VIS_DIR: 'visu_test'
+  VIS_DIR: 'visu_train'

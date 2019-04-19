@@ -24,6 +24,7 @@ def train_model(models,
                 data_loader,
                 optimizers,
                 num_zoom_iteration=1,
+                meta_data_size=32,
                 freezers=None,
                 log_period=1):
     logger = logging.getLogger("shaper.train")
@@ -54,6 +55,7 @@ def train_model(models,
 
         viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
         predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
+        meta_mask = torch.zeros(batch_size, meta_data_size,num_point).cuda()
 
         for optimizer in optimizers:
             optimizer.zero_grad()
@@ -61,6 +63,7 @@ def train_model(models,
         for zoom_iteration in range(num_zoom_iteration):
 
             data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+            #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 
             proposal_preds = proposal_model(data_batch, 'points_and_masks')
@@ -68,7 +71,6 @@ def train_model(models,
             proposal_mask = proposal_preds['mask_output'][:,0,:]
             proposal_mask = F.softmax(proposal_mask,1)
             #meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
-            #num_meta_data = meta_data.shape[1]
             m,_ = torch.max(proposal_mask, 1, keepdim=True)
             proposal_mask[proposal_mask < 0.1*m]=0
             proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
@@ -109,14 +111,17 @@ def train_model(models,
             point2group = point2group.type(torch.long)
             groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
             groups=groups[:,:num_point]
-            #zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
+            #zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, meta_data_size, num_point))
             #zoomed_meta_data*=0
 
             #data_batch['zoomed_meta_data']=zoomed_meta_data
             data_batch['zoomed_points']=zoomed_points#torch.cat([zoomed_points,zoomed_meta_data], 1)
+            #data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
             data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
 
             segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
+            #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
+            #segmentation_preds['mask_output'] = segmentation_preds['mask_output'][:,:-meta_data_size,:]
 
             proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration))
             proposal_losses = sum(proposal_loss_dict.values())
@@ -137,9 +142,11 @@ def train_model(models,
 
             predict_mask = predict_mask.squeeze(1)
             viewed_mask=viewed_mask.squeeze(1)
+            new_groups = groups.unsqueeze(1).expand(batch_size, meta_data_size, num_point).detach()
             predict_mask = predict_mask.scatter_add(1,groups, masks)
             viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
-            viewed_mask[viewed_mask>=1]=1
+            #meta_mask = meta_mask.scatter(2,new_groups, meta_data)
+            #viewed_mask[viewed_mask>=1]=1
             viewed_mask = viewed_mask.unsqueeze(1).detach()
             predict_mask = predict_mask.unsqueeze(1).detach()
 
@@ -358,6 +365,7 @@ def train(cfg, output_dir=""):
                                    loss_fns,
                                    train_data_loader,
                                    num_zoom_iteration=cfg.TRAIN.NUM_ZOOM_ITERATION,
+                                   meta_data_size=cfg.MODEL.META_DATA,
                                    optimizers=optimizers,
                                    freezers=freezers,
                                    log_period=cfg.TRAIN.LOG_PERIOD,

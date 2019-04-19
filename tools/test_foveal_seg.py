@@ -125,8 +125,6 @@ def test(cfg, output_dir=""):
                 proposal_mask = F.softmax(proposal_mask,1)
                 proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
                 finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
-                meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
-                num_meta_data = meta_data.shape[1]
                 m,_ = torch.max(proposal_mask, 1, keepdim=True)
                 proposal_mask[proposal_mask < 0.1*m]=0
                 proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
@@ -164,11 +162,8 @@ def test(cfg, output_dir=""):
                 point2group = point2group.type(torch.long)
                 groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
                 groups=groups[:,:num_point]
-                zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
-                zoomed_meta_data*=0
 
-                data_batch['zoomed_meta_data']=zoomed_meta_data
-                data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
+                data_batch['zoomed_points']=zoomed_points
                 data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
 
                 segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
