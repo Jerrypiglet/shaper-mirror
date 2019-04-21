@@ -84,7 +84,8 @@ class PartNetH5(Dataset):
                 print (fname)
                 print (f.keys())
                 if 'point2group'+str(self.num_points) in f.keys():
-                    self.cache_point2group.append(f['point2group'+str(self.num_points)][:])
+                    #self.cache_point2group.append(f['point2group'+str(self.num_points)][:])
+                    self.cache_point2group.append(f['point2group2500'][:])
                 else:
                     self.cache_point2group.append(f['point2group10000'][:])
             json_file = data_path.replace('.h5','.json')

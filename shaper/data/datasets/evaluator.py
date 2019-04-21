@@ -12,6 +12,7 @@ from prettytable import PrettyTable
 from shaper.utils.pc_util import point_cloud_three_views
 from shaper.data.datasets.visualize import gen_visu, gen_foveal_visu
 import os
+import torch
 
 
 def evaluate_classification(dataset,
@@ -244,8 +245,17 @@ def evaluate_part_instance_segmentation(dataset,
     assert len(pred_logits) == num_samples
 
     gt_masks= dataset.cache_ins_seg_label[:,:,:dataset.num_points]
-    pred_logits =pred_logits[:,:,:]
-    gt_masks=gt_masks[:,:,:]
+    point2group = np.concatenate([np.zeros((num_samples,2500)),dataset.cache_point2group], 1)
+    point2group = torch.tensor(point2group[:,:dataset.num_points]).long()
+    vm = torch.zeros((num_samples, 6,2500)).float()
+    pm = torch.zeros((num_samples, 6,2500)).float()
+    newp2g=point2group.unsqueeze(1).expand(pred_logits.shape)
+    pm = pm.scatter_add(2, newp2g, torch.tensor(pred_logits)).numpy()
+    vm = vm.scatter_add(2, newp2g, torch.ones(pred_logits.shape)).numpy()
+
+    #pred_logits = pm/(vm+1e-12)
+    pred_logits =pred_logits[:,:,:2500]
+    gt_masks=gt_masks[:,:,:2500]
     ap, ious = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.10)
     print('AP 10', ap)
     ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.25)

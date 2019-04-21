@@ -173,10 +173,12 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
                     continue
                 out_fn = os.path.join(child_part_dir, 'all_ret_%d.png'%j)
                 render_pts_with_label(out_fn, pts, all_ret[i,j])
+                out_fn = os.path.join(child_part_flipped_dir, 'all_ret_%d.png'%j)
+                render_pts_with_label(out_fn, pts_flipped, all_ret[i,j])
                 out_fn = os.path.join(child_info_dir, 'all_ret_%d.txt'%j)
                 with open(out_fn,'w') as fout:
                     fout.write('conf: %f\n' % all_conf[i,j] )
-                    fout.write('conf: %f\n' % all_ious[i,j] )
+                    fout.write('iou: %f\n' % all_ious[i,j] )
 
 
 
