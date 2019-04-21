@@ -32,5 +32,5 @@ TRAIN:
   AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation","PointCloudScale", "PointCloudTranslate")
 TEST:
   BATCH_SIZE: 16
-  AUGMENTATION: ("PointCloudRotate",)
-  VIS_DIR: 'visu_test_augment'
+  #AUGMENTATION: ("PointCloudRotate",)
+  VIS_DIR: 'visu_test'

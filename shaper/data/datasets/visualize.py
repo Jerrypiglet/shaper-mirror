@@ -22,7 +22,7 @@ from shaper.data import transforms as T
 
 
 
-def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, visu_num=1000 ) :
+def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, ious=None, visu_num=1000 ) :
     '''
     pts n_shape x num_point x 3 float32
     gt_ins_labels n_shape x num_point int32
@@ -94,15 +94,15 @@ def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, visu_num=1000 ) :
 
             out_fn = os.path.join(child_info_dir, cur_part_prefix+'.txt')
             with open(out_fn,'w') as fout:
-                fout.write('conf: %f' % conf_label[i,j] )
+                fout.write('conf: %f\n' % conf_label[i,j] )
+                if ious is not None:
+                    fout.write('iou: %f' % ious[i,j] )
 
 
 
 
-def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_logits, zoomed_points_all, pred_ins_label, conf_label, visu_num=1000 ) :
+def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_logits, zoomed_points_all, pred_ins_label, conf_label, all_ret=None, all_conf=None, all_ious=None, visu_num=1000 ) :
     '''
-    pts n_shape x num_point x 3 float32
-    gt_ins_labels n_shape x num_point int32
     '''
 
     pts_dir = os.path.join(visu_dir, 'pts')
@@ -167,6 +167,18 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
         child_proposal_flipped_dir = os.path.join(cur_child_dir, 'proposal_flipped')
         mkdir(child_proposal_flipped_dir)
 
+        if all_ret is not None:
+            for j in range(all_ret.shape[1]):
+                if all_conf[i,j]==0:
+                    continue
+                out_fn = os.path.join(child_part_dir, 'all_ret_%d.png'%j)
+                render_pts_with_label(out_fn, pts, all_ret[i,j])
+                out_fn = os.path.join(child_info_dir, 'all_ret_%d.txt'%j)
+                with open(out_fn,'w') as fout:
+                    fout.write('conf: %f\n' % all_conf[i,j] )
+                    fout.write('conf: %f\n' % all_ious[i,j] )
+
+
 
         for zoom_iteration in range(num_zoom_iteration):
 
@@ -187,7 +199,7 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
             out_fn = os.path.join(child_part_dir, 'iteration%d_stage1_zoom.png'%zoom_iteration)
             render_pts_with_label(out_fn, pts, viewed_masks[zoom_iteration][i])
             out_fn = os.path.join(child_part_flipped_dir, 'iteration%d_stage1_zoom.png'%zoom_iteration)
-            render_pts_with_feature(out_fn, pts_flipped, viewed_masks[zoom_iteration][i])
+            render_pts_with_label(out_fn, pts_flipped, viewed_masks[zoom_iteration][i])
 
             for j in range(pred_ins_label[zoom_iteration].shape[1]):
                 cur_part_prefix = 'iteration%d_stage2_part-%03d' % (zoom_iteration, j)

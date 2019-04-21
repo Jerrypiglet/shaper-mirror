@@ -62,7 +62,7 @@ def train_model(models,
 
         for zoom_iteration in range(num_zoom_iteration):
 
-            data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),((predict_mask/viewed_mask+1e-12)>0.2).float()], 1)
+            data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
             #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 

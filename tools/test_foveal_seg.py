@@ -85,6 +85,7 @@ def test(cfg, output_dir=""):
     zoomed_points_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
     conf_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
     seg_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
+    global_seg_logit_all=[ [] for i in range(cfg.TEST.NUM_ZOOM_ITERATION)]
     viewed_mask_all = [ [] for i in  range(cfg.TEST.NUM_ZOOM_ITERATION)]
     proposal_model, segmentation_model = models
     proposal_loss_fn, segmentation_loss_fn = loss_fns
@@ -117,7 +118,7 @@ def test(cfg, output_dir=""):
 
             for zoom_iteration in range(cfg.TEST.NUM_ZOOM_ITERATION):
 
-                data_batch['points_and_masks'] = torch.cat([points, viewed_mask,predict_mask], 1)
+                data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12))], 1)
                 data_batch['viewed_mask'] = viewed_mask
                 proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
@@ -130,6 +131,7 @@ def test(cfg, output_dir=""):
                 proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
                 distr = Categorical(proposal_mask)
                 centroids = distr.sample()
+                _, centroids = torch.max(proposal_mask,1)
                 centroids = centroids.view(batch_size,1, 1)
 
                 gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
@@ -176,16 +178,23 @@ def test(cfg, output_dir=""):
                 masks = F.softmax(masks,1)
                 confs = segmentation_preds['global_output']
                 confs = torch.sigmoid(confs)
-                masks *= confs.unsqueeze(-1)
 
+                new_groups = groups.unsqueeze(1).expand(masks.shape)
+                vm = torch.zeros(masks.shape).cuda()
+                pm = torch.zeros(masks.shape).cuda()
+                pm = pm.scatter_add(2,new_groups, masks)
+                vm = vm.scatter_add(2,new_groups, torch.ones(masks.shape).cuda())
+                global_seg_logit_all[zoom_iteration].append((pm/(vm+1e-12)).cpu().numpy())
+
+                masks *= confs.unsqueeze(-1)
                 masks, _ = torch.max(masks, 1)
 
                 predict_mask = predict_mask.squeeze(1)
                 viewed_mask=viewed_mask.squeeze(1)
-                #predict_mask = predict_mask.scatter_add(1,groups, masks)
+                predict_mask = predict_mask.scatter_add(1,groups, masks)
                 viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
-                viewed_mask[viewed_mask>=1]=1
-                viewed_mask_all[zoom_iteration].append((viewed_mask.cpu().numpy() > 0).astype(np.int32))
+                #viewed_mask[viewed_mask>=1]=1
+                viewed_mask_all[zoom_iteration].append(viewed_mask.cpu().numpy())
                 viewed_mask = viewed_mask.unsqueeze(1).detach()
                 predict_mask = predict_mask.unsqueeze(1).detach()
 
@@ -218,14 +227,14 @@ def test(cfg, output_dir=""):
     logger.info("Test {}  forward time: {:.2f}s".format(test_meters.summary_str, test_time))
     for zoom_iteration in range(cfg.TEST.NUM_ZOOM_ITERATION):
         seg_logit_all[zoom_iteration] = np.concatenate(seg_logit_all[zoom_iteration], axis=0)
+        global_seg_logit_all[zoom_iteration] = np.concatenate(global_seg_logit_all[zoom_iteration], axis=0)
         conf_logit_all[zoom_iteration] = np.concatenate(conf_logit_all[zoom_iteration], axis=0)
         viewed_mask_all[zoom_iteration] = np.concatenate(viewed_mask_all[zoom_iteration], axis=0)
         finish_logit_all[zoom_iteration] = np.concatenate(finish_logit_all[zoom_iteration], axis=0)
         zoomed_points_all[zoom_iteration] = np.concatenate(zoomed_points_all[zoom_iteration], axis=0)
         proposal_logit_all[zoom_iteration] = np.concatenate(proposal_logit_all[zoom_iteration], axis=0)
 
-
-    evaluate_foveal_segmentation(test_dataset, viewed_mask_all,  proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
+    evaluate_foveal_segmentation(test_dataset, viewed_mask_all,  proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,global_seg_logit_all, output_dir=output_dir, vis_dir=vis_dir)
 
 
 def main():

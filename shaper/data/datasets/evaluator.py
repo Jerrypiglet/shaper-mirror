@@ -243,48 +243,181 @@ def evaluate_part_instance_segmentation(dataset,
     num_samples = len(dataset)
     assert len(pred_logits) == num_samples
 
-    seg_acc_per_class = defaultdict(float)
-    num_inst_per_class = defaultdict(int)
-    iou_per_class = defaultdict(float)
+    gt_masks= dataset.cache_ins_seg_label[:,:,:dataset.num_points]
+    pred_logits =pred_logits[:,:,:]
+    gt_masks=gt_masks[:,:,:]
+    ap, ious = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.10)
+    print('AP 10', ap)
+    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.25)
+    print('AP 25', ap)
+    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.50)
+    print('AP 50', ap)
+    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.75)
+    print('AP 75', ap)
+    exit(0)
 
-    for ind in tqdm(range(num_samples)):
-        continue
-        data = dataset[ind]
-        points = data["points"]
-        gt_seg_label = data["ins_seg_label"]
-        # (num_seg_classes, num_points)
-        pred_seg_logit = pred_logits[ind]
-
-        # sanity check
-        assert gt_seg_label.shape[1] == points.shape[0]
-        # assert pred_seg_logit.shape[1] >= points.shape[0]
-
-        num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
-        pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
-        # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
-        gt_seg_label = gt_seg_label[:num_valid_points]
-
-        pred_seg_label = np.argmax(pred_seg_logit, axis=0)
-        for ind, segid in enumerate(segids):
-            # convert partid to segid
-            pred_seg_label[pred_seg_label == ind] = segid
-
-        iou_per_instance = 0.0
-        for ind, segid in enumerate(segids):
-            gt_mask = (gt_seg_label == segid)
-            num_intersection = np.sum(np.logical_and(tp_mask, gt_mask))
-            num_pos = np.sum(pred_seg_label == segid)
-            num_gt = np.sum(gt_mask)
-            num_union = num_pos + num_gt - num_intersection
-            iou = num_intersection / num_union if num_union > 0 else 1.0
-            iou_per_instance += iou
-        iou_per_instance /= len(segids)
-        iou_per_class[gt_cls_label] += iou_per_instance
+    gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
 
 
-    gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits)
+def merge_masks(masks, confs, finish):
+    '''
+    masks zoom_iteration n_shape x K x N
+    conf zoom_iteration n_shape x K
+    '''
 
+    masks=[np.expand_dims(x,1) for x in masks]
+    confs = [np.expand_dims(x,1) for x in confs]
+    finish = [x for x in finish]
+    masks = np.concatenate(masks, 1)
+    confs=np.concatenate(confs,1)
+    finish=np.concatenate(finish,1)
 
+    n_shape, num_zoom_iteration, K, N = masks.shape
+    all_ret=[]
+    all_conf=[]
+    for shape in range(n_shape):
+        ret = []
+        ret_confs = []
+        for zoom_iteration in range(num_zoom_iteration):
+            if finish[shape,zoom_iteration]<0.2:
+                break
+            cur_conf = confs[shape,zoom_iteration]
+            cur_mask = masks[shape,zoom_iteration]
+            for i in range(K):
+                if cur_conf[i]< 0.2:
+                    continue
+                m = cur_mask[i]
+                m = m > 0.5
+                if np.sum(m) == 0:
+                    continue
+                break_flag=False
+                for k in range(len(ret)):
+                    intersection = np.sum(np.logical_and(m, ret[k]))
+                    if intersection*10 >= np.sum(m) or intersection*10 >= np.sum(ret[k]):
+                        break_flag=True
+                        ret[k] = np.logical_or(ret[k], m)
+                        if cur_conf[i] > ret_confs[k]:
+                            ret_confs[k] = cur_conf[i]
+                        break
+                if not break_flag:
+                    ret.append(m)
+                    ret_confs.append(cur_conf[i])
+        if len(ret)>0:
+            ret = np.concatenate(ret, 0)
+            ret = np.reshape(ret, (-1, N))
+            ret_confs = np.array(ret_confs)
+        else:
+            ret = np.zeros((0, N))
+            ret_confs = np.zeros((0, ))
+        all_ret.append(ret)
+        all_conf.append(ret_confs)
+    size = max([x.shape[0] for x in all_conf])
+    for i in range(len(all_ret)):
+        temp = all_ret[i]
+        all_ret[i] = np.concatenate([all_ret[i], np.zeros(( size-all_ret[i].shape[0], N))])
+        all_conf[i] = np.concatenate([all_conf[i], np.zeros(( size-all_conf[i].shape[0], ))])
+
+    all_conf = np.concatenate(all_conf, 0)
+    all_ret = np.concatenate(all_ret, 0)
+    all_ret = np.reshape( all_ret, (n_shape, size, N))
+    all_conf = np.reshape( all_conf, (n_shape, size))
+    return all_ret, all_conf
+
+def instance_segmentation_mAP(pred_masks, confs, gt_masks, iou_threshold):
+    '''
+    pred_masks NUM_SHAPES x NUM_PRED_MASKS x N
+    confs NUM_SHAPES x NUM_PRED_MASKS
+    gt_masks NUM_SHAPES x NUM_GT_MASKS x N
+    '''
+    true_pos_list = []
+    false_pos_list = []
+    conf_score_list = []
+
+    n_shape = pred_masks.shape[0]
+    gt_n_ins = gt_masks.shape[1]
+    pred_n_ins = pred_masks.shape[1]
+    ious = np.zeros((pred_masks.shape[0], pred_masks.shape[1]))
+
+    for i in range(n_shape):
+        cur_pred_mask = pred_masks[i]
+        cur_pred_conf = confs[i]
+        cur_gt_mask = gt_masks[i]
+
+        order =np.argsort(-cur_pred_conf)
+        gt_used = np.zeros((gt_n_ins,), dtype=np.bool)
+        gt_valid = np.sum(cur_gt_mask, 1) > 0
+
+        for j in range(pred_n_ins):
+            idx = order[j]
+
+            if  cur_pred_conf[idx]> 0.2 and np.sum(cur_pred_mask[idx]) > 0:
+                iou_max = 0.0; cor_gt_id = -1;
+                for k in range(gt_n_ins):
+                    if gt_valid[k] and (not gt_used[k]):
+                        intersect = np.sum(np.logical_and(cur_gt_mask[k, :] , cur_pred_mask[idx, :]))
+                        union = np.sum(np.logical_or(cur_gt_mask[k, :] , cur_pred_mask[idx, :]))
+                        iou = intersect * 1.0 / union
+
+                        if iou > iou_max:
+                            iou_max = iou
+                            cor_gt_id = k
+                if iou_max > iou_threshold:
+                    ious[i,idx] = iou_max
+                    gt_used[cor_gt_id] = True
+
+                    # add in a true positive
+                    true_pos_list.append(True)
+                    false_pos_list.append(False)
+                    conf_score_list.append(cur_pred_conf[idx])
+
+                else:
+                    # add in a false positive
+                    true_pos_list.append(False)
+                    false_pos_list.append(True)
+                    conf_score_list.append(cur_pred_conf[idx])
+
+    # compute AP
+    true_pos = np.array(true_pos_list, dtype=np.float32)
+    false_pos = np.array(false_pos_list, dtype=np.float32)
+    conf_score = np.array(conf_score_list, dtype=np.float32)
+
+    order = np.argsort(conf_score)
+    sorted_true_pos = true_pos[order]
+    sorted_false_pos = false_pos[order]
+
+    gt_npos = np.sum(np.sum(gt_masks,2)>0)
+    ap = compute_ap(sorted_true_pos, sorted_false_pos, gt_npos)
+
+    return ap, ious
+
+def compute_ap(tp, fp, gt_npos, n_bins=100):
+    assert len(tp) == len(fp), 'ERROR: the length of true_pos and false_pos is not the same!'
+
+    tp = np.cumsum(tp)
+    fp = np.cumsum(fp)
+
+    rec = tp / gt_npos
+    prec = tp / (fp + tp)
+
+    rec = np.insert(rec, 0, 0.0)
+    prec = np.insert(prec, 0, 1.0)
+
+    ap = 0.
+    delta = 1.0 / n_bins
+
+    out_rec = np.arange(0, 1 + delta, delta)
+    out_prec = np.zeros((n_bins+1), dtype=np.float32)
+
+    for idx, t in enumerate(out_rec):
+        prec1 = prec[rec >= t]
+        if len(prec1) == 0:
+            p = 0.
+        else:
+            p = max(prec1)
+
+        out_prec[idx] = p
+        ap = ap + p / (n_bins + 1)
+    return ap
 
 def evaluate_foveal_segmentation(dataset,
                                 viewed_masks,
@@ -293,6 +426,7 @@ def evaluate_foveal_segmentation(dataset,
                                 zoomed_points,
                                pred_logits,
                                conf_logits,
+                               glob_pred_logits,
                                aux_preds=None,
                                output_dir="",
                                vis_dir="",
@@ -324,39 +458,15 @@ def evaluate_foveal_segmentation(dataset,
     num_inst_per_class = defaultdict(int)
     iou_per_class = defaultdict(float)
 
-    for ind in tqdm(range(num_samples)):
-        continue
-        data = dataset[ind]
-        points = data["points"]
-        gt_seg_label = data["ins_seg_label"]
-        # (num_seg_classes, num_points)
-        pred_seg_logit = pred_logits[ind]
+    all_ret, all_conf = merge_masks(glob_pred_logits, conf_logits, finish_logits)
+    gt_masks= dataset.cache_ins_seg_label[:,:,:dataset.num_points]
+    ap, ious = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.10)
+    print('AP 10', ap)
+    ap, _  = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.25)
+    print('AP 25', ap)
+    ap, _ = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.50)
+    print('AP 50', ap)
+    ap, _ = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.75)
+    print('AP 75', ap)
 
-        # sanity check
-        assert gt_seg_label.shape[1] == points.shape[0]
-        # assert pred_seg_logit.shape[1] >= points.shape[0]
-
-        num_valid_points = min(pred_seg_logit.shape[1], points.shape[0])
-        pred_seg_logit = pred_seg_logit[segids, :num_valid_points]
-        # pred_seg_logit = pred_seg_logit[:, :num_valid_points]
-        gt_seg_label = gt_seg_label[:num_valid_points]
-
-        pred_seg_label = np.argmax(pred_seg_logit, axis=0)
-        for ind, segid in enumerate(segids):
-            # convert partid to segid
-            pred_seg_label[pred_seg_label == ind] = segid
-
-        iou_per_instance = 0.0
-        for ind, segid in enumerate(segids):
-            gt_mask = (gt_seg_label == segid)
-            num_intersection = np.sum(np.logical_and(tp_mask, gt_mask))
-            num_pos = np.sum(pred_seg_label == segid)
-            num_gt = np.sum(gt_mask)
-            num_union = num_pos + num_gt - num_intersection
-            iou = num_intersection / num_union if num_union > 0 else 1.0
-            iou_per_instance += iou
-        iou_per_instance /= len(segids)
-        iou_per_class[gt_cls_label] += iou_per_instance
-
-
-    gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits)
+    gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
