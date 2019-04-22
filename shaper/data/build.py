@@ -140,4 +140,4 @@ def build_dataloader(cfg, mode="train"):
         drop_last=(is_train and cfg.DATALOADER.DROP_LAST),
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
-    return data_loader
+    return data_loader, dataset

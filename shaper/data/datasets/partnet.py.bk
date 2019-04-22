@@ -19,8 +19,6 @@ from torch.utils.data import Dataset
 from shaper.data.datasets.utils import crop_or_pad_points, normalize_points
 
 
-
-
 class PartNetH5(Dataset):
     """ Partnet Instance Segmentation
 
@@ -56,19 +54,22 @@ class PartNetH5(Dataset):
         self.root_dir = root_dir
         self.dataset_names = dataset_names
         self.num_points = num_points
-        self.point2group = 'point2group'+str(num_points)
         self.shuffle_points = shuffle_points
         self.transform = transform
         self.seg_transform = seg_transform
 
         self.meta_data=[]
-        self.h5_handlers = {}
-        self.record={}
-        self.num_gt_masks=0
+        self.cache_points=[]
+        self.cache_ins_seg_label=[]
+        self.cache_point2group = []
 
         for dataset_name in dataset_names:
             self._load_dataset(dataset_name)
 
+        self.cache_points = np.concatenate(self.cache_points, axis=0)
+        self.cache_ins_seg_label = np.concatenate(self.cache_ins_seg_label, axis=0)
+        self.cache_point2group = np.concatenate(self.cache_point2group, axis=0)
+        print('christmas')
 
 
     def _load_dataset(self, dataset_name):
@@ -78,31 +79,30 @@ class PartNetH5(Dataset):
         for fname in fname_list:
             data_path = osp.join(self.root_dir, osp.basename(fname))
             with h5py.File(data_path) as f:
-                print(f['label'].shape, data_path)
-                self.num_gt_masks = max(self.num_gt_masks, f['label'].shape[1])
                 num_samples = f['label'].shape[0]
+                self.cache_points.append(f['pts'][:])
+                self.cache_ins_seg_label.append(f['label'][:])
+                print (fname)
+                print (f.keys())
+                if 'point2group'+str(self.num_points) in f.keys():
+                    #self.cache_point2group.append(f['point2group'+str(self.num_points)][:])
+                    self.cache_point2group.append(f['point2group2500'][:])
+                else:
+                    self.cache_point2group.append(f['point2group10000'][:])
             json_file = data_path.replace('.h5','.json')
+            with open(json_file,'r') as jf:
+                self.record = json.load(jf)
             for ind in range(num_samples):
                 self.meta_data.append({
                     "offset": ind,
                     "size": num_samples,
                     "path": data_path,
                 })
-            with open(json_file,'r') as jf:
-                self.record[data_path] = json.load(jf)
-            self.h5_handlers[data_path]=None
 
     def __getitem__(self, index):
-
-        meta = self.meta_data[index]
-        handler = self.h5_handlers[meta['path']]
-        if handler is None:
-            handler = h5py.File(meta['path'],'r')
-            self.h5_handlers[meta['path']] = handler
-
-        points = handler['pts'][meta['offset'],:,:]
-        ins_seg_label = handler['label'][meta['offset'],:,:]
-        ins_seg_label = np.concatenate([ins_seg_label, np.zeros((self.num_gt_masks - ins_seg_label.shape[0],ins_seg_label.shape[1]))], 0)
+        points = self.cache_points[index]
+        ins_seg_label = None
+        ins_seg_label = self.cache_ins_seg_label[index]
         out_dict = {}
 
         #points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
@@ -119,13 +119,13 @@ class PartNetH5(Dataset):
             points = np.transpose(points, [1,0])
 
 
-        out_dict['point2group'] = handler[self.point2group][meta['offset'],:]
+        out_dict['point2group'] = self.cache_point2group[index]
         out_dict['full_points'] = points
         out_dict['full_ins_seg_label']= ins_seg_label
 
         out_dict["points"] = points[:,:self.num_points]
         out_dict["ins_seg_label"] = ins_seg_label[:,:self.num_points]
-        out_dict['record']=self.record[meta['path']][meta['offset']]
+        out_dict['record']=self.record[index]
 
         return out_dict
 

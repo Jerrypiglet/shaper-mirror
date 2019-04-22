@@ -32,21 +32,29 @@ def train_model(model,
     #metric_fn.train()
 
     end = time.time()
+    cur_time=time.time()
     for iteration, data_batch in enumerate(data_loader):
+        load_time = time.time()-cur_time
+
+        cur_time=time.time()
         data_time = time.time() - end
-
-
         data_batch = {k: v.cuda(non_blocking=True) for k, v in data_batch.items() if type(v) is torch.Tensor}
 
+        move_time = time.time()-cur_time
+        cur_time=time.time()
         preds = model(data_batch)
 
         optimizer.zero_grad()
         loss_dict = loss_fn(preds, data_batch)
         #metric_dict = metric_fn(preds, data_batch)
         losses = sum(loss_dict.values())
+        forward_time = time.time()-cur_time
+        cur_time=time.time()
         meters.update(loss=losses, **loss_dict)
         losses.backward()
         optimizer.step()
+        losses = sum(loss_dict.values())
+        forward_time = time.time()-cur_time
 
         batch_time = time.time() - end
         end = time.time()
@@ -118,6 +126,8 @@ def validate_model(model,
 def train(cfg, output_dir=""):
     logger = logging.getLogger("shaper.trainer")
 
+
+
     set_random_seed(cfg.RNG_SEED)
     # Build model
     model, loss_fn, metric_fn = build_model(cfg)
@@ -148,9 +158,10 @@ def train(cfg, output_dir=""):
 
     set_random_seed(cfg.RNG_SEED)
     # Build data loader
-    train_data_loader = build_dataloader(cfg, mode="train")
+    train_data_loader, train_dataset = build_dataloader(cfg, mode="train")
     val_period = cfg.TRAIN.VAL_PERIOD
-    val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
+    val_data_loader, val_dataset = build_dataloader(cfg, mode="val") if val_period > 0 else None
+
 
     # Build tensorboard logger (optionally by comment)
     tensorboard_logger = TensorboardLogger(output_dir)
