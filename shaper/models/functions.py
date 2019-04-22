@@ -18,7 +18,9 @@ def hungarian_matching( pred_x, gt_x ):
     matching_idx = -np.ones((batch_size, num_pred_ins_mask), dtype=np.int32)
     curnmasks = np.sum((np.sum(gt_x, 2) > 0).astype(np.int32),1 )
     for i, curnmask  in enumerate(curnmasks):
-        row_ind, col_ind = linear_sum_assignment(matching_score[i, :curnmask, :])
+        if curnmask == 0:
+            continue
+        row_ind, col_ind = linear_sum_assignment(matching_score[i, :curnmask, :curnmask*2+3])
         matching_idx[i,col_ind]=row_ind
     return matching_idx
 

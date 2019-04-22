@@ -244,27 +244,26 @@ def evaluate_part_instance_segmentation(dataset,
     num_samples = len(dataset)
     assert len(pred_logits) == num_samples
 
-    gt_masks= dataset.cache_ins_seg_label[:,:,:dataset.num_points]
-    point2group = np.concatenate([np.zeros((num_samples,2500)),dataset.cache_point2group], 1)
-    point2group = torch.tensor(point2group[:,:dataset.num_points]).long()
-    vm = torch.zeros((num_samples, 6,2500)).float()
-    pm = torch.zeros((num_samples, 6,2500)).float()
-    newp2g=point2group.unsqueeze(1).expand(pred_logits.shape)
-    pm = pm.scatter_add(2, newp2g, torch.tensor(pred_logits)).numpy()
-    vm = vm.scatter_add(2, newp2g, torch.ones(pred_logits.shape)).numpy()
+    #gt_masks= dataset.cache_ins_seg_label[:,:,:dataset.num_points]
+    #point2group = np.concatenate([np.zeros((num_samples,2500)),dataset.cache_point2group], 1)
+    #point2group = torch.tensor(point2group[:,:dataset.num_points]).long()
+    #vm = torch.zeros((num_samples, 6,2500)).float()
+    #pm = torch.zeros((num_samples, 6,2500)).float()
+    #newp2g=point2group.unsqueeze(1).expand(pred_logits.shape)
+    #pm = pm.scatter_add(2, newp2g, torch.tensor(pred_logits)).numpy()
+    #vm = vm.scatter_add(2, newp2g, torch.ones(pred_logits.shape)).numpy()
 
     #pred_logits = pm/(vm+1e-12)
-    pred_logits =pred_logits[:,:,:2500]
-    gt_masks=gt_masks[:,:,:2500]
-    ap, ious = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.10)
+    #pred_logits =pred_logits[:,:,:2500]
+    #gt_masks=gt_masks[:,:,:2500]
+    ap, ious = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.10)
     print('AP 10', ap)
-    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.25)
+    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.25)
     print('AP 25', ap)
-    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.50)
+    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.50)
     print('AP 50', ap)
-    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, gt_masks, 0.75)
+    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.75)
     print('AP 75', ap)
-    exit(0)
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
 
@@ -333,7 +332,7 @@ def merge_masks(masks, confs, finish):
     all_conf = np.reshape( all_conf, (n_shape, size))
     return all_ret, all_conf
 
-def instance_segmentation_mAP(pred_masks, confs, gt_masks, iou_threshold):
+def instance_segmentation_mAP(pred_masks, confs, dataset, iou_threshold):
     '''
     pred_masks NUM_SHAPES x NUM_PRED_MASKS x N
     confs NUM_SHAPES x NUM_PRED_MASKS
@@ -344,14 +343,16 @@ def instance_segmentation_mAP(pred_masks, confs, gt_masks, iou_threshold):
     conf_score_list = []
 
     n_shape = pred_masks.shape[0]
-    gt_n_ins = gt_masks.shape[1]
     pred_n_ins = pred_masks.shape[1]
     ious = np.zeros((pred_masks.shape[0], pred_masks.shape[1]))
+    gt_npos =0
 
-    for i in range(n_shape):
+    for i, data  in enumerate(dataset):
         cur_pred_mask = pred_masks[i]
         cur_pred_conf = confs[i]
-        cur_gt_mask = gt_masks[i]
+        cur_gt_mask = data['ins_seg_label']
+        gt_n_ins = cur_gt_mask.shape[0]
+        gt_npos += np.sum(np.sum(cur_gt_mask, 1)>0)
 
         order =np.argsort(-cur_pred_conf)
         gt_used = np.zeros((gt_n_ins,), dtype=np.bool)
@@ -395,7 +396,6 @@ def instance_segmentation_mAP(pred_masks, confs, gt_masks, iou_threshold):
     sorted_true_pos = true_pos[order]
     sorted_false_pos = false_pos[order]
 
-    gt_npos = np.sum(np.sum(gt_masks,2)>0)
     ap = compute_ap(sorted_true_pos, sorted_false_pos, gt_npos)
 
     return ap, ious
@@ -469,14 +469,13 @@ def evaluate_foveal_segmentation(dataset,
     iou_per_class = defaultdict(float)
 
     all_ret, all_conf = merge_masks(glob_pred_logits, conf_logits, finish_logits)
-    gt_masks= dataset.cache_ins_seg_label[:,:,:dataset.num_points]
-    ap, ious = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.10)
+    ap, ious = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.10)
     print('AP 10', ap)
-    ap, _  = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.25)
+    ap, _  = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.25)
     print('AP 25', ap)
-    ap, _ = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.50)
+    ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.50)
     print('AP 50', ap)
-    ap, _ = instance_segmentation_mAP(all_ret, all_conf, gt_masks, 0.75)
+    ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.75)
     print('AP 75', ap)
 
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)

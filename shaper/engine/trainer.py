@@ -158,9 +158,9 @@ def train(cfg, output_dir=""):
 
     set_random_seed(cfg.RNG_SEED)
     # Build data loader
-    train_data_loader, train_dataset = build_dataloader(cfg, mode="train")
+    train_data_loader = build_dataloader(cfg, mode="train")
     val_period = cfg.TRAIN.VAL_PERIOD
-    val_data_loader, val_dataset = build_dataloader(cfg, mode="val") if val_period > 0 else None
+    val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
 
     # Build tensorboard logger (optionally by comment)

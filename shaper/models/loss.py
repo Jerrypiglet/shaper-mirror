@@ -72,6 +72,9 @@ class PartInsSegLoss(nn.Module):
 
         iou = matching_score/(union+1e-12)
         iou *= active
+        count_active = torch.sum(active,1)
+        per_shape_iou = torch.sum(iou, 1)/(count_active+1e-12)
+        ins_seg_loss = -1*torch.sum(per_shape_iou)/(torch.sum(count_active>0).float()+1e-12)
 
 
         conf_logit = preds['global_output']
@@ -80,7 +83,7 @@ class PartInsSegLoss(nn.Module):
 
 
         loss_dict = {
-            "ins_seg_loss"+suffix: -1*torch.sum(iou)/(1e-12+torch.sum(active)),
+            "ins_seg_loss"+suffix: ins_seg_loss,
             'conf_loss'+suffix:conf_loss
         }
 
