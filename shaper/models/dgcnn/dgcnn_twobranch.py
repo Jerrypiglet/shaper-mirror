@@ -17,6 +17,8 @@ from shaper.nn import MLP, SharedMLP, Conv1d, Conv2d
 from shaper.models.dgcnn.functions import get_edge_feature
 from shaper.models.dgcnn.modules import EdgeConvBlock
 from shaper.nn.init import set_bn, xavier_uniform
+from .functions import get_knn_inds
+from shaper.nn.functional import pdist
 
 
 class TNet(nn.Module):
@@ -64,7 +66,7 @@ class TNet(nn.Module):
             torch.Tensor: (batch_size, out_channels, in_channels)
 
         """
-        x = get_edge_feature(x, self.k)  # (batch_size, 2 * in_channels, num_points, k)
+        x,_ = get_edge_feature(x, self.k)  # (batch_size, 2 * in_channels, num_points, k)
         x = self.edge_conv(x)
         x, _ = torch.max(x, 3)  # (batch_size, edge_channels[-1], num_points)
         x = self.mlp_local(x)
@@ -113,8 +115,10 @@ class DGCNNTwoBranch(nn.Module):
                  dropout_prob=0.4,
                  with_transform=True,
                  use_bn=True,
-                 use_gn=False):
+                 use_gn=False,
+                 name=''):
         super(DGCNNTwoBranch, self).__init__()
+
 
         self.in_channels = in_channels
         self.num_mask_output = num_mask_output
@@ -122,6 +126,7 @@ class DGCNNTwoBranch(nn.Module):
         self.k = k
         self.with_transform = with_transform
         self.num_gpu = torch.cuda.device_count()
+        self.name=name
 
         # input transform
         if self.with_transform:
@@ -144,6 +149,7 @@ class DGCNNTwoBranch(nn.Module):
         if num_mask_output > 0:
             mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
             mlp_in_channels = inter_channels +  sum([item[-1] for item in edge_conv_channels])
+            mlp_in_channels = sum([item[-1] for item in edge_conv_channels])
             self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob, bn=use_bn, gn=use_gn)
             self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1, bn=use_bn, gn=use_gn)
             self.mask_output = nn.Conv1d(global_channels[-1], num_mask_output, 1, bias=True)
@@ -166,14 +172,19 @@ class DGCNNTwoBranch(nn.Module):
 
         # edge convolution for point cloud
         features = []
+        knns=[]
         for edge_conv in self.mlp_edge_conv:
-            x = edge_conv(x)
+            x, knn = edge_conv(x)
+            knns.append(knn)
             features.append(x)
 
         x = torch.cat(features, dim=1)
 
         # local mlp
         x = self.mlp_local(x)
+        #3
+        distance = pdist(x)
+        knns.append(get_knn_inds(distance,self.k))
         x, max_indice = torch.max(x, 2)
 
 
@@ -187,16 +198,35 @@ class DGCNNTwoBranch(nn.Module):
 
             x=x.unsqueeze(2).expand(-1,-1,num_point)
             cat_features = torch.cat(features, dim=1)
-            x = torch.cat([x, cat_features],dim=1)
+            #x = torch.cat([x, cat_features],dim=1)
+            x = cat_features
+            #4
+            distance = pdist(x[:,:,:])
+            knns.append(get_knn_inds(distance,self.k))
+            #print(x.shape)
+            #print(x[0,1024:,0]-x[0,1024:,1])
+            #exit(0)
 
             # mlp_seg & conv_seg
             x = self.mlp_seg(x)
+            #5
+            distance = pdist(x)
+            knns.append(get_knn_inds(distance,self.k))
             x = self.conv_seg(x)
+            #6
+            distance = pdist(x)
+            knns.append(get_knn_inds(distance,self.k))
             mask_output = self.mask_output(x)
+            #7
+            distance = pdist(mask_output)
+            knns.append(get_knn_inds(distance,self.k))
+            #8
+            distance = pdist(torch.softmax(mask_output,2))
+            knns.append(get_knn_inds(distance,self.k))
             preds['mask_output'] = mask_output
         preds.update(end_points)
 
-        return preds
+        return preds, knns
 
     def init_weights(self):
 

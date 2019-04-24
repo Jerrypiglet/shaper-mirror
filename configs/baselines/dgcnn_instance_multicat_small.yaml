@@ -4,7 +4,7 @@ AUTO_RESUME: False
 MODEL:
   TYPE: "DGCNN"
   NORMALIZATION: "BN"
-  NUM_INS_MASKS: 130
+  NUM_INS_MASKS: 120
   DGCNN:
       K: 32
 INPUT:
@@ -30,7 +30,7 @@ TRAIN:
   BATCH_SIZE: 24
   CHECKPOINT_PERIOD: 20
   LOG_PERIOD: 10
-  VAL_PERIOD: 10
+  VAL_PERIOD: 0
   AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation","PointCloudScale", "PointCloudTranslate")
 TEST:
   BATCH_SIZE: 16

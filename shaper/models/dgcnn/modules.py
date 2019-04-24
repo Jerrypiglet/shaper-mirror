@@ -25,10 +25,10 @@ class EdgeConvBlock(nn.Module):
         self.mlp = SharedMLP(2 * in_channels, out_channels, ndim=2, bn=use_bn, gn=use_gn)
 
     def forward(self, x):
-        x = get_edge_feature(x, self.k)
+        x, knn_inds = get_edge_feature(x, self.k)
         x = self.mlp(x)
         x, _ = torch.max(x, 3)
-        return x
+        return x , knn_inds
 
     def init_weights(self, init_fn=None):
         self.mlp.init_weights(init_fn)

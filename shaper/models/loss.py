@@ -55,7 +55,7 @@ class PartInsSegLoss(nn.Module):
     def __init__(self):
         super(PartInsSegLoss, self).__init__()
 
-    def forward(self, preds, labels, label_key='ins_seg_label', suffix=''):
+    def forward(self, preds, labels, label_key='ins_seg_label', knns=None, suffix=''):
         ins_seg_logit = preds["mask_output"]
         ins_seg_logit = F.softmax(ins_seg_logit,1)
         ins_seg_label = labels[label_key]
@@ -75,6 +75,7 @@ class PartInsSegLoss(nn.Module):
         count_active = torch.sum(active,1)
         per_shape_iou = torch.sum(iou, 1)/(count_active+1e-12)
         ins_seg_loss = -1*torch.sum(per_shape_iou)/(torch.sum(count_active>0).float()+1e-12)
+        ins_seg_loss = -1*torch.sum(iou)/(torch.sum(active).float()+1e-12)
 
 
         conf_logit = preds['global_output']
@@ -86,6 +87,27 @@ class PartInsSegLoss(nn.Module):
             "ins_seg_loss"+suffix: ins_seg_loss,
             'conf_loss'+suffix:conf_loss
         }
+
+
+        for b in range(batch_size):
+            label = ins_seg_label[b]
+            active_label =  torch.nonzero(torch.sum(label,1))
+            k=0
+            for knn in knns:
+                inside_connections=0
+                outside_connections=0
+                for a in active_label:
+                    mask = label[a[0]]
+                    for m in torch.nonzero(mask):
+                        neighbors = knn[b,m[0],:]
+                        for neighbor in neighbors:
+                            if mask[neighbor]:
+                                inside_connections+=1
+                            else:
+                                outside_connections+=1
+                print(b,k, inside_connections, outside_connections, inside_connections*1.0/(1e-12+outside_connections+inside_connections))
+                k+=1
+        exit(0)
 
         return loss_dict
 

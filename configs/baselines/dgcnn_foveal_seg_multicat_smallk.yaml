@@ -8,7 +8,7 @@ MODEL:
   NUM_INS_MASKS: 20
   META_DATA: 32
   DGCNN:
-      K: 32
+      K: 6
 INPUT:
   NUM_POINTS: 2500
 DATASET:

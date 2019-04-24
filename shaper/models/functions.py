@@ -20,7 +20,7 @@ def hungarian_matching( pred_x, gt_x ):
     for i, curnmask  in enumerate(curnmasks):
         if curnmask == 0:
             continue
-        row_ind, col_ind = linear_sum_assignment(matching_score[i, :curnmask, :curnmask*2+3])
+        row_ind, col_ind = linear_sum_assignment(matching_score[i, :curnmask, :])
         matching_idx[i,col_ind]=row_ind
     return matching_idx
 

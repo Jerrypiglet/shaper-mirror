@@ -129,4 +129,4 @@ def get_edge_feature(feature, k):
     # edge_feature = construct_edge_feature_index(feature, knn_inds)
 
     # edge_feature = torch.ones(feature.size(0), 2*feature.size(1), feature.size(2), k, device=feature.device)
-    return edge_feature
+    return edge_feature, knn_inds

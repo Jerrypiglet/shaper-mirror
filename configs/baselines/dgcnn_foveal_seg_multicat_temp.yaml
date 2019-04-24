@@ -1,6 +1,6 @@
 TASK:
   "foveal_part_instance_segmentation"
-AUTO_RESUME: True
+AUTO_RESUME: False
 MODEL:
   TYPE: "DGCNN"
   PROP_NORMALIZATION: "BN"
