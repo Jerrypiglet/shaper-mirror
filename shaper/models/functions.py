@@ -17,11 +17,15 @@ def hungarian_matching( pred_x, gt_x ):
     matching_score = 1-np.divide(matching_score, np.expand_dims(np.sum(pred_x,2),1)+np.sum(gt_x,2,keepdims=True)-matching_score+1e-8)
     matching_idx = -np.ones((batch_size, num_pred_ins_mask), dtype=np.int32)
     curnmasks = np.sum((np.sum(gt_x, 2) > 0).astype(np.int32),1 )
-    for i, curnmask  in enumerate(curnmasks):
-        if curnmask == 0:
+    active = np.sum(gt_x, 2) > 0
+    for i  in range(len(active)):
+    #for i, curnmask  in enumerate(curnmasks):
+        where_active, = np.where(active[i])
+        if len(where_active) ==0 :
             continue
-        row_ind, col_ind = linear_sum_assignment(matching_score[i, :curnmask, :])
-        matching_idx[i,col_ind]=row_ind
+        row_ind, col_ind = linear_sum_assignment(matching_score[i, active[i], :])
+        #row_ind, col_ind = linear_sum_assignment(matching_score[i, :curnmask, :])
+        matching_idx[i,col_ind]=where_active[row_ind]
     return matching_idx
 
 

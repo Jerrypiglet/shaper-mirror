@@ -60,6 +60,7 @@ def build_dgcnn(cfg):
             num_global_output = cfg.MODEL.NUM_INS_MASKS,
             num_mask_output = cfg.MODEL.NUM_INS_MASKS,
             k=cfg.MODEL.DGCNN.K,
+            dropout_prob=cfg.MODEL.DGCNN.DROPOUT_PROB,
             use_bn=cfg.MODEL.SEG_NORMALIZATION=='BN',
             use_gn=cfg.MODEL.SEG_NORMALIZATION=='GN',
             name='Segment'

@@ -59,6 +59,7 @@ class PartInsSegLoss(nn.Module):
         ins_seg_logit = preds["mask_output"]
         ins_seg_logit = F.softmax(ins_seg_logit,1)
         ins_seg_label = labels[label_key]
+
         batch_size = ins_seg_logit.shape[0]
         matching_idx = torch.tensor(hungarian_matching(ins_seg_logit, ins_seg_label)).cuda().long() #batch_size x num_gt_ins_mask
         active = (matching_idx>=0).float()
@@ -89,25 +90,26 @@ class PartInsSegLoss(nn.Module):
         }
 
 
-        for b in range(batch_size):
-            label = ins_seg_label[b]
-            active_label =  torch.nonzero(torch.sum(label,1))
-            k=0
-            for knn in knns:
-                inside_connections=0
-                outside_connections=0
-                for a in active_label:
-                    mask = label[a[0]]
-                    for m in torch.nonzero(mask):
-                        neighbors = knn[b,m[0],:]
-                        for neighbor in neighbors:
-                            if mask[neighbor]:
-                                inside_connections+=1
-                            else:
-                                outside_connections+=1
-                print(b,k, inside_connections, outside_connections, inside_connections*1.0/(1e-12+outside_connections+inside_connections))
-                k+=1
-        exit(0)
+        #for b in range(batch_size):
+        #    label = ins_seg_label[b]
+        #    active_label =  torch.nonzero(torch.sum(label,1))
+        #    k=0
+        #    for knn in knns:
+        #        inside_connections=0
+        #        outside_connections=0
+        #        for a in active_label:
+        #            mask = label[a[0]]
+        #            for m in torch.nonzero(mask):
+        #                neighbors = knn[b,m[0],:]
+        #                for neighbor in neighbors:
+        #                    if mask[neighbor]:
+        #                        inside_connections+=1
+        #                    else:
+        #                        outside_connections+=1
+        #        print(b,k, inside_connections, outside_connections, inside_connections*1.0/(1e-12+outside_connections+inside_connections))
+        #        k+=1
+        #    print(b, per_shape_iou[b])
+        #exit(0)
 
         return loss_dict
 
