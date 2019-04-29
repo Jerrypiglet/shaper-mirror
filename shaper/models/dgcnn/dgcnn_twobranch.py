@@ -149,8 +149,9 @@ class DGCNNTwoBranch(nn.Module):
         if num_mask_output > 0:
             mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
             mlp_in_channels = inter_channels +  sum([item[-1] for item in edge_conv_channels])
-            mlp_in_channels = sum([item[-1] for item in edge_conv_channels])
+            #mlp_in_channels = sum([item[-1] for item in edge_conv_channels])
             self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob, bn=use_bn, gn=use_gn)
+            #self.mlp_seg = EdgeConvBlock(mlp_in_channels, global_channels, k, use_bn=use_bn, use_gn=use_gn)
             self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1, bn=use_bn, gn=use_gn)
             self.mask_output = nn.Conv1d(global_channels[-1], num_mask_output, 1, bias=True)
 
@@ -183,8 +184,8 @@ class DGCNNTwoBranch(nn.Module):
         # local mlp
         x = self.mlp_local(x)
         #3
-        distance = pdist(x)
-        knns.append(get_knn_inds(distance,self.k))
+        #distance = pdist(x)
+        #knns.append(get_knn_inds(distance,self.k))
         x, max_indice = torch.max(x, 2)
 
 
@@ -198,11 +199,11 @@ class DGCNNTwoBranch(nn.Module):
 
             x=x.unsqueeze(2).expand(-1,-1,num_point)
             cat_features = torch.cat(features, dim=1)
-            #x = torch.cat([x, cat_features],dim=1)
-            x = cat_features
+            x = torch.cat([x, cat_features],dim=1)
+            #x = cat_features
             #4
-            distance = pdist(x[:,:,:])
-            knns.append(get_knn_inds(distance,self.k))
+            #distance = pdist(x[:,:,:])
+            #knns.append(get_knn_inds(distance,self.k))
             #print(x.shape)
             #print(x[0,1024:,0]-x[0,1024:,1])
             #exit(0)
@@ -210,23 +211,32 @@ class DGCNNTwoBranch(nn.Module):
             # mlp_seg & conv_seg
             x = self.mlp_seg(x)
             #5
-            distance = pdist(x)
-            knns.append(get_knn_inds(distance,self.k))
+            #distance = pdist(x)
+            #knns.append(get_knn_inds(distance,self.k))
             x = self.conv_seg(x)
             #6
-            distance = pdist(x)
-            knns.append(get_knn_inds(distance,self.k))
+            #distance = pdist(x)
+            #knns.append(get_knn_inds(distance,self.k))
             mask_output = self.mask_output(x)
             #7
-            distance = pdist(mask_output)
-            knns.append(get_knn_inds(distance,self.k))
+            #distance = pdist(mask_output)
+            #knns.append(get_knn_inds(distance,self.k))
             #8
-            distance = pdist(torch.softmax(mask_output,2))
-            knns.append(get_knn_inds(distance,self.k))
+            features=[]
+            knns=[]
+            features.append(torch.softmax(mask_output,1))
+            distance = pdist(torch.softmax(mask_output,1))
+            knns.append(get_knn_inds(distance,self.k).detach())
+            #if 'zoomed_ins_seg_label' in data_batch:
+            #    #9
+            #    distance = pdist(data_batch['zoomed_ins_seg_label'])
+            #    knns.append(get_knn_inds(distance,self.k))
             preds['mask_output'] = mask_output
+        preds['features']=features
+        preds['knns']=knns
         preds.update(end_points)
 
-        return preds, knns
+        return preds
 
     def init_weights(self):
 

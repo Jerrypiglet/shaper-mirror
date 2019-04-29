@@ -60,13 +60,14 @@ def train_model(models,
         for optimizer in optimizers:
             optimizer.zero_grad()
 
+
         for zoom_iteration in range(num_zoom_iteration):
 
             data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
             #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 
-            proposal_preds, pred_knns = proposal_model(data_batch, 'points_and_masks')
+            proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
 
 
@@ -122,14 +123,14 @@ def train_model(models,
             #data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
             data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
 
-            segmentation_preds, segmentation_knns = segmentation_model(data_batch, 'zoomed_points')
+            segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
             #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
             #segmentation_preds['mask_output'] = segmentation_preds['mask_output'][:,:-meta_data_size,:]
 
             proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration))
             proposal_losses = sum(proposal_loss_dict.values())
             meters.update(loss=proposal_losses, **proposal_loss_dict)
-            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', segmentation_knns, suffix='_'+str(zoom_iteration))
+            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix='_'+str(zoom_iteration))
             segmentation_losses = sum(segmentation_loss_dict.values())
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)
             proposal_losses.backward(retain_graph=True)
@@ -278,6 +279,7 @@ def validate_model(models,
                 segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label')
                 segmentation_losses = sum(segmentation_loss_dict.values())
                 meters.update(loss=segmentation_losses, **segmentation_loss_dict)
+                exit(0)
 
 
 

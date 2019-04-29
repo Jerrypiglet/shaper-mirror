@@ -48,6 +48,31 @@ def pdist2(feature1, feature2):
     return distance
 
 
+
+def pdistcosine(feature):
+    """Compute pairwise distances of features.
+
+    Args:
+        feature (torch.Tensor): (batch_size, channels, num_features)
+
+    Returns:
+        distance (torch.Tensor): (batch_size, num_features, num_features)
+
+    Notes:
+        This method returns square distances, and is optimized for lower memory and faster speed.
+        Sqaure sum is more efficient than gather diagonal from inner product.
+
+    """
+    batch_size, _, num_features = feature.shape
+    norm = torch.sum(feature**2, dim=1,keepdim=True)**0.5
+    feature = feature/norm
+    #square_sum = torch.sum(feature ** 2, 1, keepdim=True)
+    #square_sum = square_sum.transpose(1, 2) + square_sum
+    distance = torch.baddbmm(torch.zeros((batch_size, num_features, num_features)).cuda(), feature.transpose(1, 2), feature)
+    print(distance)
+    return distance
+
+
 # -----------------------------------------------------------------------------
 # Losses
 # -----------------------------------------------------------------------------
