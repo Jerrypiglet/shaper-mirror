@@ -41,7 +41,7 @@ def main():
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     purge_cfg(cfg)
-    cfg.freeze()
+    #cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR
     # Replace '@' with config path

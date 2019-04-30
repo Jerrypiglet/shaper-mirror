@@ -50,6 +50,17 @@ def parse_args():
 def test(cfg, output_dir=""):
     logger = logging.getLogger("shaper.tester")
 
+
+    # Build data loader
+    test_data_loader = build_dataloader(cfg, mode="test")
+    test_dataset = test_data_loader.dataset
+
+    train_data_loader = build_dataloader(cfg, mode="train")
+    num_gt_masks = int(train_data_loader.dataset.num_gt_masks*1.2+2)
+    if cfg.MODEL.NUM_INS_MASKS > num_gt_masks:
+        cfg.MODEL.NUM_INS_MASKS = num_gt_masks
+
+
     # Build model
     model, loss_fn, metric_fn = build_model(cfg)
     model = nn.DataParallel(model).cuda()
@@ -65,9 +76,6 @@ def test(cfg, output_dir=""):
         # Load last checkpoint
         checkpointer.load(None, resume=True)
 
-    # Build data loader
-    test_data_loader = build_dataloader(cfg, mode="test")
-    test_dataset = test_data_loader.dataset
 
     # Prepare visualization
     vis_dir = cfg.TEST.VIS_DIR.replace("@", output_dir)
