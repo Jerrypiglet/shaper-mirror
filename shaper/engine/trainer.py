@@ -126,6 +126,15 @@ def validate_model(model,
 def train(cfg, output_dir=""):
     logger = logging.getLogger("shaper.trainer")
 
+    # Build data loader
+    train_data_loader = build_dataloader(cfg, mode="train")
+    val_period = cfg.TRAIN.VAL_PERIOD
+    val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
+
+
+    num_gt_masks = int(train_data_loader.dataset.num_gt_masks*1.2+2)
+    if cfg.MODEL.NUM_INS_MASKS > num_gt_masks:
+        cfg.MODEL.NUM_INS_MASKS = num_gt_masks
 
 
     set_random_seed(cfg.RNG_SEED)
@@ -157,10 +166,6 @@ def train(cfg, output_dir=""):
         freezer = None
 
     set_random_seed(cfg.RNG_SEED)
-    # Build data loader
-    train_data_loader = build_dataloader(cfg, mode="train")
-    val_period = cfg.TRAIN.VAL_PERIOD
-    val_data_loader = build_dataloader(cfg, mode="val") if val_period > 0 else None
 
 
     # Build tensorboard logger (optionally by comment)

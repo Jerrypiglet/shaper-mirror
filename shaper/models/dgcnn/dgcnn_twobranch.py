@@ -176,7 +176,7 @@ class DGCNNTwoBranch(nn.Module):
         knns=[]
         for edge_conv in self.mlp_edge_conv:
             x, knn = edge_conv(x)
-            knns.append(knn)
+            #knns.append(knn)
             features.append(x)
 
         x = torch.cat(features, dim=1)
@@ -224,9 +224,9 @@ class DGCNNTwoBranch(nn.Module):
             #8
             features=[]
             knns=[]
-            features.append(torch.softmax(mask_output,1))
-            distance = pdist(torch.softmax(mask_output,1))
-            knns.append(get_knn_inds(distance,self.k).detach())
+            #features.append(torch.softmax(mask_output,1))
+            #distance = pdist(torch.softmax(mask_output,1))
+            #knns.append(get_knn_inds(distance,self.k).detach())
             #if 'zoomed_ins_seg_label' in data_batch:
             #    #9
             #    distance = pdist(data_batch['zoomed_ins_seg_label'])

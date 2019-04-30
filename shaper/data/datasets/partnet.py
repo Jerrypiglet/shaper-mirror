@@ -84,7 +84,7 @@ class PartNetH5(Dataset):
                 self.num_gt_masks = max(self.num_gt_masks, f['label'].shape[1])
                 num_samples = f['label'].shape[0]
             json_file = data_path.replace('.h5','.json')
-            #f = h5py.File(data_path)
+            f = h5py.File(data_path)
             for ind in range(num_samples):
                 #active = np.sum(f['label'][ind])
                 #if active:
@@ -96,7 +96,6 @@ class PartNetH5(Dataset):
                     "size": num_samples,
                     "path": data_path,
                 })
-            #f.close()
             with open(json_file,'r') as jf:
                 self.record[data_path] = json.load(jf)
             self.h5_handlers[data_path]=None

@@ -59,10 +59,6 @@ def test(cfg, output_dir=""):
 
         # Build checkpointer
         checkpointer = Checkpointer(models[i], save_dir=output_dir)
-        checkpointer = Checkpointer(models[i],
-                                    optimizer=optimizer,
-                                    scheduler=scheduler,
-                                    save_dir=output_dir)
 
         if cfg.TEST.WEIGHT:
             # Load weight if specified
