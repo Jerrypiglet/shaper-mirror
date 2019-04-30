@@ -265,6 +265,7 @@ def evaluate_part_instance_segmentation(dataset,
     ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.75)
     print('AP 75', ap)
 
+    exit(0)
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
 
 
@@ -477,5 +478,5 @@ def evaluate_foveal_segmentation(dataset,
     print('AP 50', ap)
     ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.75)
     print('AP 75', ap)
-
+    exit(0)
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
