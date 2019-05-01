@@ -5,7 +5,7 @@ MODEL:
   TYPE: "DGCNN"
   PROP_NORMALIZATION: "BN"
   SEG_NORMALIZATION: "BN"
-  NUM_INS_MASKS: 3
+  NUM_INS_MASKS: 20
   META_DATA: 20
   DGCNN:
       K: 20
@@ -13,7 +13,7 @@ MODEL:
 INPUT:
   NUM_POINTS: 2500
 DATASET:
-  ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Hat_small" 
+  ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Lamp_small" 
   TYPE: "PartNet"
   TRAIN: ("train",)
   VAL: ("val",)
@@ -28,7 +28,7 @@ SCHEDULER:
     step_size: 20
   MAX_EPOCH: 500
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 5
   CHECKPOINT_PERIOD: 10
   LOG_PERIOD: 50
   VAL_PERIOD: 0
