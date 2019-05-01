@@ -5,7 +5,7 @@ MODEL:
   TYPE: "DGCNN"
   PROP_NORMALIZATION: "BN"
   SEG_NORMALIZATION: "BN"
-  NUM_INS_MASKS: 4
+  NUM_INS_MASKS: 20
   META_DATA: 20
   DGCNN:
       K: 20
@@ -13,7 +13,7 @@ MODEL:
 INPUT:
   NUM_POINTS: 2500
 DATASET:
-  ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Bottle_small" 
+  ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Knife_small" 
   TYPE: "PartNet"
   TRAIN: ("train",)
   VAL: ("val",)

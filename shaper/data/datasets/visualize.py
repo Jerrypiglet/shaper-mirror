@@ -170,9 +170,12 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
         mkdir(child_proposal_flipped_dir)
 
         if all_ret is not None:
+            big_mask = np.zeros((all_ret.shape[2],))
             for j in range(all_ret.shape[1]):
                 if all_conf[i,j]==0:
                     continue
+                big_mask[all_ret[i,j]>0]  = j
+                continue
                 out_fn = os.path.join(child_part_dir, 'all_ret_%d.png'%j)
                 render_pts_with_label(out_fn, pts, all_ret[i,j])
                 out_fn = os.path.join(child_part_flipped_dir, 'all_ret_%d.png'%j)
@@ -181,6 +184,12 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
                 with open(out_fn,'w') as fout:
                     fout.write('conf: %f\n' % all_conf[i,j] )
                     fout.write('iou: %f\n' % all_ious[i,j] )
+
+
+            out_fn = os.path.join(child_part_dir, 'all_merged.png')
+            render_pts_with_label(out_fn, pts, big_mask)
+            out_fn = os.path.join(child_part_flipped_dir, 'all_merged.png')
+            render_pts_with_label(out_fn, pts_flipped, big_mask)
 
 
 
