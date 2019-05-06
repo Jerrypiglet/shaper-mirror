@@ -17,6 +17,7 @@ from shaper.utils.checkpoint import Checkpointer
 from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
 from shaper.utils.torch_util import set_random_seed
+from shaper.nn.functional import pdist
 
 
 def train_model(models,
@@ -61,8 +62,11 @@ def train_model(models,
             optimizer.zero_grad()
 
 
-        for zoom_iteration in range(num_zoom_iteration):
-
+        #for zoom_iteration in range(num_zoom_iteration):
+        zoom_iteration=-1
+        continue_flag=True
+        while True:
+            zoom_iteration+=1
             data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
             #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
@@ -73,7 +77,9 @@ def train_model(models,
 
 
             proposal_mask = proposal_preds['mask_output'][:,0,:]
+
             proposal_mask = F.softmax(proposal_mask,1)
+            radius_mask = proposal_preds['mask_output'][:,1,:]
             #meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
             m,_ = torch.max(proposal_mask, 1, keepdim=True)
             proposal_mask[proposal_mask < 0.1*m]=0
@@ -84,17 +90,31 @@ def train_model(models,
             centroids = centroids.view(batch_size,1, 1)
 
             gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
+            gathered_radius = radius_mask.gather(1,centroids.squeeze(-1))
 
             dists = (full_points - gathered_centroids)**2
             dists = torch.sum(dists, 1)
+            nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
 
             crop_size = Normal(1, 0.5).sample()
             crop_size = max(0, crop_size)
-            crop_size = 2**crop_size * num_point
-            crop_size = int(crop_size)
-            nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
-            zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
+            crop_size = 2**crop_size
+
+            for b in range(batch_size):
+                nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
+                if nearest_indices_temp.shape[0] >= num_point:
+                    nearest_indices[b] = nearest_indices_temp[:num_point,0]
+
+
+
+            #crop_size = Normal(1, 0.5).sample()
+            #crop_size = max(0, crop_size)
+            #crop_size = 2**crop_size * num_point
+            #crop_size = int(crop_size)
+            #nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
+            #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
+            zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
 
 
             zoomed_points = zoomed_points.transpose_(2,1)
@@ -108,12 +128,14 @@ def train_model(models,
             zoomed_points = zoomed_points[:,:, :num_point]
 
 
-            zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+            #zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+            zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
             zoomed_ins_seg_label = zoomed_ins_seg_label[:,:,:num_point]
             point2group = data_batch['point2group']
             point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
             point2group = point2group.type(torch.long)
-            groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+            #groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+            groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
             groups=groups[:,:num_point]
             #zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, meta_data_size, num_point))
             #zoomed_meta_data*=0
@@ -154,6 +176,15 @@ def train_model(models,
             viewed_mask = viewed_mask.unsqueeze(1).detach()
             predict_mask = predict_mask.unsqueeze(1).detach()
 
+            if not continue_flag:
+                break
+
+            continue_flag = torch.sum(data_batch['finish_label'].detach()).cpu() > 0
+
+
+            if zoom_iteration % 10==9:
+                for optimizer in optimizers:
+                    optimizer.step()
 
         for optimizer in optimizers:
             optimizer.step()

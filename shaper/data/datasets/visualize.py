@@ -174,8 +174,7 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
             for j in range(all_ret.shape[1]):
                 if all_conf[i,j]==0:
                     continue
-                big_mask[all_ret[i,j]>0]  = j
-                continue
+                big_mask[all_ret[i,j]>0]  = 1+j
                 out_fn = os.path.join(child_part_dir, 'all_ret_%d.png'%j)
                 render_pts_with_label(out_fn, pts, all_ret[i,j])
                 out_fn = os.path.join(child_part_flipped_dir, 'all_ret_%d.png'%j)
@@ -208,6 +207,8 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
             with open(out_fn,'w') as fout:
                 fout.write('finish: %f' % finish_logits[zoom_iteration][i] )
 
+            if finish_logits[zoom_iteration][i] < 0.1:
+                break
 
             out_fn = os.path.join(child_part_dir, 'iteration%02d_stage1_zoom.png'%zoom_iteration)
             render_pts_with_label(out_fn, pts, viewed_masks[zoom_iteration][i])

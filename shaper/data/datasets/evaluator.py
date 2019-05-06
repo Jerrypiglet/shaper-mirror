@@ -293,6 +293,8 @@ def merge_masks(masks, confs, finish):
                 break
             cur_conf = confs[shape,zoom_iteration]
             cur_mask = masks[shape,zoom_iteration]
+            m = np.max(cur_mask, 0)
+            cur_mask = np.logical_and(cur_mask >= (m), m>0)
             for i in range(K):
                 if cur_conf[i]< 0.2:
                     continue
@@ -301,18 +303,35 @@ def merge_masks(masks, confs, finish):
                 if np.sum(m) == 0:
                     continue
                 break_flag=False
-                for k in range(len(ret)):
-                    intersection = np.sum(np.logical_and(m, ret[k]))
-                    if intersection*10 >= np.sum(m) or intersection*10 >= np.sum(ret[k]):
-                        break_flag=True
-                        #ret[k] = np.logical_or(ret[k], m)
-                        if cur_conf[i] > ret_confs[k]:
-                            ret[k] = m
-                            ret_confs[k] = cur_conf[i]
-                        break
+                #for k in range(len(ret)):
+                #    intersection = np.sum(np.logical_and(m, ret[k]))
+                #    if intersection*10 >= np.sum(m) or intersection*10 >= np.sum(ret[k]):
+                #        break_flag=True
+                #        #ret[k] = np.logical_or(ret[k], m)
+                #        if cur_conf[i] > ret_confs[k]:
+                #            ret[k] = m
+                #            ret_confs[k] = cur_conf[i]
+                #        break
                 if not break_flag:
                     ret.append(m)
                     ret_confs.append(cur_conf[i])
+        while len(ret)> 0:
+            merged_flag=False
+            for i in range(len(ret)):
+                break_flag=False
+                for j in range(i):
+                    intersection = np.sum(np.logical_and(ret[i], ret[j]))
+                    if intersection*10>= np.sum(ret[i]) or intersection*10 >= np.sum(ret[j]):
+                        ret[i] = np.logical_or(ret[i], ret[j])
+                        del ret[j]
+                        break_flag=True
+                        merged_flag=True
+                        break
+                if break_flag:
+                    break
+            if not merged_flag:
+                break
+        print (len(ret))
         if len(ret)>0:
             ret = np.concatenate(ret, 0)
             ret = np.reshape(ret, (-1, N))

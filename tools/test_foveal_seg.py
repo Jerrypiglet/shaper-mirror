@@ -109,6 +109,7 @@ def test(cfg, output_dir=""):
             full_ins_seg_label = data_batch['full_ins_seg_label']
             num_point = points.shape[2]
             batch_size = points.shape[0]
+            assert batch_size == 1
             num_ins_mask = full_ins_seg_label.shape[1]
 
 
@@ -116,14 +117,20 @@ def test(cfg, output_dir=""):
             viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
             predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
 
+            continue_flag=True
             for zoom_iteration in range(cfg.TEST.NUM_ZOOM_ITERATION):
-
+            #zoom_iteration = - 1
+            #while True:
+                #zoom_iteration+=1
                 data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12))], 1)
                 data_batch['viewed_mask'] = viewed_mask
                 proposal_preds = proposal_model(data_batch, 'points_and_masks')
+                ins_seg_label ,_ = torch.max(data_batch['ins_seg_label'],1)
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
+                proposal_mask+= ins_seg_label*1e4
                 proposal_mask = F.softmax(proposal_mask,1)
+                radius_mask = proposal_preds['mask_output'][:,1,:]
                 proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
                 finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
                 m,_ = torch.max(proposal_mask, 1, keepdim=True)
@@ -132,17 +139,26 @@ def test(cfg, output_dir=""):
                 distr = Categorical(proposal_mask)
                 centroids = distr.sample()
                 _, centroids = torch.max(proposal_mask,1)
+                _, centroids = torch.min(radius_mask/proposal_mask,1)
                 centroids = centroids.view(batch_size,1, 1)
 
                 gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
+                gathered_radius = radius_mask.gather(1,centroids.squeeze(-1))
 
                 dists = (full_points - gathered_centroids)**2
                 dists = torch.sum(dists, 1)
 
                 crop_size= 2*num_point
-                nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
+                #nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
+                nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
+                for b in range(batch_size):
+                    nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*2)
+                    if nearest_indices_temp.shape[0] >= num_point:
+                        nearest_indices[b] = nearest_indices_temp[:num_point,0]
 
-                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
+                #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
+                #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
+                zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, 3, num_point))
                 ##center zoomed points
                 zoomed_points -= torch.sum(zoomed_points, 2,keepdim=True)/zoomed_points.shape[2]
                 maxnorm, _ = torch.max(torch.sum(zoomed_points**2, 1),1)
@@ -150,7 +166,8 @@ def test(cfg, output_dir=""):
                 maxnorm = maxnorm.view(batch_size, 1, 1)
                 zoomed_points /=maxnorm
 
-                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+                #zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, num_ins_mask, crop_size))
+                zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
 
 
                 zoomed_points=zoomed_points[:,:,:num_point]
@@ -162,7 +179,8 @@ def test(cfg, output_dir=""):
                 point2group = data_batch['point2group']
                 point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
                 point2group = point2group.type(torch.long)
-                groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+                #groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
+                groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
                 groups=groups[:,:num_point]
 
                 data_batch['zoomed_points']=zoomed_points
@@ -202,6 +220,13 @@ def test(cfg, output_dir=""):
 
 
                 proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
+
+
+
+                #if not continue_flag:
+                #    break
+
+                continue_flag = torch.sum(data_batch['finish_label'].detach()).cpu() > 0
                 #loss_dict = loss_fn(preds, data_batch)
                 #metric_dict = metric_fn(preds, data_batch)
                 #losses = sum(loss_dict.values())

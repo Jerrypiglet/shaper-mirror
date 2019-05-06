@@ -35,6 +35,6 @@ TRAIN:
   AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
   NUM_ZOOM_ITERATION: 12
 TEST:
-  BATCH_SIZE: 4
-  NUM_ZOOM_ITERATION: 50
+  BATCH_SIZE: 1
+  NUM_ZOOM_ITERATION: 100
   VIS_DIR: 'visu_test'

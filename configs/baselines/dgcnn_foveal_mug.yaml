@@ -5,7 +5,7 @@ MODEL:
   TYPE: "DGCNN"
   PROP_NORMALIZATION: "BN"
   SEG_NORMALIZATION: "BN"
-  NUM_INS_MASKS: 20
+  NUM_INS_MASKS: 4
   META_DATA: 20
   DGCNN:
       K: 20
@@ -35,6 +35,6 @@ TRAIN:
   AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
   NUM_ZOOM_ITERATION: 12
 TEST:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 1
   NUM_ZOOM_ITERATION: 12
   VIS_DIR: 'visu_test'
