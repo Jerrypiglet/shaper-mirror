@@ -139,7 +139,9 @@ class DGCNNTwoBranch(nn.Module):
 
         out_channel = edge_conv_channels[0][0]
 
-        mlplocal_input = self.in_channels+sum([item[-1] for item in edge_conv_channels])
+        mlplocal_input = 0*self.in_channels+sum([item[-1] for item in edge_conv_channels])
+        if self.in_channels==5:
+            mlplocal_input = self.in_channels+sum([item[-1] for item in edge_conv_channels])
         self.mlp_local = Conv1d(mlplocal_input, inter_channels, 1, bn=use_bn, gn=use_gn)
 
         if num_global_output > 0:
@@ -148,7 +150,9 @@ class DGCNNTwoBranch(nn.Module):
 
         if num_mask_output > 0:
             mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
-            mlp_in_channels = self.in_channels+inter_channels +  sum([item[-1] for item in edge_conv_channels])
+            mlp_in_channels = 0*self.in_channels+inter_channels +  sum([item[-1] for item in edge_conv_channels])
+            if self.in_channels==5:
+                mlp_in_channels = self.in_channels+inter_channels +  sum([item[-1] for item in edge_conv_channels])
             #mlp_in_channels = sum([item[-1] for item in edge_conv_channels])
             self.mlp_seg = SharedMLP(mlp_in_channels, global_channels[:-1], dropout=dropout_prob, bn=use_bn, gn=use_gn)
             #self.mlp_seg = EdgeConvBlock(mlp_in_channels, global_channels, k, use_bn=use_bn, use_gn=use_gn)
@@ -174,7 +178,8 @@ class DGCNNTwoBranch(nn.Module):
         # edge convolution for point cloud
         features = []
         knns=[]
-        features.append(x)
+        if x.shape[1] == 5:
+            features.append(x)
         for edge_conv in self.mlp_edge_conv:
             x, knn = edge_conv(x)
             #knns.append(knn)

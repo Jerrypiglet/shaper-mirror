@@ -134,12 +134,12 @@ def test(cfg, output_dir=""):
                 proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
                 finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
                 m,_ = torch.max(proposal_mask, 1, keepdim=True)
-                proposal_mask[proposal_mask < 0.1*m]=0
+                proposal_mask[proposal_mask < 0.5*m]=0
                 proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
                 distr = Categorical(proposal_mask)
                 centroids = distr.sample()
                 _, centroids = torch.max(proposal_mask,1)
-                _, centroids = torch.min(radius_mask/proposal_mask,1)
+                _, centroids = torch.min(radius_mask/(proposal_mask+1e-12),1)
                 centroids = centroids.view(batch_size,1, 1)
 
                 gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))

@@ -125,7 +125,7 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
     n_shape = min(visu_num, n_shape)
 
 
-    for i in bar(range(0,n_shape)):
+    for i in range(0,n_shape):
         cur_fn_prefix = 'shape-%03d' % i
         data_dict=dataset[i]
         pts = data_dict['points']

@@ -323,7 +323,9 @@ def merge_masks(masks, confs, finish):
                     intersection = np.sum(np.logical_and(ret[i], ret[j]))
                     if intersection*10>= np.sum(ret[i]) or intersection*10 >= np.sum(ret[j]):
                         ret[i] = np.logical_or(ret[i], ret[j])
+                        ret_confs[i] = max(ret_confs[i], ret_confs[j])
                         del ret[j]
+                        del ret_confs[j]
                         break_flag=True
                         merged_flag=True
                         break
@@ -407,6 +409,8 @@ def instance_segmentation_mAP(pred_masks, confs, dataset, iou_threshold):
                     true_pos_list.append(False)
                     false_pos_list.append(True)
                     conf_score_list.append(cur_pred_conf[idx])
+
+                print(i,  cur_pred_conf[idx], iou_max)
 
     # compute AP
     true_pos = np.array(true_pos_list, dtype=np.float32)
@@ -498,4 +502,5 @@ def evaluate_foveal_segmentation(dataset,
     print('AP 50', ap)
     ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.75)
     print('AP 75', ap)
+    exit(0)
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
