@@ -97,11 +97,11 @@ def train_model(models,
             nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
 
-            crop_size = Normal(1, 0.5).sample()
-            crop_size = max(0, crop_size)
-            crop_size = 2**crop_size
 
             for b in range(batch_size):
+                crop_size = Normal(1, 0.5).sample()
+                crop_size = max(0, crop_size)
+                crop_size = 2**crop_size
                 nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
                 if nearest_indices_temp.shape[0] >= num_point:
                     nearest_indices[b] = nearest_indices_temp[:num_point,0]
@@ -156,7 +156,7 @@ def train_model(models,
             segmentation_losses = sum(segmentation_loss_dict.values())
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)
             proposal_losses.backward(retain_graph=True)
-            segmentation_losses.backward(retain_graph = zoom_iteration < num_zoom_iteration-1)
+            segmentation_losses.backward(retain_graph = continue_flag)
 
             masks = segmentation_preds['mask_output']
             masks = F.softmax(masks,1)

@@ -86,6 +86,7 @@ class ProposalLoss(nn.Module):
         ins_seg_label = ins_seg_label* (1-viewed_mask)
         ins_seg_label,_ = torch.max(ins_seg_label, 1)
         radius_loss = (radius_mask - distances.detach())**2 * ins_seg_label.detach()
+        radius_loss = radius_loss[radius_loss >0 ]
         #ins_seg_label batch_size x num_point gt
         ins_seg_label = ins_seg_label / (torch.sum(ins_seg_label, 1, True)+1e-8)
 
