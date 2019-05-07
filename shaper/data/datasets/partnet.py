@@ -114,6 +114,7 @@ class PartNetH5(Dataset):
         points = handler['pts'][meta['offset'],:,:]
         ins_seg_label = handler['label'][meta['offset'],:,:]
         ins_seg_label = np.concatenate([ins_seg_label, np.zeros((self.num_gt_masks - ins_seg_label.shape[0],ins_seg_label.shape[1]))], 0)
+        radius = handler['radius'][meta['offset'],:]
         out_dict = {}
 
         #points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
@@ -133,8 +134,10 @@ class PartNetH5(Dataset):
         out_dict['point2group'] = handler[self.point2group][meta['offset'],:]
         out_dict['full_points'] = points
         out_dict['full_ins_seg_label']= ins_seg_label
+        #out_dict['full_radius']=radius
 
         out_dict["points"] = points[:,:self.num_points]
+        out_dict['radius'] = radius[:self.num_points]
         out_dict["ins_seg_label"] = ins_seg_label[:,:self.num_points]
         out_dict['record']=self.record[meta['path']][meta['offset']]
 

@@ -74,13 +74,14 @@ class ProposalLoss(nn.Module):
         num_gt_masks = ins_seg_label.shape[1]
         viewed_mask = (labels['viewed_mask'] > 0).float()
 
-        distances = pdist(labels['points'])
-        distances = distances.unsqueeze(1).expand(-1,num_gt_masks,-1,-1)
-        distances = distances * ins_seg_label.unsqueeze(2)
-        distances,_ = torch.max(distances, -1)
-        active = (torch.sum(ins_seg_label, 2, keepdim=True) > 0).float()
-        distances = (distances+1e-4)/(active+1e-8)
-        distances, _ =torch.min(distances, 1)
+        #distances = pdist(labels['points'])
+        #distances = distances.unsqueeze(1).expand(-1,num_gt_masks,-1,-1)
+        #distances = distances * ins_seg_label.unsqueeze(2)
+        #distances,_ = torch.max(distances, -1)
+        #active = (torch.sum(ins_seg_label, 2, keepdim=True) > 0).float()
+        #distances = (distances+1e-4)/(active+1e-8)
+        #distances, _ =torch.min(distances, 1)
+        distances = labels['radius']
 
         ins_seg_label = ins_seg_label* (1-viewed_mask)
         ins_seg_label,_ = torch.max(ins_seg_label, 1)
