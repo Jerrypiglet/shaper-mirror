@@ -294,7 +294,7 @@ def merge_masks(masks, confs, finish):
             cur_conf = confs[shape,zoom_iteration]
             cur_mask = masks[shape,zoom_iteration]
             m = np.max(cur_mask, 0)
-            cur_mask = np.logical_and(cur_mask >= (m), m>0)
+            #cur_mask = np.logical_and(cur_mask >= (m), m>0)
             for i in range(K):
                 if cur_conf[i]< 0.2:
                     continue
@@ -410,7 +410,7 @@ def instance_segmentation_mAP(pred_masks, confs, dataset, iou_threshold):
                     false_pos_list.append(True)
                     conf_score_list.append(cur_pred_conf[idx])
 
-                print(i,  cur_pred_conf[idx], iou_max)
+                #print(i,  cur_pred_conf[idx], iou_max)
 
     # compute AP
     true_pos = np.array(true_pos_list, dtype=np.float32)
@@ -502,5 +502,4 @@ def evaluate_foveal_segmentation(dataset,
     print('AP 50', ap)
     ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.75)
     print('AP 75', ap)
-    exit(0)
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)

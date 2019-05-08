@@ -144,9 +144,6 @@ class DGCNNTwoBranch(nn.Module):
             mlplocal_input = self.in_channels+sum([item[-1] for item in edge_conv_channels])
         self.mlp_local = Conv1d(mlplocal_input, inter_channels, 1, bn=use_bn, gn=use_gn)
 
-        if num_global_output > 0:
-            self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob, bn=use_bn, gn=use_gn)
-            self.global_output = nn.Linear(global_channels[-1], num_global_output, bias=True)
 
         if num_mask_output > 0:
             mlp_in_channels = inter_channels + edge_conv_channels[-1][-1] + sum([item[-1] for item in edge_conv_channels])
@@ -158,6 +155,11 @@ class DGCNNTwoBranch(nn.Module):
             #self.mlp_seg = EdgeConvBlock(mlp_in_channels, global_channels, k, use_bn=use_bn, use_gn=use_gn)
             self.conv_seg = Conv1d(global_channels[-2], global_channels[-1], 1, bn=use_bn, gn=use_gn)
             self.mask_output = nn.Conv1d(global_channels[-1], num_mask_output, 1, bias=True)
+
+        if num_global_output > 0:
+            self.mlp_global = MLP(inter_channels+num_mask_output, global_channels, dropout=dropout_prob, bn=use_bn, gn=use_gn)
+            self.mlp_global = MLP(inter_channels, global_channels, dropout=dropout_prob, bn=use_bn, gn=use_gn)
+            self.global_output = nn.Linear(global_channels[-1], num_global_output, bias=True)
 
         self.init_weights()
         set_bn(self, momentum=0.01)

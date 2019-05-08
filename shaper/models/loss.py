@@ -81,7 +81,9 @@ class PartInsSegLoss(nn.Module):
 
 
         conf_logit = preds['global_output']
-        conf_loss = F.binary_cross_entropy_with_logits(conf_logit, active)
+        conf_logit = torch.sigmoid(conf_logit)
+        conf_loss = torch.sum((conf_logit - iou.detach())**2)/batch_size
+        #conf_loss = F.binary_cross_entropy_with_logits(conf_logit, active)
 
 
         #features = preds['features']

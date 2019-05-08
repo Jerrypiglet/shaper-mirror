@@ -128,7 +128,6 @@ def test(cfg, output_dir=""):
                 ins_seg_label ,_ = torch.max(data_batch['ins_seg_label'],1)
 
                 proposal_mask = proposal_preds['mask_output'][:,0,:]
-                proposal_mask+= ins_seg_label*1e4
                 proposal_mask = F.softmax(proposal_mask,1)
                 radius_mask = proposal_preds['mask_output'][:,1,:]
                 proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
@@ -139,7 +138,7 @@ def test(cfg, output_dir=""):
                 distr = Categorical(proposal_mask)
                 centroids = distr.sample()
                 _, centroids = torch.max(proposal_mask,1)
-                _, centroids = torch.min(radius_mask/(proposal_mask+1e-12),1)
+                #_, centroids = torch.min(radius_mask/(proposal_mask+1e-12),1)
                 centroids = centroids.view(batch_size,1, 1)
 
                 gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))

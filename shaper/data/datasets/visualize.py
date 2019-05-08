@@ -207,7 +207,7 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
             with open(out_fn,'w') as fout:
                 fout.write('finish: %f' % finish_logits[zoom_iteration][i] )
 
-            if finish_logits[zoom_iteration][i] < 0.1:
+            if finish_logits[zoom_iteration][i] < 0.2:
                 break
 
             out_fn = os.path.join(child_part_dir, 'iteration%02d_stage1_zoom.png'%zoom_iteration)

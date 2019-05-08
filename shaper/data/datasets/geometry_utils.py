@@ -375,7 +375,7 @@ def render_obj_with_label(out, v, f, label, delete_img=False, base=0):
     return img
 
 
-def render_pts_with_label(out, pts, label, delete_img=False, base=0, point_size=4):
+def render_pts_with_label(out, pts, label, delete_img=False, base=0, point_size=8):
     tmp_pts = out.replace('.png', '.pts')
     tmp_label = out.replace('.png', '.label')
 
@@ -398,7 +398,7 @@ def render_pts_with_label(out, pts, label, delete_img=False, base=0, point_size=
 
     return img
 
-def render_pts(out, pts, delete_img=False, point_size=4, point_color='FF0000FF'):
+def render_pts(out, pts, delete_img=False, point_size=8, point_color='FF0000FF'):
     tmp_pts = out.replace('.png', '.pts')
     export_pts(tmp_pts, pts)
 
@@ -417,7 +417,7 @@ def render_pts(out, pts, delete_img=False, point_size=4, point_color='FF0000FF')
     return img
 
 
-def render_pts_with_feature(out, pts, features, delete_img=False, point_size=6 , fancy_kp=False, fancy_kp_num=20, fancy_kp_radius=0.02, normalize=False):
+def render_pts_with_feature(out, pts, features, delete_img=False, point_size=8 , fancy_kp=False, fancy_kp_num=20, fancy_kp_radius=0.02, normalize=False):
     tmp_pts = out.replace('.png', '.pts')
     tmp_label = out.replace('.png', '.txt')
 
@@ -474,7 +474,7 @@ def render_pts_with_feature(out, pts, features, delete_img=False, point_size=6 ,
 
 
 def render_pts_with_keypoints(out, pts, kp_list, delete_img=False, \
-        point_size=4, fancy_kp=True, fancy_kp_num=20, fancy_kp_radius=0.02):
+        point_size=8, fancy_kp=True, fancy_kp_num=20, fancy_kp_radius=0.02):
 
     tmp_pts = out.replace('.png', '.pts')
     tmp_label = out.replace('.png', '.label')

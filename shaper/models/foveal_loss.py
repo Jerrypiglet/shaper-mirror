@@ -104,7 +104,7 @@ class ProposalLoss(nn.Module):
 
         loss_dict = {
             "proposal_loss"+suffix: 1*torch.sum(proposal_loss)/batch_size,
-            'radius_loss'+suffix: torch.sum(radius_loss)/batch_size,
+            'radius_loss'+suffix: 10*torch.sum(radius_loss)/batch_size,
             'finish_loss'+suffix: 1*conf_loss
         }
 
