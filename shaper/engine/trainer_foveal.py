@@ -56,7 +56,8 @@ def train_model(models,
 
         viewed_mask = torch.zeros(batch_size,1,num_point).cuda()
         predict_mask = torch.zeros(batch_size, 1,num_point).cuda()
-        meta_mask = torch.zeros(batch_size, meta_data_size,num_point).cuda()
+        ones = torch.ones((batch_size, num_point)).cuda()
+        tarange = torch.arange(num_point, dtype=torch.int32).unsqueeze(0).expand(batch_size, -1).cuda()#contiguous().cuda(non_blocking=True)
 
         for optimizer in optimizers:
             optimizer.zero_grad()
@@ -132,7 +133,7 @@ def train_model(models,
             zoomed_ins_seg_label = full_ins_seg_label.gather(2, nearest_indices.view(batch_size, 1, num_point).expand(batch_size, num_ins_mask, num_point))
             zoomed_ins_seg_label = zoomed_ins_seg_label[:,:,:num_point]
             point2group = data_batch['point2group']
-            point2group = torch.cat([torch.arange(num_point, dtype=torch.int32).view(1,num_point).expand(batch_size, num_point).contiguous().cuda(non_blocking=True), point2group],1)
+            point2group = torch.cat([tarange, point2group],1)
             point2group = point2group.type(torch.long)
             #groups = point2group.gather(1, nearest_indices.view(batch_size,  crop_size))
             groups = point2group.gather(1, nearest_indices.view(batch_size,  num_point))
@@ -170,7 +171,7 @@ def train_model(models,
             viewed_mask=viewed_mask.squeeze(1)
             new_groups = groups.unsqueeze(1).expand(batch_size, meta_data_size, num_point).detach()
             predict_mask = predict_mask.scatter_add(1,groups, masks)
-            viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
+            viewed_mask = viewed_mask.scatter_add(1,groups, ones)
             #meta_mask = meta_mask.scatter(2,new_groups, meta_data)
             #viewed_mask[viewed_mask>=1]=1
             viewed_mask = viewed_mask.unsqueeze(1).detach()
