@@ -151,7 +151,7 @@ def train_model(models,
             #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
             #segmentation_preds['mask_output'] = segmentation_preds['mask_output'][:,:-meta_data_size,:]
 
-            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration), finish_weight = 1))
+            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration), finish_weight = 1)
             proposal_losses = sum(proposal_loss_dict.values())
             meters.update(loss=proposal_losses, **proposal_loss_dict)
             segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix='_'+str(zoom_iteration))
