@@ -256,17 +256,19 @@ def evaluate_part_instance_segmentation(dataset,
     #pred_logits = pm/(vm+1e-12)
     #pred_logits =pred_logits[:,:,:2500]
     #gt_masks=gt_masks[:,:,:2500]
-    ap, ious = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.10)
-    print('AP 10', ap)
-    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.25)
-    print('AP 25', ap)
-    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.50)
-    print('AP 50', ap)
-    ap, _ = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.75)
-    print('AP 75', ap)
 
-    exit(0)
+    aps=np.zeros((20,))
+    for i in range(20):
+        ap, temp = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.05*(i+1))
+        if i==0:
+            ious= temp
+        aps[i]=ap
+        print('ap %d'%(i*5+5), ap)
+    print('mean ap', np.mean(aps))
+    return aps
+
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
+    #exit(0)
 
 
 def merge_masks(masks, confs, finish):

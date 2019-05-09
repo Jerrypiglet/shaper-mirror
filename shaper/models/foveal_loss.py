@@ -64,7 +64,7 @@ class ProposalLoss(nn.Module):
     def __init__(self):
         super(ProposalLoss, self).__init__()
 
-    def forward(self, preds, labels, label_key='ins_seg_label', suffix=''):
+    def forward(self, preds, labels, label_key='ins_seg_label', suffix='', finish_weight=1):
         ins_seg_logit = preds["mask_output"]
         proposal_mask = ins_seg_logit[:,0,:]
         radius_mask = ins_seg_logit[:,1,:]
@@ -105,7 +105,7 @@ class ProposalLoss(nn.Module):
         loss_dict = {
             "proposal_loss"+suffix: 1*torch.sum(proposal_loss)/batch_size,
             'radius_loss'+suffix: 10*torch.sum(radius_loss)/batch_size,
-            'finish_loss'+suffix: 1*conf_loss
+            'finish_loss'+suffix: finish_weight*conf_loss
         }
 
         return loss_dict

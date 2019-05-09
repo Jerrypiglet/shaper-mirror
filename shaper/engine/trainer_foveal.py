@@ -27,7 +27,8 @@ def train_model(models,
                 num_zoom_iteration=1,
                 meta_data_size=32,
                 freezers=None,
-                log_period=1):
+                log_period=1,
+                epoch=0):
     logger = logging.getLogger("shaper.train")
     meters = MetricLogger(delimiter="  ")
     proposal_model, segmentation_model = models
@@ -150,7 +151,7 @@ def train_model(models,
             #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
             #segmentation_preds['mask_output'] = segmentation_preds['mask_output'][:,:-meta_data_size,:]
 
-            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration))
+            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration), finish_weight = 1))
             proposal_losses = sum(proposal_loss_dict.values())
             meters.update(loss=proposal_losses, **proposal_loss_dict)
             segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix='_'+str(zoom_iteration))
@@ -412,6 +413,7 @@ def train(cfg, output_dir=""):
                                    optimizers=optimizers,
                                    freezers=freezers,
                                    log_period=cfg.TRAIN.LOG_PERIOD,
+                                   epoch=cur_epoch
                                    )
         epoch_time = time.time() - start_time
         logger.info("Epoch[{}]-Train {}  total_time: {:.2f}s".format(
