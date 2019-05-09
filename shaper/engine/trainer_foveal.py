@@ -81,7 +81,7 @@ def train_model(models,
             proposal_mask = proposal_preds['mask_output'][:,0,:]
 
             proposal_mask = F.softmax(proposal_mask,1)
-            radius_mask = proposal_preds['mask_output'][:,1,:]
+            #radius_mask = proposal_preds['mask_output'][:,1,:]
             #meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
             m,_ = torch.max(proposal_mask, 1, keepdim=True)
             proposal_mask[proposal_mask < 0.1*m]=0
@@ -92,13 +92,20 @@ def train_model(models,
             centroids = centroids.view(batch_size,1, 1)
 
             gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
-            gathered_radius = radius_mask.gather(1,centroids.squeeze(-1))
+
+
+            centroids= centroids.squeeze(-1)
+
+            #gathered_radius = radius_mask.detach().gather(1,centroids)
+            gathered_radius = data_batch['radius'].gather(1,centroids)
+
 
             dists = (full_points - gathered_centroids)**2
             dists = torch.sum(dists, 1)
             nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
 
+            radius = proposal_preds['global_output'][:,1]
 
             for b in range(batch_size):
                 crop_size = Normal(1, 0.8).sample()
@@ -181,7 +188,7 @@ def train_model(models,
             if not continue_flag:
                 break
 
-            continue_flag = torch.sum(data_batch['finish_label'].detach()).cpu() > 0
+            continue_flag = torch.sum(data_batch['finish_label']) > 0
 
 
             if zoom_iteration % 10==9:

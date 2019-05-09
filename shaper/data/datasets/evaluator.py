@@ -264,11 +264,12 @@ def evaluate_part_instance_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
+        break
     print('mean ap', np.mean(aps))
-    return aps
+    #return aps
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
-    #exit(0)
+    exit(0)
 
 
 def merge_masks(masks, confs, finish):
@@ -496,12 +497,15 @@ def evaluate_foveal_segmentation(dataset,
     iou_per_class = defaultdict(float)
 
     all_ret, all_conf = merge_masks(glob_pred_logits, conf_logits, finish_logits)
-    ap, ious = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.10)
-    print('AP 10', ap)
-    ap, _  = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.25)
-    print('AP 25', ap)
-    ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.50)
-    print('AP 50', ap)
-    ap, _ = instance_segmentation_mAP(all_ret, all_conf, dataset, 0.75)
-    print('AP 75', ap)
+    aps=np.zeros((20,))
+    for i in range(20):
+        ap, temp = instance_segmentation_mAP(all_ret>0.5, all_conf, dataset, 0.05*(i+1))
+        if i==0:
+            ious= temp
+        aps[i]=ap
+        print('ap %d'%(i*5+5), ap)
+        break
+    print('mean ap', np.mean(aps))
+    #return aps
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
+    exit(0)

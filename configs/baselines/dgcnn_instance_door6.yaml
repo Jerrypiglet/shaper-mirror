@@ -7,6 +7,7 @@ MODEL:
   NUM_INS_MASKS: 11
   DGCNN:
       K: 20
+      DROPOUT_PROB: 0.0
 INPUT:
   NUM_POINTS: 2500
 DATALOADER:
@@ -33,6 +34,6 @@ TRAIN:
   VAL_PERIOD: 10
   AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation","PointCloudScale", "PointCloudTranslate")
 TEST:
-  BATCH_SIZE: 24
+  BATCH_SIZE: 1
   #AUGMENTATION: ("PointCloudRotate",)
   VIS_DIR: 'visu_test'

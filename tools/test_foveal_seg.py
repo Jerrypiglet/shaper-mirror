@@ -63,6 +63,7 @@ def test(cfg, output_dir=""):
         if cfg.TEST.WEIGHT:
             # Load weight if specified
             weight_path = cfg.TEST.WEIGHT.replace("@", output_dir)
+            weight_path = weight_path.replace('#', '%02d'%i)
             checkpointer.load(weight_path,  resume=False)
         else:
             # Load last checkpoint
@@ -258,7 +259,7 @@ def test(cfg, output_dir=""):
         zoomed_points_all[zoom_iteration] = np.concatenate(zoomed_points_all[zoom_iteration], axis=0)
         proposal_logit_all[zoom_iteration] = np.concatenate(proposal_logit_all[zoom_iteration], axis=0)
 
-    evaluate_foveal_segmentation(test_dataset, viewed_mask_all,  proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,global_seg_logit_all, output_dir=output_dir, vis_dir=vis_dir)
+    return evaluate_foveal_segmentation(test_dataset, viewed_mask_all,  proposal_logit_all, finish_logit_all, zoomed_points_all, seg_logit_all, conf_logit_all,global_seg_logit_all, output_dir=output_dir, vis_dir=vis_dir)
 
 
 def main():
@@ -268,7 +269,7 @@ def main():
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     purge_cfg(cfg)
-    cfg.freeze()
+    #cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR
     # Replace '@' with config path
@@ -286,7 +287,22 @@ def main():
     logger.info("Running with config:\n{}".format(cfg))
 
     assert cfg.TASK == "foveal_part_instance_segmentation"
-    test(cfg, output_dir)
+
+    aps = np.zeros((5, 20))
+    for i in range(420, 520, 20):
+        print(i)
+        #cfg.TEST.WEIGHT='@/model_#_%03d.pth'%i
+        aps[(i-420)//20] = test(cfg, output_dir)
+        print(aps[(i-420)//20])
+    temp = np.mean(aps, 0, keepdims=True)
+    std_dev = np.mean((aps - temp)**2,0)**0.5
+    print('mean',list(zip(range(5,105,5),np.mean(aps,0))))
+    print('std_dev', list(zip(range(5,105,5), std_dev)))
+    aps = np.mean(aps,1)
+    mean = np.mean(aps)
+    std_dev = np.mean((aps - mean)**2)**0.5
+    print('mean', mean)
+    print('std dev', std_dev)
 
 
 if __name__ == "__main__":

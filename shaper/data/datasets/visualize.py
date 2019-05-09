@@ -84,8 +84,10 @@ def gen_visu(visu_dir, dataset, pred_ins_label, conf_label, ious=None, visu_num=
         mkdir(child_info_dir)
 
         for j in range(pred_ins_label.shape[1]):
-            if conf_label[i,j]<0.1:
+            if np.sum(pred_ins_label[i,j] > 0.1) == 0:
                 continue
+            #if conf_label[i,j]<0.1:
+            #    continue
             cur_part_prefix = 'part-%03d' % j
             out_fn = os.path.join(child_part_dir, cur_part_prefix+'.png')
             render_pts_with_feature(out_fn, pts, pred_ins_label[i,j])
@@ -125,7 +127,7 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
     n_shape = min(visu_num, n_shape)
 
 
-    for i in range(0,n_shape):
+    for i in bar(range(0,n_shape)):
         cur_fn_prefix = 'shape-%03d' % i
         data_dict=dataset[i]
         pts = data_dict['points']

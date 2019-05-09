@@ -6,7 +6,7 @@ MODEL:
   NORMALIZATION: "BN"
   NUM_INS_MASKS: 11
   DGCNN:
-      K: 20
+      K: 32
       DROPOUT_PROB: 0.0
 INPUT:
   NUM_POINTS: 2500
@@ -28,12 +28,12 @@ SCHEDULER:
     step_size: 20
   MAX_EPOCH: 500
 TRAIN:
-  BATCH_SIZE: 12
+  BATCH_SIZE: 6
   CHECKPOINT_PERIOD: 20
   LOG_PERIOD: 10
   VAL_PERIOD: 10
   AUGMENTATION: ("PointCloudRotate", "PointCloudRotatePerturbation","PointCloudScale", "PointCloudTranslate")
 TEST:
-  BATCH_SIZE: 1
+  BATCH_SIZE: 24
   #AUGMENTATION: ("PointCloudRotate",)
   VIS_DIR: 'visu_test'

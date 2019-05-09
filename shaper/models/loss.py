@@ -133,7 +133,7 @@ class PartInsSegLoss(nn.Module):
 
         loss_dict = {
             "ins_seg_loss"+suffix: ins_seg_loss,
-            'conf_loss'+suffix:conf_loss*10,
+            'conf_loss'+suffix:conf_loss*5,
             #'feature_loss'+suffix:feature_loss
         }
 
