@@ -69,7 +69,7 @@ class Checkpointer(object):
         save_file = os.path.join(self.save_dir, tag_file)
         try:
             with open(save_file, "r") as f:
-                last_saved = f.read()
+                last_saved = f.read().strip()
             # If not absolute path, add save_dir as prefix
             if not os.path.isabs(last_saved):
                 last_saved = os.path.join(self.save_dir, last_saved)
