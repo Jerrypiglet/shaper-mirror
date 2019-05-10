@@ -66,7 +66,7 @@ def train_model(models,
 
         #for zoom_iteration in range(num_zoom_iteration):
         zoom_iteration=-1
-        continue_flag= epoch >= 200
+        continue_flag=  epoch >= 250
         while True:
             zoom_iteration+=1
             data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
@@ -420,11 +420,6 @@ def train(cfg, output_dir=""):
     start_epoch = checkpoint_datas[0].get("epoch", 0)
     logger.info("Start training from epoch {}".format(start_epoch))
     for epoch in range(start_epoch, max_epoch):
-        if epoch == 200:
-            schedulers=None
-            for optimizer in optimizers:
-                scheduler = build_scheduler(cfg, optimizer)
-                schedulers.append(scheduler)
 
         cur_epoch = epoch + 1
         for scheduler in schedulers:

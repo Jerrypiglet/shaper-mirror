@@ -1,0 +1,40 @@
+TASK:
+  "foveal_part_instance_segmentation"
+AUTO_RESUME: True
+MODEL:
+  TYPE: "DGCNN"
+  PROP_NORMALIZATION: "BN"
+  SEG_NORMALIZATION: "BN"
+  NUM_INS_MASKS: 11
+  META_DATA: 20
+  DGCNN:
+      K: 20
+      DROPOUT_PROB: 0.0
+INPUT:
+  NUM_POINTS: 2500
+DATASET:
+  ROOT_DIR: "data/big/hier_ins_seg_100K_h5/Door_small" 
+  TYPE: "PartNet"
+  TRAIN: ("train",)
+  VAL: ("val",)
+  TEST: ("test",)
+SOLVER:
+  TYPE: "Adam"
+  BASE_LR: 0.003
+SCHEDULER:
+  TYPE: "StepLR"
+  StepLR:
+    gamma: 0.7
+    step_size: 20
+  MAX_EPOCH: 700
+TRAIN:
+  BATCH_SIZE: 6
+  CHECKPOINT_PERIOD: 20
+  LOG_PERIOD: 50
+  VAL_PERIOD: 0
+  AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
+  NUM_ZOOM_ITERATION: 6
+TEST:
+  BATCH_SIZE: 1
+  NUM_ZOOM_ITERATION: 10
+  VIS_DIR: 'visu_test'
