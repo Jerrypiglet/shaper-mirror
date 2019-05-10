@@ -420,11 +420,11 @@ def train(cfg, output_dir=""):
     start_epoch = checkpoint_datas[0].get("epoch", 0)
     logger.info("Start training from epoch {}".format(start_epoch))
     for epoch in range(start_epoch, max_epoch):
-        if epoch == 200:
-            schedulers=None
-            for optimizer in optimizers:
-                scheduler = build_scheduler(cfg, optimizer)
-                schedulers.append(scheduler)
+        #if epoch == 200:
+        #    schedulers=None
+        #    for optimizer in optimizers:
+        #        scheduler = build_scheduler(cfg, optimizer)
+        #        schedulers.append(scheduler)
 
         cur_epoch = epoch + 1
         for scheduler in schedulers:
