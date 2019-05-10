@@ -56,7 +56,7 @@ class PartNetH5(Dataset):
         self.root_dir = root_dir
         self.dataset_names = dataset_names
         self.num_points = num_points
-        self.point2group = 'point2group'+str(num_points)
+        self.point2group = 'point2group2500'
         self.shuffle_points = shuffle_points
         self.transform = transform
         self.seg_transform = seg_transform
