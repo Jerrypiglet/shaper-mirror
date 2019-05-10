@@ -55,7 +55,7 @@ class PartInsSegLoss(nn.Module):
     def __init__(self):
         super(PartInsSegLoss, self).__init__()
 
-    def forward(self, preds, labels, label_key='ins_seg_label', suffix=''):
+    def forward(self, preds, labels, label_key='ins_seg_label', suffix='', conf_weight=1):
         ins_seg_logit = preds["mask_output"]
         ins_seg_logit = F.softmax(ins_seg_logit,1)
         ins_seg_label = labels[label_key]
@@ -133,9 +133,10 @@ class PartInsSegLoss(nn.Module):
 
         loss_dict = {
             "ins_seg_loss"+suffix: ins_seg_loss,
-            'conf_loss'+suffix:conf_loss*5,
             #'feature_loss'+suffix:feature_loss
         }
+        if conf_weight > 0:
+            loss_dict['conf_loss'+suffix] = conf_weight * conf_loss
 
         return loss_dict
 

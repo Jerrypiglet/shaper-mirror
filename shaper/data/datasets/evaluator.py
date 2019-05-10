@@ -258,14 +258,17 @@ def evaluate_part_instance_segmentation(dataset,
     #gt_masks=gt_masks[:,:,:2500]
 
     aps=np.zeros((20,))
+    print(pred_logits.shape)
+    pred_logits = (pred_logits == np.max(pred_logits, 1, keepdims=True))
     for i in range(20):
         ap, temp = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.05*(i+1))
         if i==0:
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
+        break
     print('mean ap', np.mean(aps))
-    return aps
+    #return aps
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
     exit(0)
@@ -363,6 +366,9 @@ def instance_segmentation_mAP(pred_masks, confs, dataset, iou_threshold):
     confs NUM_SHAPES x NUM_PRED_MASKS
     gt_masks NUM_SHAPES x NUM_GT_MASKS x N
     '''
+
+    pred_masks = pred_masks[:,:,:2500]
+
     true_pos_list = []
     false_pos_list = []
     conf_score_list = []
@@ -375,7 +381,7 @@ def instance_segmentation_mAP(pred_masks, confs, dataset, iou_threshold):
     for i, data  in enumerate(dataset):
         cur_pred_mask = pred_masks[i]
         cur_pred_conf = confs[i]
-        cur_gt_mask = data['ins_seg_label']
+        cur_gt_mask = data['ins_seg_label'][:,:2500]
         gt_n_ins = cur_gt_mask.shape[0]
         gt_npos += np.sum(np.sum(cur_gt_mask, 1)>0)
 
@@ -386,7 +392,7 @@ def instance_segmentation_mAP(pred_masks, confs, dataset, iou_threshold):
         for j in range(pred_n_ins):
             idx = order[j]
 
-            if  cur_pred_conf[idx]> 0.2 and np.sum(cur_pred_mask[idx]) > 0:
+            if  cur_pred_conf[idx]> 0.1 and np.sum(cur_pred_mask[idx]) > 0:
                 iou_max = 0.0; cor_gt_id = -1;
                 for k in range(gt_n_ins):
                     if gt_valid[k] and (not gt_used[k]):
@@ -503,8 +509,7 @@ def evaluate_foveal_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
-        break
     print('mean ap', np.mean(aps))
-    #return aps
+    return aps
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
     exit(0)

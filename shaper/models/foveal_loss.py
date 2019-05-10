@@ -93,10 +93,14 @@ class ProposalLoss(nn.Module):
         #ins_seg_logit batch_size x num_point pred
         proposal_loss = -1 *  ins_seg_label * F.log_softmax(proposal_mask,1)
 
-        finish_label,_ = torch.max(ins_seg_label, 1)
+        ins_seg_label = labels[label_key] #B x K x N
+        finish_label, _ = torch.max(torch.sum(ins_seg_label*(1-viewed_mask),2)/(torch.sum(ins_seg_label,2)+1e-12), 1)
         labels['finish_label']=finish_label
-        finish_label /= (finish_label+1e-12)
+        #finish_label /= (finish_label+1e-12)
         finish_logit = preds['global_output'].view((batch_size,))
+        #finish_logit = torch.sigmoid(finish_logit)
+        #conf_loss = (finish_logit - finish_label)**2
+        #conf_loss = torch.sum(conf_loss)/batch_size
 
 
 

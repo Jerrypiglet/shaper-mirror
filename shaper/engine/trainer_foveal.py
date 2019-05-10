@@ -66,10 +66,15 @@ def train_model(models,
 
         #for zoom_iteration in range(num_zoom_iteration):
         zoom_iteration=-1
-        continue_flag=  epoch >= 250
+        continue_flag=  False#epoch >= 200
         while True:
             zoom_iteration+=1
             data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
+            ins_seg_label = data_batch['ins_seg_label']
+            ins_seg_label, _ = torch.max(ins_seg_label, 1, keepdim=True)
+            bvm = (viewed_mask>0).float()
+            ins_seg_label *= bvm
+            data_batch['points_and_masks'] = torch.cat([points, bvm, ins_seg_label], 1)
             #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 
@@ -116,9 +121,9 @@ def train_model(models,
 
 
             for b in range(batch_size):
-                crop_size = Normal(1, 0.8).sample()
+                crop_size = Normal(1, 1.5).sample()
                 #crop_size = max(0, crop_size)
-                crop_size = 2**crop_size
+                crop_size = 1.5**crop_size
                 nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
                 if nearest_indices_temp.shape[0] >= num_point:
                     nearest_indices[b] = nearest_indices_temp[:num_point,0]
@@ -172,7 +177,7 @@ def train_model(models,
             proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix=suffix, finish_weight = 1)
             proposal_losses = sum(proposal_loss_dict.values())
             meters.update(loss=proposal_losses, **proposal_loss_dict)
-            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix=suffix)
+            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix=suffix, conf_weight=5)
             segmentation_losses = sum(segmentation_loss_dict.values())
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)
             #proposal_losses.backward(retain_graph=True)
@@ -202,10 +207,6 @@ def train_model(models,
 
             continue_flag = torch.sum(data_batch['finish_label']) > 0
 
-
-            if zoom_iteration % 10==9:
-                for optimizer in optimizers:
-                    optimizer.step()
 
         for optimizer in optimizers:
             optimizer.step()

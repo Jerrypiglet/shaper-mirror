@@ -5,7 +5,7 @@ MODEL:
   TYPE: "DGCNN"
   PROP_NORMALIZATION: "BN"
   SEG_NORMALIZATION: "BN"
-  NUM_INS_MASKS: 4
+  NUM_INS_MASKS: 11
   META_DATA: 20
   DGCNN:
       K: 20
@@ -26,15 +26,15 @@ SCHEDULER:
   StepLR:
     gamma: 0.7
     step_size: 20
-  MAX_EPOCH: 500
+  MAX_EPOCH: 400
 TRAIN:
   BATCH_SIZE: 6
   CHECKPOINT_PERIOD: 10
   LOG_PERIOD: 50
   VAL_PERIOD: 0
   AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation", "PointCloudTranslate", )
-  NUM_ZOOM_ITERATION: 12
+  NUM_ZOOM_ITERATION: 6
 TEST:
   BATCH_SIZE: 1
-  NUM_ZOOM_ITERATION: 10
+  NUM_ZOOM_ITERATION: 1
   VIS_DIR: 'visu_test'
