@@ -66,7 +66,7 @@ def train_model(models,
 
         #for zoom_iteration in range(num_zoom_iteration):
         zoom_iteration=-1
-        continue_flag=True
+        continue_flag= epoch >= 200
         while True:
             zoom_iteration+=1
             data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
@@ -75,13 +75,22 @@ def train_model(models,
 
             proposal_preds = proposal_model(data_batch, 'points_and_masks')
 
+            #proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration), finish_weight = 1)
+            #proposal_losses = sum(proposal_loss_dict.values())
+            #meters.update(loss=proposal_losses, **proposal_loss_dict)
+            #proposal_losses.backward()
+            #break
+
 
 
 
             proposal_mask = proposal_preds['mask_output'][:,0,:]
 
             proposal_mask = F.softmax(proposal_mask,1)
-            #radius_mask = proposal_preds['mask_output'][:,1,:]
+            radius_mask = proposal_preds['mask_output'][:,1,:]
+
+
+
             #meta_data = proposal_preds['mask_output'][:,1:,:] #B x M x N
             m,_ = torch.max(proposal_mask, 1, keepdim=True)
             proposal_mask[proposal_mask < 0.1*m]=0
@@ -96,8 +105,8 @@ def train_model(models,
 
             centroids= centroids.squeeze(-1)
 
-            #gathered_radius = radius_mask.detach().gather(1,centroids)
-            gathered_radius = data_batch['radius'].gather(1,centroids)
+            gathered_radius = radius_mask.detach().gather(1,centroids)
+            #gathered_radius = data_batch['radius'].gather(1,centroids)
 
 
             dists = (full_points - gathered_centroids)**2
@@ -105,7 +114,6 @@ def train_model(models,
             nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
 
-            radius = proposal_preds['global_output'][:,1]
 
             for b in range(batch_size):
                 crop_size = Normal(1, 0.8).sample()
@@ -158,14 +166,18 @@ def train_model(models,
             #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
             #segmentation_preds['mask_output'] = segmentation_preds['mask_output'][:,:-meta_data_size,:]
 
-            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration), finish_weight = 1)
+            suffix = '_'+str(zoom_iteration)
+            if zoom_iteration > 3:
+                suffix='_tail'
+            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix=suffix, finish_weight = 1)
             proposal_losses = sum(proposal_loss_dict.values())
             meters.update(loss=proposal_losses, **proposal_loss_dict)
-            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix='_'+str(zoom_iteration))
+            segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix=suffix)
             segmentation_losses = sum(segmentation_loss_dict.values())
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)
-            proposal_losses.backward(retain_graph=True)
-            segmentation_losses.backward(retain_graph = continue_flag)
+            #proposal_losses.backward(retain_graph=True)
+            #segmentation_losses.backward(retain_graph = continue_flag)
+            (proposal_losses + segmentation_losses).backward(retain_graph = continue_flag)
 
             masks = segmentation_preds['mask_output']
             masks = F.softmax(masks,1)
@@ -408,6 +420,12 @@ def train(cfg, output_dir=""):
     start_epoch = checkpoint_datas[0].get("epoch", 0)
     logger.info("Start training from epoch {}".format(start_epoch))
     for epoch in range(start_epoch, max_epoch):
+        if epoch == 200:
+            schedulers=None
+            for optimizer in optimizers:
+                scheduler = build_scheduler(cfg, optimizer)
+                schedulers.append(scheduler)
+
         cur_epoch = epoch + 1
         for scheduler in schedulers:
             scheduler.step()

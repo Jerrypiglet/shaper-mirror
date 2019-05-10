@@ -132,7 +132,7 @@ def test(cfg, output_dir=""):
                 proposal_mask = F.softmax(proposal_mask,1)
                 radius_mask = proposal_preds['mask_output'][:,1,:]
                 proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
-                finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output']).cpu().numpy())
+                finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output'][:,0:1]).cpu().numpy())
                 m,_ = torch.max(proposal_mask, 1, keepdim=True)
                 proposal_mask[proposal_mask < 0.5*m]=0
                 proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
@@ -144,6 +144,8 @@ def test(cfg, output_dir=""):
 
                 gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
                 gathered_radius = radius_mask.gather(1,centroids.squeeze(-1))
+                #gathered_radius = data_batch['radius'].gather(1,centroids.squeeze(-1))
+
 
                 dists = (full_points - gathered_centroids)**2
                 dists = torch.sum(dists, 1)
@@ -219,14 +221,14 @@ def test(cfg, output_dir=""):
 
 
 
-                proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
+                #proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
 
 
 
                 #if not continue_flag:
                 #    break
 
-                continue_flag = torch.sum(data_batch['finish_label'].detach()).cpu() > 0
+                #continue_flag = torch.sum(data_batch['finish_label'].detach()).cpu() > 0
                 #loss_dict = loss_fn(preds, data_batch)
                 #metric_dict = metric_fn(preds, data_batch)
                 #losses = sum(loss_dict.values())

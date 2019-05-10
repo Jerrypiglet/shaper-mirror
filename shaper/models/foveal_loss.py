@@ -66,11 +66,8 @@ class ProposalLoss(nn.Module):
 
     def forward(self, preds, labels, label_key='ins_seg_label', suffix='', finish_weight=1):
         ins_seg_logit = preds["mask_output"]
-        finish_logit = preds['global_output'][:,0]
-        radius_logit = preds['global_output'][:,1]
         proposal_mask = ins_seg_logit[:,0,:]
-        #radius_mask = ins_seg_logit[:,1,:]
-
+        radius_mask = ins_seg_logit[:,1,:]
         batch_size  = proposal_mask.shape[0]
         num_points = proposal_mask.shape[1]
         ins_seg_label = labels[label_key] #B x K x N
@@ -84,14 +81,12 @@ class ProposalLoss(nn.Module):
         #active = (torch.sum(ins_seg_label, 2, keepdim=True) > 0).float()
         #distances = (distances+1e-4)/(active+1e-8)
         #distances, _ =torch.min(distances, 1)
-        distances, _ = torch.max(labels['radius'], 1)
-        radius_loss = (distances - radius_logit)**2 * (torch.sum(torch.sum(ins_seg_label,1), 1) > 0 ).float()
-
+        distances = labels['radius']
 
         ins_seg_label = ins_seg_label* (1-viewed_mask)
         ins_seg_label,_ = torch.max(ins_seg_label, 1)
-        #radius_loss = (radius_mask - distances.detach())**2 * ins_seg_label.detach()
-        #radius_loss = radius_loss[radius_loss >0 ]
+        radius_loss = (radius_mask - distances.detach())**2 * ins_seg_label.detach()
+        radius_loss = radius_loss[radius_loss >0 ]
         #ins_seg_label batch_size x num_point gt
         ins_seg_label = ins_seg_label / (torch.sum(ins_seg_label, 1, True)+1e-8)
 
@@ -99,8 +94,9 @@ class ProposalLoss(nn.Module):
         proposal_loss = -1 *  ins_seg_label * F.log_softmax(proposal_mask,1)
 
         finish_label,_ = torch.max(ins_seg_label, 1)
-        labels['finish_label']=finish_label.detach().cpu()
+        labels['finish_label']=finish_label
         finish_label /= (finish_label+1e-12)
+        finish_logit = preds['global_output'].view((batch_size,))
 
 
 
@@ -108,7 +104,7 @@ class ProposalLoss(nn.Module):
 
         loss_dict = {
             "proposal_loss"+suffix: 1*torch.sum(proposal_loss)/batch_size,
-            #'radius_loss'+suffix: 1*torch.sum(radius_loss)/batch_size,
+            'radius_loss'+suffix: 1.0*torch.sum(radius_loss)/batch_size,
             'finish_loss'+suffix: finish_weight*conf_loss
         }
 
