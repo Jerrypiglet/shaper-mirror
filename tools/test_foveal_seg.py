@@ -166,7 +166,8 @@ def test(cfg, output_dir=""):
 
                 masks = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
                 confs = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
-                for crop_size in range(1,5):
+                for crop_size in range(1):#(1,5):
+                    crop_size=2
                     #nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
                     nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
                     for b in range(batch_size):
@@ -226,14 +227,9 @@ def test(cfg, output_dir=""):
                 pm = pm.scatter_add(2,new_groups, masks)
                 vm = vm.scatter_add(2,new_groups, torch.ones(masks.shape).cuda())
 
-                masks *= confs.unsqueeze(-1)
-                masks, _ = torch.max(masks, 1)
-
-                predict_mask = predict_mask.squeeze(1)
-                viewed_mask=viewed_mask.squeeze(1)
-                predict_mask = predict_mask.scatter_add(1,groups, masks)
+                #predict_mask = predict_mask.scatter_add(1,groups, masks)
                 viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
-                #viewed_mask[viewed_mask>=1]=1
+                viewed_mask[viewed_mask>=1]=1
                 viewed_mask_all[zoom_iteration].append(viewed_mask.cpu().numpy())
                 viewed_mask = viewed_mask.unsqueeze(1).detach()
                 predict_mask = predict_mask.unsqueeze(1).detach()
