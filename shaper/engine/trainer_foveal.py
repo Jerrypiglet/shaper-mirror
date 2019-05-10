@@ -121,9 +121,9 @@ def train_model(models,
 
 
             for b in range(batch_size):
-                crop_size = Normal(1, 1.5).sample()
+                crop_size = Normal(1, 1).sample()
                 #crop_size = max(0, crop_size)
-                crop_size = 1.5**crop_size
+                crop_size = 2**crop_size
                 nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
                 if nearest_indices_temp.shape[0] >= num_point:
                     nearest_indices[b] = nearest_indices_temp[:num_point,0]

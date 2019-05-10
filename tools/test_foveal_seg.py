@@ -165,8 +165,8 @@ def test(cfg, output_dir=""):
                 dists = torch.sum(dists, 1)
 
                 masks = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
-                confs = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
-                for crop_size in range(1):#(1,5):
+                confs = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS)).cuda()
+                for crop_size in range(1):#1,5):
                     crop_size=2
                     #nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
                     nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
@@ -210,13 +210,14 @@ def test(cfg, output_dir=""):
 
 
                     temp_masks = segmentation_preds['mask_output']
-                    temp_masks = F.softmax(masks,1)
+                    temp_masks = F.softmax(temp_masks,1)
                     temp_confs = segmentation_preds['global_output']
-                    temp_confs = torch.sigmoid(confs)
+                    temp_confs = torch.sigmoid(temp_confs)
 
                     replace = temp_confs > confs
                     confs[ replace ] = temp_confs[replace]
                     masks[replace] = temp_masks[replace]
+
 
                 seg_logit_all[zoom_iteration].append(masks.cpu().numpy())
                 conf_logit_all[zoom_iteration].append(confs.cpu().numpy())
@@ -227,12 +228,13 @@ def test(cfg, output_dir=""):
                 pm = pm.scatter_add(2,new_groups, masks)
                 vm = vm.scatter_add(2,new_groups, torch.ones(masks.shape).cuda())
 
+                viewed_mask  = viewed_mask.squeeze(1)
                 #predict_mask = predict_mask.scatter_add(1,groups, masks)
                 viewed_mask = viewed_mask.scatter_add(1,groups, torch.ones((batch_size, num_point)).cuda())
                 viewed_mask[viewed_mask>=1]=1
                 viewed_mask_all[zoom_iteration].append(viewed_mask.cpu().numpy())
+                #predict_mask = predict_mask.unsqueeze(1).detach()
                 viewed_mask = viewed_mask.unsqueeze(1).detach()
-                predict_mask = predict_mask.unsqueeze(1).detach()
 
 
                 global_seg_logit_all[zoom_iteration].append((pm/(vm+1e-12)).cpu().numpy())
