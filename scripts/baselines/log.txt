@@ -1,0 +1,120 @@
+0chair.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_chair.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_chair.yaml
+    mv outputs/baselines/dgcnn_foveal_chair outputs/baselines/dgcnn_foveal_chair_$i
+    mv outputs/baselines/dgcnn_instance_chair outputs/baselines/dgcnn_instance_chair_$i
+done
+10mugscissors.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_mug.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_mug.yaml
+    mv outputs/baselines/dgcnn_foveal_mug outputs/baselines/dgcnn_foveal_mug_$i
+    mv outputs/baselines/dgcnn_instance_mug outputs/baselines/dgcnn_instance_mug_$i
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_scissors.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_scissors.yaml
+    mv outputs/baselines/dgcnn_foveal_scissors outputs/baselines/dgcnn_foveal_scissors_$i
+    mv outputs/baselines/dgcnn_instance_scissors outputs/baselines/dgcnn_instance_scissors_$i
+done
+11microwavebag.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_microwave.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_microwave.yaml
+    mv outputs/baselines/dgcnn_foveal_microwave outputs/baselines/dgcnn_foveal_microwave_$i
+    mv outputs/baselines/dgcnn_instance_microwave outputs/baselines/dgcnn_instance_microwave_$i
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_bag.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_bag.yaml
+    mv outputs/baselines/dgcnn_foveal_bag outputs/baselines/dgcnn_foveal_bag_$i
+    mv outputs/baselines/dgcnn_instance_bag outputs/baselines/dgcnn_instance_bag_$i
+done
+12dishwasherkeyboard.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_door.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_door.yaml
+    mv outputs/baselines/dgcnn_foveal_door outputs/baselines/dgcnn_foveal_door_$i
+    mv outputs/baselines/dgcnn_instance_door outputs/baselines/dgcnn_instance_door_$i
+done
+1storage.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_storage_furniture.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_storage_furniture.yaml
+    mv outputs/baselines/dgcnn_foveal_storage_furniture outputs/baselines/dgcnn_foveal_storage_furniture_$i
+    mv outputs/baselines/dgcnn_instance_storage_furniture outputs/baselines/dgcnn_instance_storage_furniture_$i
+done
+2lamp.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_lamp.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_lamp.yaml
+    mv outputs/baselines/dgcnn_foveal_lamp outputs/baselines/dgcnn_foveal_lamp_$i
+    mv outputs/baselines/dgcnn_instance_lamp outputs/baselines/dgcnn_instance_lamp_$i
+done
+3vase.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_vase.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_vase.yaml
+    mv outputs/baselines/dgcnn_foveal_vase outputs/baselines/dgcnn_foveal_vase_$i
+    mv outputs/baselines/dgcnn_instance_vase outputs/baselines/dgcnn_instance_vase_$i
+done
+4faucet.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_faucet.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_faucet.yaml
+    mv outputs/baselines/dgcnn_foveal_faucet outputs/baselines/dgcnn_foveal_faucet_$i
+    mv outputs/baselines/dgcnn_instance_faucet outputs/baselines/dgcnn_instance_faucet_$i
+done
+5bottle.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_bottle.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_bottle.yaml
+    mv outputs/baselines/dgcnn_foveal_bottle outputs/baselines/dgcnn_foveal_bottle_$i
+    mv outputs/baselines/dgcnn_instance_bottle outputs/baselines/dgcnn_instance_bottle_$i
+done
+6knife.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_knife.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_knife.yaml
+    mv outputs/baselines/dgcnn_foveal_knife outputs/baselines/dgcnn_foveal_knife_$i
+    mv outputs/baselines/dgcnn_instance_knife outputs/baselines/dgcnn_instance_knife_$i
+done
+7hat.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_hat.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_hat.yaml
+    mv outputs/baselines/dgcnn_foveal_hat outputs/baselines/dgcnn_foveal_hat_$i
+    mv outputs/baselines/dgcnn_instance_hat outputs/baselines/dgcnn_instance_hat_$i
+done
+8door.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_door.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_door.yaml
+    mv outputs/baselines/dgcnn_foveal_door outputs/baselines/dgcnn_foveal_door_$i
+    mv outputs/baselines/dgcnn_instance_door outputs/baselines/dgcnn_instance_door_$i
+done
+9fridge.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_refrigerator.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_refrigerator.yaml
+    mv outputs/baselines/dgcnn_foveal_refrigerator outputs/baselines/dgcnn_foveal_refrigerator_$i
+    mv outputs/baselines/dgcnn_instance_refrigerator outputs/baselines/dgcnn_instance_refrigerator_$i
+done
+door.sh
+for i in `seq 0 4`
+do
+    python tools/train_foveal_seg.py --cfg=configs/baselines/dgcnn_foveal_door.yaml
+    python tools/train_ins_seg.py --cfg=configs/baselines/dgcnn_instance_door.yaml
+    mv outputs/baselines/dgcnn_foveal_door outputs/baselines/dgcnn_foveal_door_$i
+    mv outputs/baselines/dgcnn_instance_door outputs/baselines/dgcnn_instance_door_$i
+done

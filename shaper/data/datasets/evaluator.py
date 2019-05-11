@@ -510,8 +510,7 @@ def evaluate_foveal_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
-        break
     print('mean ap', np.mean(aps))
-    #return aps
+    return aps
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
     exit(0)
