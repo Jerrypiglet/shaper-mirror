@@ -223,7 +223,7 @@ def main():
     aps = np.zeros((5, 20))
     for i in range(360, 410, 10):
         print(i)
-        cfg.TEST.WEIGHT='@/model_%03d.pth'%i
+        cfg.TEST.WEIGHT='@_0/model_%03d.pth'%i
         aps[(i-360)//10] = test(cfg, output_dir)
         print(aps[(i-360)//10])
     temp = np.mean(aps, 0, keepdims=True)

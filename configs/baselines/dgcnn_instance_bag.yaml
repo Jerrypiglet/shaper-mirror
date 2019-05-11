@@ -1,6 +1,6 @@
 AUTO_RESUME: true
 DATASET:
-  ROOT_DIR: data/big/hier_ins_seg_100K_h5/ahaha_small
+  ROOT_DIR: data/big/hier_ins_seg_100K_h5/Bag_small
   TEST: ("test",)
   TRAIN: ("train",)
   TYPE: PartNet
@@ -12,7 +12,7 @@ MODEL:
     DROPOUT_PROB: 0.0
     K: 64
   META_DATA: 20
-  NUM_INS_MASKS: 11
+  NUM_INS_MASKS: 400
   PROP_NORMALIZATION: BN
   SEG_NORMALIZATION: BN
   TYPE: DGCNN
