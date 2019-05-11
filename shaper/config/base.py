@@ -111,6 +111,7 @@ _C.TRAIN.BATCH_SIZE = 32
 
 # The period to save a checkpoint
 _C.TRAIN.CHECKPOINT_PERIOD = 1000
+_C.TRAIN.CHECKPOINT_START = 0
 _C.TRAIN.LOG_PERIOD = 10
 
 # The period to validate

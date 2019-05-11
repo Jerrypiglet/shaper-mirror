@@ -221,11 +221,11 @@ def main():
 
     assert cfg.TASK == "part_instance_segmentation"
     aps = np.zeros((5, 20))
-    for i in range(420, 520, 20):
+    for i in range(360, 410, 10):
         print(i)
         cfg.TEST.WEIGHT='@/model_%03d.pth'%i
-        aps[(i-420)//20] = test(cfg, output_dir)
-        print(aps[(i-420)//20])
+        aps[(i-360)//10] = test(cfg, output_dir)
+        print(aps[(i-360)//10])
     temp = np.mean(aps, 0, keepdims=True)
     std_dev = np.mean((aps - temp)**2,0)**0.5
     print('mean',list(zip(range(5,105,5),np.mean(aps,0))))

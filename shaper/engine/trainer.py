@@ -45,7 +45,7 @@ def train_model(model,
         preds = model(data_batch)
 
         optimizer.zero_grad()
-        loss_dict = loss_fn(preds, data_batch)
+        loss_dict = loss_fn(preds, data_batch, suffix='_0', conf_weight=5)
         #metric_dict = metric_fn(preds, data_batch)
         losses = sum(loss_dict.values())
         forward_time = time.time()-cur_time
@@ -157,6 +157,7 @@ def train(cfg, output_dir=""):
 
     checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, resume=cfg.AUTO_RESUME)
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD
+    ckpt_start = cfg.TRAIN.CHECKPOINT_START
 
     # Build freezer
     if cfg.TRAIN.FROZEN_PATTERNS:
@@ -198,7 +199,7 @@ def train(cfg, output_dir=""):
         tensorboard_logger.add_scalars(train_meters.meters, cur_epoch, prefix="train")
 
         # Checkpoint
-        if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
+        if (cur_epoch % ckpt_period == 0 and cur_epoch > ckpt_start ) or cur_epoch == max_epoch:
             checkpoint_data["epoch"] = cur_epoch
             checkpoint_data[best_metric_name] = best_metric
             checkpointer.save("model_{:03d}".format(cur_epoch), **checkpoint_data)

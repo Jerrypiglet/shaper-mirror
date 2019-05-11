@@ -1,0 +1,16 @@
+Bag_small
+Bottle_small
+Chair_small
+Dishwasher_small
+Door_small
+Faucet_small
+Hat_small
+Keyboard_small
+Knife_small
+Lamp_small
+Microwave_small
+Mug_small
+Refrigerator_small
+Scissors_small
+Storage_furniture_small
+Vase_small

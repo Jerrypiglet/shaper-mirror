@@ -219,7 +219,7 @@ def gen_foveal_visu(visu_dir, dataset, viewed_masks, proposal_logits, finish_log
             render_pts_with_label(out_fn, pts_flipped, viewed_masks[zoom_iteration][i])
 
             for j in range(pred_ins_label[zoom_iteration].shape[1]):
-                if conf_label[zoom_iteration][i,j]<0.1:
+                if conf_label[zoom_iteration][i,j]<0.01:
                     continue
                 cur_part_prefix = 'iteration%02d_stage2_part-%03d' % (zoom_iteration, j)
                 out_fn = os.path.join(child_part_dir, cur_part_prefix+'.png')

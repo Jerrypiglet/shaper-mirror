@@ -93,23 +93,23 @@ class ProposalLoss(nn.Module):
         #ins_seg_logit batch_size x num_point pred
         proposal_loss = -1 *  ins_seg_label * F.log_softmax(proposal_mask,1)
 
-        ins_seg_label = labels[label_key] #B x K x N
-        finish_label, _ = torch.max(torch.sum(ins_seg_label*(1-viewed_mask),2)/(torch.sum(ins_seg_label,2)+1e-12), 1)
-        labels['finish_label']=finish_label
+        #ins_seg_label = labels[label_key] #B x K x N
+        #finish_label, _ = torch.max(torch.sum(ins_seg_label*(1-viewed_mask),2)/(torch.sum(ins_seg_label,2)+1e-12), 1)
+        #labels['finish_label']=finish_label
         #finish_label /= (finish_label+1e-12)
-        finish_logit = preds['global_output'].view((batch_size,))
+        #finish_logit = preds['global_output'].view((batch_size,))
         #finish_logit = torch.sigmoid(finish_logit)
         #conf_loss = (finish_logit - finish_label)**2
         #conf_loss = torch.sum(conf_loss)/batch_size
 
 
 
-        conf_loss = F.binary_cross_entropy_with_logits(finish_logit, finish_label)
+        #conf_loss = F.binary_cross_entropy_with_logits(finish_logit, finish_label)
 
         loss_dict = {
             "proposal_loss"+suffix: 1*torch.sum(proposal_loss)/batch_size,
             'radius_loss'+suffix: 1.0*torch.sum(radius_loss)/batch_size,
-            'finish_loss'+suffix: finish_weight*conf_loss
+            #'finish_loss'+suffix: finish_weight*conf_loss
         }
 
         return loss_dict

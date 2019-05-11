@@ -78,7 +78,7 @@ def train_model(models,
             #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
             data_batch['viewed_mask'] = viewed_mask
 
-            proposal_preds = proposal_model(data_batch, 'points_and_masks')
+            proposal_preds = proposal_model(data_batch, 'points')
 
             #proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix='_'+str(zoom_iteration), finish_weight = 1)
             #proposal_losses = sum(proposal_loss_dict.values())
@@ -184,23 +184,21 @@ def train_model(models,
             #segmentation_losses.backward(retain_graph = continue_flag)
             (proposal_losses + segmentation_losses).backward(retain_graph = continue_flag)
 
-            masks = segmentation_preds['mask_output']
-            masks = F.softmax(masks,1)
-            confs = segmentation_preds['global_output']
-            confs = torch.sigmoid(confs)
-            masks *= confs.unsqueeze(-1)
+            #masks = segmentation_preds['mask_output']
+            #masks = F.softmax(masks,1)
+            #confs = segmentation_preds['global_output']
+            #confs = torch.sigmoid(confs)
+            #masks *= confs.unsqueeze(-1)
 
-            masks, _ = torch.max(masks, 1)
+            #masks, _ = torch.max(masks, 1)
 
-            predict_mask = predict_mask.squeeze(1)
-            viewed_mask=viewed_mask.squeeze(1)
-            new_groups = groups.unsqueeze(1).expand(batch_size, meta_data_size, num_point).detach()
-            predict_mask = predict_mask.scatter_add(1,groups, masks)
-            viewed_mask = viewed_mask.scatter_add(1,groups, ones)
-            #meta_mask = meta_mask.scatter(2,new_groups, meta_data)
-            #viewed_mask[viewed_mask>=1]=1
-            viewed_mask = viewed_mask.unsqueeze(1).detach()
-            predict_mask = predict_mask.unsqueeze(1).detach()
+            #predict_mask = predict_mask.squeeze(1)
+            #viewed_mask=viewed_mask.squeeze(1)
+            #new_groups = groups.unsqueeze(1).expand(batch_size, meta_data_size, num_point).detach()
+            #predict_mask = predict_mask.scatter_add(1,groups, masks)
+            #viewed_mask = viewed_mask.scatter_add(1,groups, ones)
+            #viewed_mask = viewed_mask.unsqueeze(1).detach()
+            #predict_mask = predict_mask.unsqueeze(1).detach()
 
             if not continue_flag:
                 break
@@ -409,6 +407,7 @@ def train(cfg, output_dir=""):
         freezers.append(freezer)
 
     ckpt_period = cfg.TRAIN.CHECKPOINT_PERIOD
+    ckpt_start = cfg.TRAIN.CHECKPOINT_START
     set_random_seed(cfg.RNG_SEED)
 
     # Build tensorboard logger (optionally by comment)
@@ -443,7 +442,7 @@ def train(cfg, output_dir=""):
         tensorboard_logger.add_scalars(train_meters.meters, cur_epoch, prefix="train")
 
         # Checkpoint
-        if cur_epoch % ckpt_period == 0 or cur_epoch == max_epoch:
+        if (cur_epoch % ckpt_period == 0 and cur_epoch >= ckpt_start) or cur_epoch == max_epoch:
             for i in range(len(checkpointers)):
                 checkpoint_datas[i]["epoch"] = cur_epoch
                 checkpointers[i].save("model_{:02d}_{:03d}".format(i,cur_epoch), tag_file='last_checkpoint_{:02d}'.format(i),**checkpoint_datas[i])

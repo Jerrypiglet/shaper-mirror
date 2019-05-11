@@ -258,17 +258,17 @@ def evaluate_part_instance_segmentation(dataset,
     #gt_masks=gt_masks[:,:,:2500]
 
     aps=np.zeros((20,))
-    print(pred_logits.shape)
     pred_logits = (pred_logits == np.max(pred_logits, 1, keepdims=True))
+    conf_logits[conf_logits < 0.1]=0
+    #conf_logits[conf_logits < (0.5 * np.max(conf_logits,1,keepdims=True))]=0
     for i in range(20):
         ap, temp = instance_segmentation_mAP(pred_logits>0.5, conf_logits, dataset, 0.05*(i+1))
         if i==0:
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
-        break
     print('mean ap', np.mean(aps))
-    #return aps
+    return aps
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
     exit(0)
@@ -294,14 +294,15 @@ def merge_masks(masks, confs, finish):
         ret = []
         ret_confs = []
         for zoom_iteration in range(num_zoom_iteration):
-            if finish[shape,zoom_iteration]<0.2:
+            if finish[shape,zoom_iteration]==0:
                 break
             cur_conf = confs[shape,zoom_iteration]
             cur_mask = masks[shape,zoom_iteration]
             m = np.max(cur_mask, 0)
-            #cur_mask = np.logical_and(cur_mask >= (m), m>0)
+            cur_mask = np.logical_and(cur_mask >= (m), m>0)
+            max_conf = np.max(cur_conf)
             for i in range(K):
-                if cur_conf[i]< 0.2:
+                if cur_conf[i]< 0.1 or cur_conf[i] < max_conf/2:
                     continue
                 m = cur_mask[i]
                 m = m > 0.5
@@ -509,7 +510,8 @@ def evaluate_foveal_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
+        break
     print('mean ap', np.mean(aps))
-    return aps
+    #return aps
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
     exit(0)

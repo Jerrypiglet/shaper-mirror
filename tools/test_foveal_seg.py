@@ -126,21 +126,22 @@ def test(cfg, output_dir=""):
             #zoom_iteration = - 1
             #while True:
                 #zoom_iteration+=1
-                data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12))], 1)
+                #data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12))], 1)
                 data_batch['viewed_mask'] = viewed_mask
 
                 if zoom_iteration == 0:
-                    proposal_preds = proposal_model(data_batch, 'points_and_masks')
+                    proposal_preds = proposal_model(data_batch, 'points')
 
                     proposal_mask = proposal_preds['mask_output'][:,0,:]
                     proposal_mask = F.softmax(proposal_mask,1)
                     radius_mask = proposal_preds['mask_output'][:,1,:]
-                    finish_logit_all[zoom_iteration].append(torch.sigmoid(proposal_preds['global_output'][:,0:1]).cpu().numpy())
                     m,_ = torch.max(proposal_mask, 1, keepdim=True)
                     master_proposal_mask = proposal_mask
                     proposal_mask[proposal_mask < 0.5*m]=0
                     proposal_mask/=(torch.sum(proposal_mask,1, keepdim=True))
                     proposal_logit_all[zoom_iteration].append(proposal_mask.cpu().numpy())
+                    finish,_ = torch.max(proposal_mask > 0, 1, keepdim=True)
+                    finish_logit_all[zoom_iteration].append(finish.cpu().numpy())
                 else:
                     proposal_mask *= (1-(viewed_mask.squeeze(1) > 0).float())
                     finish,_ = torch.max(proposal_mask > 0, 1, keepdim=True)
@@ -167,7 +168,7 @@ def test(cfg, output_dir=""):
                 masks = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
                 confs = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS)).cuda()
                 for crop_size in range(1):#1,5):
-                    crop_size=2
+                    crop_size=2.5
                     #nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
                     nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
                     for b in range(batch_size):
@@ -317,12 +318,13 @@ def main():
 
     assert cfg.TASK == "foveal_part_instance_segmentation"
 
-    aps = np.zeros((5, 20))
+    aps = np.zeros((1, 20))
     for i in range(360, 410, 10):
         print(i)
         cfg.TEST.WEIGHT='@/model_#_%03d.pth'%i
         aps[(i-360)//10] = test(cfg, output_dir)
         print(aps[(i-360)//10])
+        break
     temp = np.mean(aps, 0, keepdims=True)
     std_dev = np.mean((aps - temp)**2,0)**0.5
     print('mean',list(zip(range(5,105,5),np.mean(aps,0))))

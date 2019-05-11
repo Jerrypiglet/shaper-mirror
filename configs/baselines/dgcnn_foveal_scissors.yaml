@@ -1,6 +1,6 @@
 AUTO_RESUME: true
 DATASET:
-  ROOT_DIR: data/big/hier_ins_seg_100K_h5/Mug_small
+  ROOT_DIR: data/big/hier_ins_seg_100K_h5/Scissors_small
   TEST: ("test",)
   TRAIN: ("train",)
   TYPE: PartNet

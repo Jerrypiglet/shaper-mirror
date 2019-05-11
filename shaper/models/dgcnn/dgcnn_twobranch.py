@@ -251,13 +251,15 @@ class DGCNNTwoBranch(nn.Module):
         for edge_conv in self.mlp_edge_conv:
             edge_conv.init_weights(xavier_uniform)
         self.mlp_local.init_weights(xavier_uniform)
-        self.mlp_global.init_weights(xavier_uniform)
-        self.mlp_seg.init_weights(xavier_uniform)
-        self.conv_seg.init_weights(xavier_uniform)
-        nn.init.xavier_uniform_(self.mask_output.weight)
-        nn.init.zeros_(self.mask_output.bias)
-        nn.init.xavier_uniform_(self.global_output.weight)
-        nn.init.zeros_(self.global_output.bias)
+        if self.num_global_output > 0:
+            self.mlp_global.init_weights(xavier_uniform)
+            nn.init.xavier_uniform_(self.global_output.weight)
+            nn.init.zeros_(self.global_output.bias)
+        else:
+            self.mlp_seg.init_weights(xavier_uniform)
+            self.conv_seg.init_weights(xavier_uniform)
+            nn.init.xavier_uniform_(self.mask_output.weight)
+            nn.init.zeros_(self.mask_output.bias)
         set_bn(self, momentum=0.01)
 
 
