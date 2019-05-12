@@ -1,18 +1,18 @@
 AUTO_RESUME: true
 DATASET:
-  ROOT_DIR: data/big/hier_ins_seg_100K_h5/Keyboard_small
+  ROOT_DIR: data/big/hier_ins_seg_100K_h5/Storage_furniture_small
   TEST: ("test",)
   TRAIN: ("train",)
   TYPE: PartNet
   VAL: ("val",)
 INPUT:
-  NUM_POINTS: 2500
+  NUM_POINTS: 3500
 MODEL:
   DGCNN:
     DROPOUT_PROB: 0.0
-    K: 64
-  META_DATA: 25
-  NUM_INS_MASKS: 30
+    K: 80
+  META_DATA: 20
+  NUM_INS_MASKS: 400
   PROP_NORMALIZATION: BN
   SEG_NORMALIZATION: BN
   TYPE: DGCNN
@@ -25,10 +25,10 @@ SCHEDULER:
 SOLVER:
   BASE_LR: 0.003
   TYPE: Adam
-TASK: foveal_part_instance_segmentation
+TASK: part_instance_segmentation
 TEST:
   BATCH_SIZE: 1
-  NUM_ZOOM_ITERATION: 50
+  NUM_ZOOM_ITERATION: 5
   VIS_DIR: visu_test2.0
 TRAIN:
   AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation",

@@ -209,7 +209,7 @@ def main():
     if output_dir:
         config_path = osp.splitext(args.config_file)[0]
         config_path = config_path.replace("configs", "outputs")
-        output_dir = output_dir.replace('@', config_path)
+        output_dir = output_dir.replace('@', config_path+'_0')
         mkdir(output_dir)
 
     logger = setup_logger("shaper", output_dir, prefix="test")
@@ -220,12 +220,13 @@ def main():
     logger.info("Running with config:\n{}".format(cfg))
 
     assert cfg.TASK == "part_instance_segmentation"
-    aps = np.zeros((5, 20))
+    aps = np.zeros((1, 20))
     for i in range(360, 410, 10):
         print(i)
-        cfg.TEST.WEIGHT='@_0/model_%03d.pth'%i
+        cfg.TEST.WEIGHT='@/model_%03d.pth'%i
         aps[(i-360)//10] = test(cfg, output_dir)
         print(aps[(i-360)//10])
+        break
     temp = np.mean(aps, 0, keepdims=True)
     std_dev = np.mean((aps - temp)**2,0)**0.5
     print('mean',list(zip(range(5,105,5),np.mean(aps,0))))

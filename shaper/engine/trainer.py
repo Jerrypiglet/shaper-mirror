@@ -33,6 +33,7 @@ def train_model(model,
 
     end = time.time()
     cur_time=time.time()
+    data_loader.dataset.shuffle_inactive()
     for iteration, data_batch in enumerate(data_loader):
         load_time = time.time()-cur_time
 

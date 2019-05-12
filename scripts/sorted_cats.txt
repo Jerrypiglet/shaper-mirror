@@ -1,0 +1,16 @@
+Storage_furniture
+Lamp
+Faucet
+Chair
+Bottle
+Knife
+Mug
+Door
+Refrigerator
+Keyboard
+Dishwasher
+Bag
+Microwave
+Vase
+Hat
+Scissors

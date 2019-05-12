@@ -43,7 +43,9 @@ def train_model(models,
     #metric_fn.train()
 
     end = time.time()
+    data_loader.dataset.shuffle_inactive()
     for iteration, data_batch in enumerate(data_loader):
+        print(iteration)
         data_time = time.time() - end
 
 

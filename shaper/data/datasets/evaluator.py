@@ -267,8 +267,9 @@ def evaluate_part_instance_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
+        break
     print('mean ap', np.mean(aps))
-    return aps
+    #return aps
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
     exit(0)
@@ -327,7 +328,7 @@ def merge_masks(masks, confs, finish):
                 break_flag=False
                 for j in range(i):
                     intersection = np.sum(np.logical_and(ret[i], ret[j]))
-                    if intersection*10>= np.sum(ret[i]) or intersection*10 >= np.sum(ret[j]):
+                    if intersection*2>= np.sum(ret[i]) or intersection*2 >= np.sum(ret[j]):
                         ret[i] = np.logical_or(ret[i], ret[j])
                         ret_confs[i] = max(ret_confs[i], ret_confs[j])
                         del ret[j]
@@ -510,7 +511,8 @@ def evaluate_foveal_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
+        break
     print('mean ap', np.mean(aps))
-    return aps
+    #return aps
     gen_foveal_visu(os.path.join(output_dir,vis_dir), dataset, viewed_masks, proposal_logits, finish_logits,zoomed_points,  pred_logits, conf_logits, all_ret, all_conf, ious)
     exit(0)

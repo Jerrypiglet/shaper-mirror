@@ -51,6 +51,18 @@ def parse_args():
 def test(cfg, output_dir=""):
     logger = logging.getLogger("shaper.tester")
 
+
+    # Build data loader
+    test_data_loader = build_dataloader(cfg, mode="test")
+    test_dataset = test_data_loader.dataset
+
+    train_data_loader = build_dataloader(cfg, mode="train")
+    num_gt_masks = int(train_data_loader.dataset.num_gt_masks*1.2+2)
+    if cfg.MODEL.NUM_INS_MASKS > num_gt_masks:
+        cfg.MODEL.NUM_INS_MASKS = num_gt_masks
+
+
+
     # Build model
     models, loss_fns = build_model(cfg)
     checkpointers=[]
@@ -68,10 +80,6 @@ def test(cfg, output_dir=""):
         else:
             # Load last checkpoint
             checkpointer.load(None, tag_file='last_checkpoint_{:02d}'.format(i),resume=True)
-
-    # Build data loader
-    test_data_loader = build_dataloader(cfg, mode="test")
-    test_dataset = test_data_loader.dataset
 
     # Prepare visualization
     vis_dir = cfg.TEST.VIS_DIR.replace("@", output_dir)
@@ -306,7 +314,7 @@ def main():
     if output_dir:
         config_path = osp.splitext(args.config_file)[0]
         config_path = config_path.replace("configs", "outputs")
-        output_dir = output_dir.replace('@', config_path)
+        output_dir = output_dir.replace('@', config_path+'_0')
         mkdir(output_dir)
 
     logger = setup_logger("shaper", output_dir, prefix="test")
@@ -321,7 +329,7 @@ def main():
     aps = np.zeros((1, 20))
     for i in range(360, 410, 10):
         print(i)
-        cfg.TEST.WEIGHT='@_0/model_#_%03d.pth'%i
+        cfg.TEST.WEIGHT='@/model_#_%03d.pth'%i
         aps[(i-360)//10] = test(cfg, output_dir)
         print(aps[(i-360)//10])
         break

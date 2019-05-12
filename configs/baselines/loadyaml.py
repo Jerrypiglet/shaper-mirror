@@ -1,8 +1,8 @@
 import yaml
 
-basename = 'dgcnn_foveal_@.yaml'
-master = 'dgcnn_foveal_door.yaml'
-master_class = 'Door'
+basename = 'dgcnn_instance_@_large.yaml'
+master = 'dgcnn_instance_keyboard_large.yaml'
+master_class = 'Keyboard'
 
 with open('cats.txt','r') as cats_file:
     for cat in cats_file.readlines():

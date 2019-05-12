@@ -85,8 +85,12 @@ class PartNetH5(Dataset):
                 num_samples = f['label'].shape[0]
             json_file = data_path.replace('.h5','.json')
             f = h5py.File(data_path)
+            label = np.max(np.max(f['label'][:],-1),-1)
+            indices = np.arange(label.shape[0]) + len(self.meta_data)
+            self.active_idx.append(indices[label])
+            self.inactive_idx.append(indices[np.logical_not(label)])
             for ind in range(num_samples):
-                #active = np.sum(f['label'][ind])
+                #active = np.max(f['label'][ind])
                 #if active:
                 #    self.active_idx.append(len(self.meta_data))
                 #else:
@@ -99,9 +103,30 @@ class PartNetH5(Dataset):
             with open(json_file,'r') as jf:
                 self.record[data_path] = json.load(jf)
             self.h5_handlers[data_path]=None
-            print (len(self.meta_data), len(self.active_idx), len(self.inactive_idx))
+        self.active_idx = np.concatenate(self.active_idx)
+        self.inactive_idx = np.concatenate(self.inactive_idx)
+        #print (len(self.meta_data), len(self.active_idx), len(self.inactive_idx))
+        #print(self.active_idx)
+        #print(self.inactive_idx)
+        #exit(0)
+        self.len_active = len(self.active_idx)
+        self.len_inactive = int(0.25*self.len_active)
+        len_expedite = self.len_active+self.len_inactive
+        if len_expedite < len(self.meta_data) and 'train' in self.dataset_names:
+            self.length = len_expedite
+        else:
+            self.length = len(self.meta_data)
+
+    def shuffle_inactive(self):
+        if self.length < len(self.meta_data):
+            np.random.shuffle(self.inactive_idx)
 
     def __getitem__(self, index):
+        if self.length < len(self.meta_data):
+            if index < self.len_inactive:
+                index = self.inactive_idx[index]
+            else:
+                index = self.active_idx[index - self.len_inactive]
 
         meta = self.meta_data[index]
         handler = self.h5_handlers[meta['path']]
@@ -144,7 +169,7 @@ class PartNetH5(Dataset):
         return out_dict
 
     def __len__(self):
-        return len(self.meta_data)
+        return self.length
 
 
 if __name__ == "__main__":
