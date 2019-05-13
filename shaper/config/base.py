@@ -132,6 +132,7 @@ _C.TRAIN.FROZEN_PATTERNS = ()
 # Specific test options
 # ---------------------------------------------------------------------------- #
 _C.TEST = CN()
+_C.TEST.VISU_MODE=False
 
 _C.TEST.BATCH_SIZE = 32
 

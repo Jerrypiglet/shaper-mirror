@@ -149,7 +149,7 @@ def test(cfg, output_dir=""):
                     radius_mask = proposal_preds['mask_output'][:,1:4,:]
                     radius_mask = torch.exp(radius_mask)
                     radius_mask = torch.transpose(radius_mask, 2, 1)
-                    radius_mask = data_batch['radius']
+                    #radius_mask = data_batch['radius']
                     m,_ = torch.max(proposal_mask, 1, keepdim=True)
                     master_proposal_mask = proposal_mask
                     proposal_mask[proposal_mask < 0.5*m]=0
@@ -178,12 +178,15 @@ def test(cfg, output_dir=""):
                 centroids = centroids.view(batch_size, 1, 1, 1)
                 centroids = centroids.expand(-1, -1, 3, 3)
 
+                gathered_radius2 = data_batch['radius'].gather(1,centroids[:,:,:,0])
                 gathered_radius = radius_mask.detach().gather(1,centroids[:,:,:,0])
-                gathered_rotation = data_batch['rotation'].detach().gather(1,centroids)
-                gathered_rotation2 = data_batch['rotation_mask'].detach().gather(1,centroids)
+                gathered_rotation2 = data_batch['rotation'].detach().gather(1,centroids)
+                gathered_rotation = data_batch['rotation_mask'].detach().gather(1,centroids)
 
-                print('gt', iteration, zoom_iteration, gathered_rotation)
-                print('pred', iteration, zoom_iteration, gathered_rotation2)
+                #print('pred', iteration, zoom_iteration, gathered_rotation)
+                #print('gt', iteration, zoom_iteration, gathered_rotation2)
+                #print('rad pred', iteration, zoom_iteration, gathered_radius)
+                #print('rad gt', iteration, zoom_iteration, gathered_radius2)
 
 
 
@@ -196,12 +199,22 @@ def test(cfg, output_dir=""):
                 masks = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
                 confs = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS)).cuda()
                 for crop_size in range(1):#1,5):
-                    crop_size=2.5
+                    crop_size=2.0
                     for b in range(batch_size):
                         for i in range(20):
-                            c0 = (transformed_points[b,:,0]**2)**0.5 < crop_size * gathered_radius[b,:,0]
-                            c1 = (transformed_points[b,:,1]**2)**0.5 < crop_size * gathered_radius[b,:,1]
-                            c2 = (transformed_points[b,:,2]**2)**0.5 < crop_size * gathered_radius[b,:,2]
+                            v0 = crop_size * gathered_radius[b,:,0]
+                            v1 = crop_size * gathered_radius[b,:,1]
+                            v2 = crop_size * gathered_radius[b,:,2]
+                            v0=v0[0]
+                            v1=v1[0]
+                            v2=v2[0]
+                            v1 = max(v1, 0,25*v0)
+                            v1 = min(v1, v0)
+                            v2 = max(v2, 0.25*v0)
+                            v2 = min(v2, v1)
+                            c0 = (transformed_points[b,:,0]**2)**0.5 < v0
+                            c1 = (transformed_points[b,:,1]**2)**0.5 < v1
+                            c2 = (transformed_points[b,:,2]**2)**0.5 < v2
                             nearest_indices_temp = torch.nonzero(c0*c1*c2)
                             if nearest_indices_temp.shape[0] >= num_point:
                                 nearest_indices[b] = nearest_indices_temp[:num_point,0].cuda()

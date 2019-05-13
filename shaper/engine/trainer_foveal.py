@@ -145,16 +145,28 @@ def train_model(models,
             for b in range(batch_size):
                 crop_size0 = Normal(1, 1).sample()
                 crop_size0 = 2**crop_size0
-                crop_size1 = Normal(1, 1).sample()
-                crop_size1 = 2**crop_size1
-                crop_size1 = torch.clamp(crop_size1, 0.25*crop_size0, 4*crop_size0)
-                crop_size2 = Normal(1, 1).sample()
-                crop_size2 = 2**crop_size2
-                crop_size2 = torch.clamp(crop_size2, 0.25*crop_size0, 4*crop_size0)
+                crop_size1 = crop_size0
+                crop_size2 = crop_size0
+                #crop_size1 = Normal(1, 1).sample()
+                #crop_size1 = 2**crop_size1
+                #crop_size1 = torch.clamp(crop_size1, 0.25*crop_size0, 4*crop_size0)
+                #crop_size2 = Normal(1, 1).sample()
+                #crop_size2 = 2**crop_size2
+                #crop_size2 = torch.clamp(crop_size2, 0.25*crop_size0, 4*crop_size0)
                 while True:
-                    c0 = (transformed_points[b,:,0]**2)**0.5 < crop_size0 * gathered_radius[b,:,0]
-                    c1 = (transformed_points[b,:,1]**2)**0.5 < crop_size1 * gathered_radius[b,:,1]
-                    c2 = (transformed_points[b,:,2]**2)**0.5 < crop_size2 * gathered_radius[b,:,2]
+                    v0 = crop_size0 * gathered_radius[b,:,0]
+                    v1 = crop_size1 * gathered_radius[b,:,1]
+                    v2 = crop_size2 * gathered_radius[b,:,2]
+                    v0=v0[0]
+                    v1=v1[0]
+                    v2=v2[0]
+                    v1 = max(v1, 0,1*v0)
+                    v1 = min(v1, v0)
+                    v2 = max(v2, 0.1*v0)
+                    v2 = min(v2, v1)
+                    c0 = (transformed_points[b,:,0]**2)**0.5 < v0
+                    c1 = (transformed_points[b,:,1]**2)**0.5 < v1
+                    c2 = (transformed_points[b,:,2]**2)**0.5 < v2
                     nearest_indices_temp = torch.nonzero(c0*c1*c2)
                     if nearest_indices_temp.shape[0] >= num_point:
                         #temp_label, _ = torch.max(full_ins_seg_label[b],0)
@@ -204,9 +216,9 @@ def train_model(models,
             #zoomed_meta_data*=0
 
             #data_batch['zoomed_meta_data']=zoomed_meta_data
-            data_batch['zoomed_points']=zoomed_points#torch.cat([zoomed_points,zoomed_meta_data], 1)
+            data_batch['zoomed_points']=zoomed_points.detach()#torch.cat([zoomed_points,zoomed_meta_data], 1)
             #data_batch['zoomed_points']=torch.cat([zoomed_points,zoomed_meta_data], 1)
-            data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
+            data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label.detach()
 
             segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
             #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
@@ -356,8 +368,8 @@ def validate_model(models,
                 #zoomed_meta_data = meta_data.gather(2, groups.view(batch_size, 1, num_point).expand(batch_size, num_meta_data, num_point))
 
                 #data_batch['zoomed_meta_data']=zoomed_meta_data
-                data_batch['zoomed_points']=zoomed_points#torch.cat([zoomed_points,zoomed_meta_data], 1)
-                data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label
+                data_batch['zoomed_points']=zoomed_points.detach()#torch.cat([zoomed_points,zoomed_meta_data], 1)
+                data_batch['zoomed_ins_seg_label']=zoomed_ins_seg_label.detach()
 
                 segmentation_preds = segmentation_model(data_batch, 'zoomed_points')
 

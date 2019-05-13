@@ -219,6 +219,7 @@ def evaluate_part_instance_segmentation(dataset,
                                aux_preds=None,
                                output_dir="",
                                vis_dir="",
+                               visu_mode=False,
                                suffix=""):
     """Evaluate part segmentation results
 
@@ -267,11 +268,14 @@ def evaluate_part_instance_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
+        if visu_mode:
+            break
+    if visu_mode:
+        gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
+        exit(0)
     print('mean ap', np.mean(aps))
     return aps
 
-    gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
-    exit(0)
 
 
 def merge_masks(masks, confs, finish):

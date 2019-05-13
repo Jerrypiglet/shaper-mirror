@@ -28,7 +28,7 @@ SOLVER:
 TASK: foveal_part_instance_segmentation
 TEST:
   BATCH_SIZE: 1
-  NUM_ZOOM_ITERATION: 1
+  NUM_ZOOM_ITERATION: 5
   VIS_DIR: visu_test2.0
 TRAIN:
   AUGMENTATION: ("PointCloudRotate",  "PointCloudScale", "PointCloudRotatePerturbation",

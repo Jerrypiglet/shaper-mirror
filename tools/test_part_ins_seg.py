@@ -193,7 +193,7 @@ def test(cfg, output_dir=""):
         seg_logit_all = np.concatenate(seg_logit_all, axis=0)
         conf_logit_all = np.concatenate(conf_logit_all, axis=0)
 
-    return evaluate_part_instance_segmentation(test_dataset, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir)
+    return evaluate_part_instance_segmentation(test_dataset, seg_logit_all, conf_logit_all,output_dir=output_dir, vis_dir=vis_dir, visu_mode=cfg.TEST.VISU_MODE)
 
 
 def main():
@@ -223,29 +223,41 @@ def main():
     aps = np.zeros((25, 20))
     output_log = open(os.path.join(output_dir, 'evaluation.txt'), 'w')
 
+    num_models=0
     for init in range(5):
         # Replace '@' with config path
         for i in range(360, 410, 10):
             cfg.TEST.WEIGHT='@/model_%03d.pth'%i
+            weight_path = cfg.TEST.WEIGHT.replace("@", output_dir+'_%d'%init)
+            if not os.path.exists(weight_path):
+                continue
+            else:
+                num_models+=1
             aps[init*5 + (i-360)//10] = test(cfg, output_dir+'_%d'%init)
             print(aps[(i-360)//10])
             output_log.write('Init %d Epoch %d:  %s\n'%(init, i,str(aps[(i-360)//10])))
             output_log.flush()
 
     output_log.write('\nFINAL RESULTS\n\n')
-    temp = np.mean(aps, 0, keepdims=True)
-    std_dev = np.mean((aps - temp)**2,0)**0.5
-    print('mean',list(zip(range(5,105,5),np.mean(aps,0))))
+    temp = np.sum(aps, 0, keepdims=True)/num_models
+    std_dev = (np.sum((aps - temp)**2,0)/num_models)**0.5
+    minval = np.max(aps,0)
+    maxval = np.min(aps,0)
+    print('mean',list(zip(range(5,105,5),np.sum(aps,0)/num_models)))
     output_log.write('mean: %s\n'%str(list(zip(range(5,105,5),np.mean(aps,0)))))
     print('std_dev', list(zip(range(5,105,5), std_dev)))
     output_log.write('std_dev: %s\n'%str(list(zip(range(5,105,5), std_dev))))
+    output_log.write('min/max: %s\n'%str(list(zip(range(5,105,5), minval, maxval))))
     aps = np.mean(aps,1)
-    mean = np.mean(aps)
-    std_dev = np.mean((aps - mean)**2)**0.5
+    mean = np.sum(aps)/num_models
+    std_dev = (np.sum((aps - mean)**2)/num_models)**0.5
     print('mean', mean)
     output_log.write('mean: %s\n'%str(mean))
     print('std dev', std_dev)
     output_log.write('std dev: %s\n'%str( std_dev))
+    print('num models',num_models)
+    output_log.write('min/max: %s %s\n' %( str(np.min(aps)), str(np.max(aps)) ))
+    output_log.write('num models %d\n'%num_models)
     output_log.close()
 
 
