@@ -24,11 +24,9 @@ else:
     exit(0)
 
 config_fn = out_fn.replace('outputs','configs')
+out_fn+='_%d'%FLAGS.iter
 
-if os.path.exists(out_fn+'_%d'%FLAGS.iter):
+if os.path.exists(out_fn):
     print('Already exists')
 else:
-    a=os.system('rm -rf %s && python tools/train_ins_seg.py --cfg=%s.yaml'% (out_fn, config_fn))
-    if a == 0:
-        os.rename(out_fn, out_fn + '_%d'%FLAGS.cat)
-
+    a=os.system('rm -rf %s && python tools/train_ins_seg.py --cfg=%s.yaml OUTPUT_DIR %s'% (out_fn, config_fn, out_fn))
