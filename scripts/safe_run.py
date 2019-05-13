@@ -26,7 +26,7 @@ else:
 config_fn = out_fn.replace('outputs','configs')
 out_fn+='_%d'%FLAGS.iter
 
-if os.path.exists(out_fn):
+if os.path.exists(out_fn+'/model_400.pth') or os.path.exists(out_fn+'/model_400_00.pth'):
     print('Already exists')
 else:
     a=os.system('rm -rf %s && python tools/train_ins_seg.py --cfg=%s.yaml OUTPUT_DIR %s'% (out_fn, config_fn, out_fn))
