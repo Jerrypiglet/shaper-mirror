@@ -6,6 +6,7 @@ import argparse
 import os.path as osp
 import logging
 import time
+import os
 
 import numpy as np
 import torch
@@ -204,14 +205,13 @@ def main():
     purge_cfg(cfg)
     #cfg.freeze()
 
+
     output_dir = cfg.OUTPUT_DIR
-    # Replace '@' with config path
     if output_dir:
         config_path = osp.splitext(args.config_file)[0]
         config_path = config_path.replace("configs", "outputs")
-        output_dir = output_dir.replace('@', config_path+'_0')
+        output_dir = output_dir.replace('@', config_path)
         mkdir(output_dir)
-
     logger = setup_logger("shaper", output_dir, prefix="test")
     logger.info("Using {} GPUs".format(torch.cuda.device_count()))
     logger.info(args)
@@ -220,22 +220,33 @@ def main():
     logger.info("Running with config:\n{}".format(cfg))
 
     assert cfg.TASK == "part_instance_segmentation"
-    aps = np.zeros((1, 20))
-    for i in range(360, 410, 10):
-        print(i)
-        cfg.TEST.WEIGHT='@/model_%03d.pth'%i
-        aps[(i-360)//10] = test(cfg, output_dir)
-        print(aps[(i-360)//10])
-        break
+    aps = np.zeros((25, 20))
+    output_log = open(os.path.join(output_dir, 'evaluation.txt'), 'w')
+
+    for init in range(5):
+        # Replace '@' with config path
+        for i in range(360, 410, 10):
+            cfg.TEST.WEIGHT='@/model_%03d.pth'%i
+            aps[init*5 + (i-360)//10] = test(cfg, output_dir+'_%d'%init)
+            print(aps[(i-360)//10])
+            output_log.write('Init %d Epoch %d:  %s\n'%(init, i,str(aps[(i-360)//10])))
+            output_log.flush()
+
+    output_log.write('\nFINAL RESULTS\n\n')
     temp = np.mean(aps, 0, keepdims=True)
     std_dev = np.mean((aps - temp)**2,0)**0.5
     print('mean',list(zip(range(5,105,5),np.mean(aps,0))))
+    output_log.write('mean: %s\n'%str(list(zip(range(5,105,5),np.mean(aps,0)))))
     print('std_dev', list(zip(range(5,105,5), std_dev)))
+    output_log.write('std_dev: %s\n'%str(list(zip(range(5,105,5), std_dev))))
     aps = np.mean(aps,1)
     mean = np.mean(aps)
     std_dev = np.mean((aps - mean)**2)**0.5
     print('mean', mean)
+    output_log.write('mean: %s\n'%str(mean))
     print('std dev', std_dev)
+    output_log.write('std dev: %s\n'%str( std_dev))
+    output_log.close()
 
 
 if __name__ == "__main__":

@@ -139,16 +139,17 @@ def test(cfg, output_dir=""):
 
                 if zoom_iteration == 0:
                     proposal_preds = proposal_model(data_batch, 'points')
+                    proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
 
                     proposal_mask = proposal_preds['mask_output'][:,0,:]
+                    ins_seg_label = data_batch['ins_seg_label']
+                    ins_seg_label, _ = torch.max(ins_seg_label, 1)
                     proposal_mask = F.softmax(proposal_mask,1)
                     #radius_mask = proposal_preds['mask_output'][:,1,:]
                     radius_mask = proposal_preds['mask_output'][:,1:4,:]
                     radius_mask = torch.exp(radius_mask)
                     radius_mask = torch.transpose(radius_mask, 2, 1)
-                    #radius_mask = data_batch['radius']
-                    rotation_mask = data_batch['rotation_mask']
-                    #rotation_mask = data_batch['rotation']
+                    radius_mask = data_batch['radius']
                     m,_ = torch.max(proposal_mask, 1, keepdim=True)
                     master_proposal_mask = proposal_mask
                     proposal_mask[proposal_mask < 0.5*m]=0
@@ -178,7 +179,12 @@ def test(cfg, output_dir=""):
                 centroids = centroids.expand(-1, -1, 3, 3)
 
                 gathered_radius = radius_mask.detach().gather(1,centroids[:,:,:,0])
-                gathered_rotation = rotation_mask.detach().gather(1,centroids)
+                gathered_rotation = data_batch['rotation'].detach().gather(1,centroids)
+                gathered_rotation2 = data_batch['rotation_mask'].detach().gather(1,centroids)
+
+                print('gt', iteration, zoom_iteration, gathered_rotation)
+                print('pred', iteration, zoom_iteration, gathered_rotation2)
+
 
 
                 gathered_rotation = torch.squeeze(gathered_rotation, 1)
@@ -192,15 +198,15 @@ def test(cfg, output_dir=""):
                 for crop_size in range(1):#1,5):
                     crop_size=2.5
                     for b in range(batch_size):
-                        while True:
+                        for i in range(20):
                             c0 = (transformed_points[b,:,0]**2)**0.5 < crop_size * gathered_radius[b,:,0]
                             c1 = (transformed_points[b,:,1]**2)**0.5 < crop_size * gathered_radius[b,:,1]
                             c2 = (transformed_points[b,:,2]**2)**0.5 < crop_size * gathered_radius[b,:,2]
                             nearest_indices_temp = torch.nonzero(c0*c1*c2)
                             if nearest_indices_temp.shape[0] >= num_point:
+                                nearest_indices[b] = nearest_indices_temp[:num_point,0].cuda()
                                 break
                             crop_size*=1.05
-                        nearest_indices[b] = nearest_indices_temp[:num_point,0].cuda()
 
                     #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
                     #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
@@ -267,7 +273,6 @@ def test(cfg, output_dir=""):
                 global_seg_logit_all[zoom_iteration].append((pm/(vm+1e-12)).cpu().numpy())
 
 
-                    #proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch)
 
 
 
@@ -332,7 +337,7 @@ def main():
     if output_dir:
         config_path = osp.splitext(args.config_file)[0]
         config_path = config_path.replace("configs", "outputs")
-        output_dir = output_dir.replace('@', config_path+'_0')
+        output_dir = output_dir.replace('@', config_path+'')
         mkdir(output_dir)
 
     logger = setup_logger("shaper", output_dir, prefix="test")

@@ -116,7 +116,7 @@ class ProposalLoss(nn.Module):
 
         v3 = torch.cross(v1,v2)
 
-        rotation_mask = torch.cat([rotation_mask, v3.unsqueeze(-1)] , -1)
+        rotation_mask = torch.cat([v1.unsqueeze(-1), v2.unsqueeze(-1), v3.unsqueeze(-1)] , -1)
         labels['rotation_mask']=rotation_mask
 
 

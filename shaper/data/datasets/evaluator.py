@@ -267,9 +267,8 @@ def evaluate_part_instance_segmentation(dataset,
             ious= temp
         aps[i]=ap
         print('ap %d'%(i*5+5), ap)
-        break
     print('mean ap', np.mean(aps))
-    #return aps
+    return aps
 
     gen_visu(os.path.join(output_dir,vis_dir), dataset, pred_logits, conf_logits, ious)
     exit(0)
