@@ -49,7 +49,7 @@ def build_dgcnn(cfg):
         proposal_net = DGCNNTwoBranch(
             in_channels = cfg.INPUT.IN_CHANNELS,
             num_global_output = 0,
-            num_mask_output = 2,
+            num_mask_output = 1+6+3,
             k=cfg.MODEL.DGCNN.K,
             use_bn=cfg.MODEL.PROP_NORMALIZATION=='BN',
             use_gn=cfg.MODEL.PROP_NORMALIZATION=='GN',

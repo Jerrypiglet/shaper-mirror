@@ -18,6 +18,7 @@ from shaper.utils.metric_logger import MetricLogger
 from shaper.utils.tensorboard_logger import TensorboardLogger
 from shaper.utils.torch_util import set_random_seed
 from shaper.nn.functional import pdist
+from shaper.data.datasets.geometry_utils import render_pts_with_label
 
 
 def train_model(models,
@@ -45,7 +46,6 @@ def train_model(models,
     end = time.time()
     data_loader.dataset.shuffle_inactive()
     for iteration, data_batch in enumerate(data_loader):
-        print(iteration)
         data_time = time.time() - end
 
 
@@ -71,14 +71,14 @@ def train_model(models,
         continue_flag=  False#epoch >= 200
         while True:
             zoom_iteration+=1
-            data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
-            ins_seg_label = data_batch['ins_seg_label']
-            ins_seg_label, _ = torch.max(ins_seg_label, 1, keepdim=True)
-            bvm = (viewed_mask>0).float()
-            ins_seg_label *= bvm
-            data_batch['points_and_masks'] = torch.cat([points, bvm, ins_seg_label], 1)
-            #data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
-            data_batch['viewed_mask'] = viewed_mask
+            #data_batch['points_and_masks'] = torch.cat([points, (viewed_mask>0).float(),(predict_mask/(viewed_mask+1e-12)).float()], 1)
+            #ins_seg_label = data_batch['ins_seg_label']
+            #ins_seg_label, _ = torch.max(ins_seg_label, 1, keepdim=True)
+            #bvm = (viewed_mask>0).float()
+            #ins_seg_label *= bvm
+            #data_batch['points_and_masks'] = torch.cat([points, bvm, ins_seg_label], 1)
+            ##data_batch['points_and_masks'] = torch.cat([points, meta_mask], 1)
+            #data_batch['viewed_mask'] = viewed_mask
 
             proposal_preds = proposal_model(data_batch, 'points')
 
@@ -92,9 +92,21 @@ def train_model(models,
 
 
             proposal_mask = proposal_preds['mask_output'][:,0,:]
+            suffix = '_'+str(zoom_iteration)
+            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix=suffix, finish_weight = 1)
+            proposal_losses = sum(proposal_loss_dict.values())
+            meters.update(loss=proposal_losses, **proposal_loss_dict)
 
+            ins_seg_label = data_batch['ins_seg_label']
+            ins_seg_label, _ = torch.max(ins_seg_label, 1)
+            #proposal_mask += ins_seg_label * 1e4
             proposal_mask = F.softmax(proposal_mask,1)
-            radius_mask = proposal_preds['mask_output'][:,1,:]
+            radius_mask = proposal_preds['mask_output'][:,1:4,:]
+            radius_mask = torch.exp(radius_mask)
+            radius_mask = torch.transpose(radius_mask, 2, 1)
+            #radius_mask = data_batch['radius']
+            rotation_mask = data_batch['rotation_mask']
+            #rotation_mask = data_batch['rotation']
 
 
 
@@ -110,25 +122,52 @@ def train_model(models,
             gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
 
 
-            centroids= centroids.squeeze(-1)
+            #centroids= centroids.squeeze(-1)
+            centroids = centroids.view(batch_size, 1, 1, 1)
+            centroids = centroids.expand(-1, -1, 3, 3)
 
-            gathered_radius = radius_mask.detach().gather(1,centroids)
+            gathered_radius = radius_mask.detach().gather(1,centroids[:,:,:,0])
+            gathered_rotation = rotation_mask.detach().gather(1,centroids)
             #gathered_radius = data_batch['radius'].gather(1,centroids)
 
 
-            dists = (full_points - gathered_centroids)**2
-            dists = torch.sum(dists, 1)
-            nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
+            #dists = (full_points - gathered_centroids)**2
+            #dists = torch.sum(dists, 1)
+            #nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
 
+            gathered_rotation = torch.squeeze(gathered_rotation, 1)
+            gathered_centroids = torch.unsqueeze(torch.squeeze(gathered_centroids, -1), 1)
+            transformed_points = torch.matmul(torch.transpose(full_points, 2,1) -gathered_centroids, gathered_rotation)
+
+            nearest_indices =  torch.zeros((batch_size, num_point)).long().cuda()
 
             for b in range(batch_size):
-                crop_size = Normal(1, 1).sample()
-                #crop_size = max(0, crop_size)
-                crop_size = 2**crop_size
-                nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
-                if nearest_indices_temp.shape[0] >= num_point:
-                    nearest_indices[b] = nearest_indices_temp[:num_point,0]
+                crop_size0 = Normal(1, 1).sample()
+                crop_size0 = 2**crop_size0
+                crop_size1 = Normal(1, 1).sample()
+                crop_size1 = 2**crop_size1
+                crop_size1 = torch.clamp(crop_size1, 0.25*crop_size0, 4*crop_size0)
+                crop_size2 = Normal(1, 1).sample()
+                crop_size2 = 2**crop_size2
+                crop_size2 = torch.clamp(crop_size2, 0.25*crop_size0, 4*crop_size0)
+                while True:
+                    c0 = (transformed_points[b,:,0]**2)**0.5 < crop_size0 * gathered_radius[b,:,0]
+                    c1 = (transformed_points[b,:,1]**2)**0.5 < crop_size1 * gathered_radius[b,:,1]
+                    c2 = (transformed_points[b,:,2]**2)**0.5 < crop_size2 * gathered_radius[b,:,2]
+                    nearest_indices_temp = torch.nonzero(c0*c1*c2)
+                    if nearest_indices_temp.shape[0] >= num_point:
+                        #temp_label, _ = torch.max(full_ins_seg_label[b],0)
+                        #temp_label[nearest_indices_temp]+=2
+                        #render_pts_with_label('temp.png', torch.transpose(full_points[b],1,0), temp_label)
+                        break
+                    crop_size0*=1.05
+                    crop_size1*=1.05
+                    crop_size2*=1.05
+                nearest_indices[b] = nearest_indices_temp[:num_point,0].cuda()
+                #nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
+                #if nearest_indices_temp.shape[0] >= num_point:
+                #    nearest_indices[b] = nearest_indices_temp[:num_point,0]
 
 
 
@@ -173,12 +212,8 @@ def train_model(models,
             #meta_data = segmentation_preds['mask_output'][:,-meta_data_size:,:]
             #segmentation_preds['mask_output'] = segmentation_preds['mask_output'][:,:-meta_data_size,:]
 
-            suffix = '_'+str(zoom_iteration)
             if zoom_iteration > 3:
                 suffix='_tail'
-            proposal_loss_dict = proposal_loss_fn(proposal_preds, data_batch,suffix=suffix, finish_weight = 1)
-            proposal_losses = sum(proposal_loss_dict.values())
-            meters.update(loss=proposal_losses, **proposal_loss_dict)
             segmentation_loss_dict = segmentation_loss_fn(segmentation_preds, data_batch, 'zoomed_ins_seg_label', suffix=suffix, conf_weight=5)
             segmentation_losses = sum(segmentation_loss_dict.values())
             meters.update(loss=segmentation_losses, **segmentation_loss_dict)

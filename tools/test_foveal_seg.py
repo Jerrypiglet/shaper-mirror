@@ -142,7 +142,13 @@ def test(cfg, output_dir=""):
 
                     proposal_mask = proposal_preds['mask_output'][:,0,:]
                     proposal_mask = F.softmax(proposal_mask,1)
-                    radius_mask = proposal_preds['mask_output'][:,1,:]
+                    #radius_mask = proposal_preds['mask_output'][:,1,:]
+                    radius_mask = proposal_preds['mask_output'][:,1:4,:]
+                    radius_mask = torch.exp(radius_mask)
+                    radius_mask = torch.transpose(radius_mask, 2, 1)
+                    #radius_mask = data_batch['radius']
+                    rotation_mask = data_batch['rotation_mask']
+                    #rotation_mask = data_batch['rotation']
                     m,_ = torch.max(proposal_mask, 1, keepdim=True)
                     master_proposal_mask = proposal_mask
                     proposal_mask[proposal_mask < 0.5*m]=0
@@ -166,23 +172,35 @@ def test(cfg, output_dir=""):
 
 
                 gathered_centroids = points.gather(2,centroids.expand(batch_size, 3, 1))
-                gathered_radius = radius_mask.gather(1,centroids.squeeze(-1))
                 #gathered_radius = data_batch['radius'].gather(1,centroids.squeeze(-1))
 
+                centroids = centroids.view(batch_size, 1, 1, 1)
+                centroids = centroids.expand(-1, -1, 3, 3)
 
-                dists = (full_points - gathered_centroids)**2
-                dists = torch.sum(dists, 1)
+                gathered_radius = radius_mask.detach().gather(1,centroids[:,:,:,0])
+                gathered_rotation = rotation_mask.detach().gather(1,centroids)
+
+
+                gathered_rotation = torch.squeeze(gathered_rotation, 1)
+                gathered_centroids = torch.unsqueeze(torch.squeeze(gathered_centroids, -1), 1)
+                transformed_points = torch.matmul(torch.transpose(full_points, 2,1) -gathered_centroids, gathered_rotation)
+
+                nearest_indices =  torch.zeros((batch_size, num_point)).long().cuda()
 
                 masks = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS, num_point)).cuda()
                 confs = torch.zeros((batch_size, cfg.MODEL.NUM_INS_MASKS)).cuda()
                 for crop_size in range(1):#1,5):
                     crop_size=2.5
-                    #nearest_dists, nearest_indices = torch.topk(dists, crop_size, 1, largest=False, sorted=False)
-                    nearest_dists, nearest_indices = torch.topk(dists, num_point, 1, largest=False, sorted=False)
                     for b in range(batch_size):
-                        nearest_indices_temp = torch.nonzero(dists[b] < gathered_radius[b]*crop_size)
-                        if nearest_indices_temp.shape[0] >= num_point:
-                            nearest_indices[b] = nearest_indices_temp[:num_point,0]
+                        while True:
+                            c0 = (transformed_points[b,:,0]**2)**0.5 < crop_size * gathered_radius[b,:,0]
+                            c1 = (transformed_points[b,:,1]**2)**0.5 < crop_size * gathered_radius[b,:,1]
+                            c2 = (transformed_points[b,:,2]**2)**0.5 < crop_size * gathered_radius[b,:,2]
+                            nearest_indices_temp = torch.nonzero(c0*c1*c2)
+                            if nearest_indices_temp.shape[0] >= num_point:
+                                break
+                            crop_size*=1.05
+                        nearest_indices[b] = nearest_indices_temp[:num_point,0].cuda()
 
                     #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))
                     #zoomed_points = full_points.gather(2, nearest_indices.view(batch_size, 1, crop_size).expand(batch_size, 3, crop_size))

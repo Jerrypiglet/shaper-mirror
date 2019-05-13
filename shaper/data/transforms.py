@@ -14,13 +14,18 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, points):
-        for t in self.transforms:
-            points = t(points)
-        return points
+    def __call__(self, points, rotation=None):
+        if rotation is not None:
+            for t in self.transforms:
+                points, rotation = t(points, rotation)
+            return points, rotation
+        else:
+            for t in self.transforms:
+                points = t(points)
+            return points
 
     def __repr__(self):
-        format_string = self.__class__.__name__ + "("
+        format_string = 'aaaa'+ self.__class__.__name__ + "("
         for t in self.transforms:
             format_string += "\n"
             format_string += "    {0}".format(t)
@@ -39,12 +44,15 @@ class ComposeSeg(Compose):
 # Transformation related to only points
 # ---------------------------------------------------------------------------- #
 class PointCloudToTensor(object):
-    def __call__(self, points):
+    def __call__(self, points,rotation=None):
         if isinstance(points, torch.Tensor):
             return points.float().cpu()
         assert isinstance(points, np.ndarray)
         # torch.tensor always copies data
-        return torch.tensor(points, dtype=torch.float)
+        if rotation is not None:
+            return torch.tensor(points, dtype=torch.float), torch.tensor(rotation)
+        else:
+            return torch.tensor(points, dtype=torch.float)
 
 
 class PointCloudTensorTranspose(object):
@@ -99,17 +107,21 @@ class PointCloudRotate(object):
         self.axis = torch.as_tensor(axis).float()
         self.use_normal = use_normal
 
-    def __call__(self, points):
+    def __call__(self, points, rotation=None):
         angle = torch.rand(1) * 2 * np.pi
         rotation_matrix = get_rotation_matrix(angle, self.axis)
 
+
         if not self.use_normal:
             points[:, 0:3] = points[:, 0:3] @ rotation_matrix
-            return points
         else:
             assert points.size(1) >= 6
             points[:, 0:3] = points[:, 0:3] @ rotation_matrix
             points[:, 3:6] = points[:, 3:6] @ rotation_matrix
+        if rotation is not None:
+            rotation = torch.matmul(torch.transpose(rotation_matrix, 1, 0), rotation)
+            return points, rotation
+        else:
             return points
 
 
@@ -127,14 +139,17 @@ class PointCloudRotateByAngle(object):
         self.rotation_matrix = torch.from_numpy(rotation_matrix).float()
         self.use_normal = use_normal
 
-    def __call__(self, points):
+    def __call__(self, points, rotation=None):
         if not self.use_normal:
             points[:, 0:3] = points[:, 0:3] @ self.rotation_matrix
-            return points
         else:
             assert points.size(1) >= 6
             points[:, 0:3] = points[:, 0:3] @ self.rotation_matrix
             points[:, 3:6] = points[:, 3:6] @ self.rotation_matrix
+        if rotation is not None:
+            rotation = torch.matmul(torch.transpose(rotation_matrix, 1, 0), rotation)
+            return points, rotation
+        else:
             return points
 
 
@@ -145,7 +160,7 @@ class PointCloudRotatePerturbation(object):
         self.axes = torch.eye(3)
         self.use_normal = use_normal
 
-    def __call__(self, points):
+    def __call__(self, points, rotation=None):
         angles = torch.clamp(self.angle_sigma * torch.randn(3),
                              -self.angle_clip, self.angle_clip)
 
@@ -157,22 +172,28 @@ class PointCloudRotatePerturbation(object):
 
         if not self.use_normal:
             points[:, 0:3] = points[:, 0:3] @ rotation_matrix
-            return points
         else:
             assert points.size(1) >= 6
             points[:, 0:3] = points[:, 0:3] @ rotation_matrix
             points[:, 3:6] = points[:, 3:6] @ rotation_matrix
-            return points
 
+        if rotation is not None:
+            rotation = torch.matmul(torch.transpose(rotation_matrix, 1, 0), rotation)
+            return points, rotation
+        else:
+            return points
 
 class PointCloudTranslate(object):
     def __init__(self, translate_range=0.1, **kwargs):
         self.translate_range = translate_range
 
-    def __call__(self, points):
+    def __call__(self, points,rotation=None):
         translation = points.new(3).uniform_(-self.translate_range, self.translate_range)
         points[:, 0:3] += translation  # broadcast first dimension
-        return points
+        if rotation is not None:
+            return points, rotation
+        else:
+            return points
 
 
 class PointCloudScale(object):
@@ -181,21 +202,27 @@ class PointCloudScale(object):
         self.lo = lo
         self.hi = hi
 
-    def __call__(self, points):
+    def __call__(self, points = None, rotation=None):
         scale = points.new(1).uniform_(self.lo, self.hi)
         points[:, 0:3] *= scale
-        return points
+        if rotation is not None:
+            return points, rotation
+        else:
+            return points
 
 
 class PointCloudJitter(object):
     def __init__(self, std=0.01, clip=0.05, **kwargs):
         self.std, self.clip = std, clip
 
-    def __call__(self, points):
+    def __call__(self, points, rotation=None):
         jittered_data = points.new(points.size(0), 3).normal_(mean=0.0, std=self.std)
         jittered_data = jittered_data.clamp_(-self.clip, self.clip)
         points[:, 0:3] += jittered_data
-        return points
+        if rotation is not None:
+            return points, rotation
+        else:
+            return points
 
 
 # ---------------------------------------------------------------------------- #

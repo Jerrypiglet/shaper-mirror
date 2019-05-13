@@ -140,6 +140,7 @@ class PartNetH5(Dataset):
         ins_seg_label = handler['label'][meta['offset'],:,:]
         ins_seg_label = np.concatenate([ins_seg_label, np.zeros((self.num_gt_masks - ins_seg_label.shape[0],ins_seg_label.shape[1]))], 0)
         radius = handler['radius'][meta['offset'],:]
+        rotation = handler['rotation'][meta['offset'],:]
         out_dict = {}
 
         #points, choice = crop_or_pad_points(points, self.num_points, self.shuffle_points)
@@ -148,9 +149,9 @@ class PartNetH5(Dataset):
 
 
         if self.transform is not None:
-            points = self.transform(points)
-            if self.seg_transform is not None:
-                points, ins_seg_label = self.seg_transform(points, ins_seg_label)
+            points, rotation = self.transform(points, rotation)
+            #if self.seg_transform is not None:
+            #    points, ins_seg_label = self.seg_transform(points, ins_seg_label)
             points = points.transpose_(0, 1)
         else:
             points = np.transpose(points, [1,0])
@@ -163,6 +164,7 @@ class PartNetH5(Dataset):
 
         out_dict["points"] = points[:,:self.num_points]
         out_dict['radius'] = radius[:self.num_points]
+        out_dict['rotation'] = rotation[:self.num_points]
         out_dict["ins_seg_label"] = ins_seg_label[:,:self.num_points]
         out_dict['record']=self.record[meta['path']][meta['offset']]
 
