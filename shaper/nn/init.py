@@ -9,9 +9,11 @@ def init_bn(module):
 
 
 def set_bn(model, momentum):
+    # print('*************************************************************************** set_bn')
     for m in model.modules():
         if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
             m.momentum = momentum
+            print(m)
 
 
 def xavier_uniform(module):

@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from shaper.nn import MLP, SharedMLP
+from shaper.nn import MLP, SharedMLP, FC
 from shaper.nn.init import xavier_uniform, set_bn
 
 
@@ -166,7 +166,11 @@ class PointNetCls(nn.Module):
         self.stem = Stem(in_channels, stem_channels, with_transform=with_transform)
         self.mlp_local = SharedMLP(stem_channels[-1], local_channels)
         self.mlp_global = MLP(local_channels[-1], global_channels, dropout=dropout_prob)
-        self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
+        # self.classifier = nn.Linear(global_channels[-1], out_channels, bias=True)
+        self.classifier = nn.Sequential(
+            FC(global_channels[-1], global_channels[-1]),
+            nn.Linear(global_channels[-1], out_channels, bias=True))
+
 
         self.init_weights()
 
