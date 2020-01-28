@@ -30,7 +30,8 @@ class Stem(nn.Module):
 
     def __init__(self, in_channels,
                  stem_channels=(64, 128, 128),
-                 with_transform=True):
+                 with_transform=True,
+                 bn=True):
         super(Stem, self).__init__()
 
         self.in_channels = in_channels
@@ -38,7 +39,7 @@ class Stem(nn.Module):
         self.with_transform = with_transform
 
         # feature stem
-        self.mlp = SharedMLP(in_channels, stem_channels)
+        self.mlp = SharedMLP(in_channels, stem_channels, bn=bn)
         self.mlp.init_weights(xavier_uniform)
 
         if self.with_transform:
